@@ -1,4 +1,4 @@
-import { KnowledgeLibrary } from "@/components/knowledge-components";
+import { KnowledgeLibrary } from "@/app/knowledge/_components/knowledge-components";
 
 export default function KnowledgePage() {
   return (

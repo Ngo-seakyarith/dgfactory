@@ -1,4 +1,4 @@
-import { AdaptiveGrowthExecutiveDashboard } from "@/components/adaptive-growth-dashboard-components";
+import { AdaptiveGrowthExecutiveDashboard } from "@/app/adaptive-growth/_components/adaptive-growth-dashboard-components";
 
 export default function AdaptiveGrowthDashboardPage() {
   return (

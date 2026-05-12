@@ -1,4 +1,4 @@
-import { ClientPortalLogin } from "@/components/client-portal-components";
+import { ClientPortalLogin } from "@/app/client-portal/_components/client-portal-components";
 
 export default function ClientPortalLoginPage() {
   return (

@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 
-import { DemoSeedButton, ProductBriefExportButtons } from "@/components/productization-components";
+import { DemoSeedButton, ProductBriefExportButtons } from "@/app/product/_components/productization-components";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {

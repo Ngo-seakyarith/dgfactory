@@ -1,5 +1,5 @@
-import { PipelineBoard } from "@/components/crm-components";
-import { PilotFeedbackButton } from "@/components/pilot-components";
+import { PipelineBoard } from "@/app/crm/_components/crm-components";
+import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 
 export default function PipelinePage() {
   return (

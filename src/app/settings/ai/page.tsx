@@ -1,4 +1,4 @@
-import { AiSettingsPanel } from "@/components/ai-settings";
+import { AiSettingsPanel } from "@/app/settings/_components/ai-settings";
 
 export default function AiSettingsPage() {
   return (

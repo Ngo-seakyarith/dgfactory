@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/card";
 import { getDashboardMetrics } from "@/lib/dashboard";
 import { loopTypeLabel } from "@/lib/loops/types";
-import { PilotFeedbackButton } from "@/components/pilot-components";
+import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 
 export default async function DashboardPage() {
   const metrics = await getDashboardMetrics();

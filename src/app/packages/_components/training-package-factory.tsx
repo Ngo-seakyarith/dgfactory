@@ -30,7 +30,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { PilotFeedbackButton } from "@/components/pilot-components";
+import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 import {
   buildPackageFromParts,
   fullPackageToMarkdown,

@@ -1,4 +1,4 @@
-import { ClientForm } from "@/components/crm-components";
+import { ClientForm } from "@/app/crm/_components/crm-components";
 
 export default function NewClientPage() {
   return (

@@ -1,4 +1,4 @@
-import { OpportunityDetailClient } from "@/components/crm-components";
+import { OpportunityDetailClient } from "@/app/crm/_components/crm-components";
 
 export default async function OpportunityDetailPage({
   params,

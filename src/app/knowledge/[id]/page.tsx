@@ -1,4 +1,4 @@
-import { KnowledgeDocumentDetail } from "@/components/knowledge-components";
+import { KnowledgeDocumentDetail } from "@/app/knowledge/_components/knowledge-components";
 
 type PageProps = {
   params: Promise<{ id: string }>;

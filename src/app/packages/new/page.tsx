@@ -1,4 +1,4 @@
-import { PackageForm } from "@/components/training-package-factory";
+import { PackageForm } from "@/app/packages/_components/training-package-factory";
 
 export default function NewPackagePage() {
   return (

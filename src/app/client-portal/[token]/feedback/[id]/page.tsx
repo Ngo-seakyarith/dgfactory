@@ -1,6 +1,6 @@
 import Link from "next/link";
 
-import { ClientFeedbackForm } from "@/components/client-portal-components";
+import { ClientFeedbackForm } from "@/app/client-portal/_components/client-portal-components";
 import { Button } from "@/components/ui/button";
 import {
   Card,

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-import { RoiCalculator } from "@/components/productization-components";
+import { RoiCalculator } from "@/app/product/_components/productization-components";
 import { Button } from "@/components/ui/button";
 
 export default function RoiCalculatorPage() {

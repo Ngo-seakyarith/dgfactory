@@ -1,4 +1,4 @@
-import { DeliveryProjectsPageClient } from "@/components/delivery-components";
+import { DeliveryProjectsPageClient } from "@/app/delivery/_components/delivery-components";
 
 export default function DeliveryPage() {
   return (

@@ -53,8 +53,8 @@ import type { TrainingPackage } from "@/lib/training-packages";
 import {
   getLocalTrainingPackage,
   getLocalTrainingPackages,
-} from "@/components/training-package-factory";
-import { PilotFeedbackButton } from "@/components/pilot-components";
+} from "@/app/packages/_components/training-package-factory";
+import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 
 const deliveryProjectsStorageKey = "dg-academy-delivery-projects-v1";
 const deliveryTasksStorageKey = "dg-academy-delivery-tasks-v1";

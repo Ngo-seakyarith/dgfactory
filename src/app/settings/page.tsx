@@ -1,8 +1,8 @@
 import { CheckCircle2, CircleAlert } from "lucide-react";
 
-import { AuthSettings } from "@/components/auth-settings";
-import { AiSettingsPanel } from "@/components/ai-settings";
-import { AutonomySettingsPanel } from "@/components/autonomy-settings";
+import { AuthSettings } from "@/app/settings/_components/auth-settings";
+import { AiSettingsPanel } from "@/app/settings/_components/ai-settings";
+import { AutonomySettingsPanel } from "@/app/settings/_components/autonomy-settings";
 import {
   Card,
   CardContent,

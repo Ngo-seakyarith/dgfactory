@@ -1,4 +1,4 @@
-import { OpportunitiesPageClient } from "@/components/crm-components";
+import { OpportunitiesPageClient } from "@/app/crm/_components/crm-components";
 
 export default function OpportunitiesPage() {
   return (

@@ -1,4 +1,4 @@
-import { KnowledgeDocumentForm } from "@/components/knowledge-components";
+import { KnowledgeDocumentForm } from "@/app/knowledge/_components/knowledge-components";
 
 export default function NewKnowledgePage() {
   return (

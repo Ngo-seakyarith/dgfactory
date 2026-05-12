@@ -1,4 +1,4 @@
-import { SavedPackagesClient } from "@/components/training-package-browser";
+import { SavedPackagesClient } from "@/app/packages/_components/training-package-browser";
 
 export default function PackagesPage() {
   return (

@@ -1,4 +1,4 @@
-import { AutonomySettingsPanel } from "@/components/autonomy-settings";
+import { AutonomySettingsPanel } from "@/app/settings/_components/autonomy-settings";
 
 export default function AutonomySettingsPage() {
   return (

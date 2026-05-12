@@ -1,4 +1,4 @@
-import { AdaptiveGrowthWorkspace } from "@/components/adaptive-growth-components";
+import { AdaptiveGrowthWorkspace } from "@/app/adaptive-growth/_components/adaptive-growth-components";
 
 export default function AdaptiveGrowthPage() {
   return (

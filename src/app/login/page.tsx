@@ -1,4 +1,4 @@
-import { AuthSettings } from "@/components/auth-settings";
+import { AuthSettings } from "@/app/settings/_components/auth-settings";
 import {
   Card,
   CardContent,

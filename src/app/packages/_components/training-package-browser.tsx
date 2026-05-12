@@ -34,8 +34,8 @@ import {
   LoadingState,
   savePackageLocally,
   TrainingPackageOutputsView,
-} from "@/components/training-package-factory";
-import { PilotFeedbackButton } from "@/components/pilot-components";
+} from "@/app/packages/_components/training-package-factory";
+import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 import type { TrainingPackage } from "@/lib/training-packages";
 import {
   buildCommercialProposalSection,
@@ -43,8 +43,8 @@ import {
   normalizePricingInputs,
   type PricingInputs,
 } from "@/lib/pricing";
-import { PackageOpportunityPanel } from "@/components/crm-components";
-import { AdaptiveGrowthPackageLinkPanel } from "@/components/adaptive-growth-components";
+import { PackageOpportunityPanel } from "@/app/crm/_components/crm-components";
+import { AdaptiveGrowthPackageLinkPanel } from "@/app/adaptive-growth/_components/adaptive-growth-components";
 
 function mergePackages(
   localPackages: TrainingPackage[],

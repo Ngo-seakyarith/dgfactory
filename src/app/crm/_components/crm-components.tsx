@@ -28,7 +28,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { ClientPortalManager } from "@/components/client-portal-components";
+import { ClientPortalManager } from "@/app/client-portal/_components/client-portal-components";
 import {
   calculatePipelineMetrics,
   createEmptyClient,
@@ -46,7 +46,7 @@ import type { TrainingPackage } from "@/lib/training-packages";
 import {
   getLocalTrainingPackage,
   getLocalTrainingPackages,
-} from "@/components/training-package-factory";
+} from "@/app/packages/_components/training-package-factory";
 
 const clientsStorageKey = "dg-academy-crm-clients-v1";
 const opportunitiesStorageKey = "dg-academy-crm-opportunities-v1";
