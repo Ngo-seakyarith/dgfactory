@@ -238,9 +238,9 @@ function nullableNumber(value: unknown) {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
-function safeNumber(value: unknown, fallback = 0) {
+function safeNumber(value: unknown, defaultValue = 0) {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : defaultValue;
 }
 
 function isOneOf<T extends readonly string[]>(options: T, value: unknown): value is T[number] {

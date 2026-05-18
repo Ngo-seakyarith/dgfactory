@@ -17,14 +17,6 @@ import {
 } from "@/lib/brain/evals/types";
 import type { BrainTaskType } from "@/lib/brain/agents";
 
-type EvalStore = {
-  datasets: EvalDataset[];
-  examples: EvalExample[];
-  runs: EvalRun[];
-  results: EvalResult[];
-  traces: AgentTrace[];
-};
-
 type EvalDatasetRow = {
   id: string;
   name: string;
@@ -84,18 +76,6 @@ type AgentTraceRow = {
 };
 
 const seed = createSeedEvalData();
-const globalForEvalStore = globalThis as typeof globalThis & {
-  __dgBrainEvalStore?: EvalStore;
-};
-const localStore =
-  globalForEvalStore.__dgBrainEvalStore ??
-  (globalForEvalStore.__dgBrainEvalStore = {
-    datasets: seed.datasets,
-    examples: seed.examples,
-    runs: [],
-    results: [],
-    traces: [],
-  });
 
 function datasetToRow(dataset: EvalDataset) {
   return {
@@ -166,7 +146,7 @@ function runFromRow(row: EvalRunRow) {
     id: row.id,
     datasetId: row.dataset_id,
     targetAgent: row.target_agent,
-    modelName: row.model_name ?? "mock",
+    modelName: row.model_name ?? "",
     status: row.status ?? "Running",
     averageScore: row.average_score ?? 0,
     startedAt: row.started_at,
@@ -237,7 +217,7 @@ export async function ensureSeedEvalDatasets() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { storage: "local" as const };
+    throw new Error("Supabase is required to ensure eval datasets.");
   }
 
   const { data } = await supabase.from("eval_datasets").select("id").limit(1);
@@ -259,7 +239,7 @@ export async function listEvalDatasets() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.datasets].sort((a, b) => a.name.localeCompare(b.name));
+    throw new Error("Supabase is required to list eval datasets.");
   }
 
   const { data, error } = await supabase
@@ -268,7 +248,7 @@ export async function listEvalDatasets() {
     .order("name");
 
   if (error) {
-    return localStore.datasets;
+    throw new Error(error.message);
   }
 
   return (data as EvalDatasetRow[]).map(datasetFromRow);
@@ -279,9 +259,7 @@ export async function listEvalExamples(datasetId?: string) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.examples
-      .filter((example) => (datasetId ? example.datasetId === datasetId : true))
-      .sort((a, b) => a.id.localeCompare(b.id));
+    throw new Error("Supabase is required to list eval examples.");
   }
 
   let query = supabase.from("eval_examples").select("*").order("id");
@@ -291,9 +269,7 @@ export async function listEvalExamples(datasetId?: string) {
   const { data, error } = await query;
 
   if (error) {
-    return localStore.examples.filter((example) =>
-      datasetId ? example.datasetId === datasetId : true,
-    );
+    throw new Error(error.message);
   }
 
   return (data as EvalExampleRow[]).map(exampleFromRow);
@@ -309,17 +285,10 @@ export async function saveEvalDataset(input: Partial<EvalDataset>) {
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  const index = localStore.datasets.findIndex((item) => item.id === dataset.id);
-
-  if (index >= 0) {
-    localStore.datasets[index] = dataset;
-  } else {
-    localStore.datasets.unshift(dataset);
-  }
 
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return { dataset, storage: "local" as const };
+    throw new Error("Supabase is required to save eval datasets.");
   }
 
   const { data, error } = await supabase
@@ -329,7 +298,7 @@ export async function saveEvalDataset(input: Partial<EvalDataset>) {
     .single();
 
   if (error) {
-    return { dataset, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -343,17 +312,10 @@ export async function saveEvalExample(input: Partial<EvalExample>) {
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  const index = localStore.examples.findIndex((item) => item.id === example.id);
-
-  if (index >= 0) {
-    localStore.examples[index] = example;
-  } else {
-    localStore.examples.unshift(example);
-  }
 
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return { example, storage: "local" as const };
+    throw new Error("Supabase is required to save eval examples.");
   }
 
   const { data, error } = await supabase
@@ -363,7 +325,7 @@ export async function saveEvalExample(input: Partial<EvalExample>) {
     .single();
 
   if (error) {
-    return { example, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -374,17 +336,10 @@ export async function saveEvalExample(input: Partial<EvalExample>) {
 
 export async function saveEvalRun(input: Partial<EvalRun>) {
   const run = normalizeEvalRun(input);
-  const index = localStore.runs.findIndex((item) => item.id === run.id);
-
-  if (index >= 0) {
-    localStore.runs[index] = run;
-  } else {
-    localStore.runs.unshift(run);
-  }
 
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return { run, storage: "local" as const };
+    throw new Error("Supabase is required to save eval runs.");
   }
 
   const { data, error } = await supabase
@@ -394,25 +349,16 @@ export async function saveEvalRun(input: Partial<EvalRun>) {
     .single();
 
   if (error) {
-    return { run, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { run: runFromRow(data as EvalRunRow), storage: "supabase" as const };
 }
 
 export async function saveEvalResults(results: EvalResult[]) {
-  results.forEach((result) => {
-    const index = localStore.results.findIndex((item) => item.id === result.id);
-    if (index >= 0) {
-      localStore.results[index] = result;
-    } else {
-      localStore.results.unshift(result);
-    }
-  });
-
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return { results, storage: "local" as const };
+    throw new Error("Supabase is required to save eval results.");
   }
 
   const { data, error } = await supabase
@@ -421,7 +367,7 @@ export async function saveEvalResults(results: EvalResult[]) {
     .select("*");
 
   if (error) {
-    return { results, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -434,9 +380,7 @@ export async function listEvalRuns(datasetId?: string) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.runs
-      .filter((run) => (datasetId ? run.datasetId === datasetId : true))
-      .sort((a, b) => b.startedAt.localeCompare(a.startedAt));
+    throw new Error("Supabase is required to list eval runs.");
   }
 
   let query = supabase.from("eval_runs").select("*").order("started_at", {
@@ -448,7 +392,7 @@ export async function listEvalRuns(datasetId?: string) {
   const { data, error } = await query;
 
   if (error) {
-    return localStore.runs.filter((run) => (datasetId ? run.datasetId === datasetId : true));
+    throw new Error(error.message);
   }
 
   return (data as EvalRunRow[]).map(runFromRow);
@@ -458,9 +402,7 @@ export async function listEvalResults(evalRunId?: string) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.results
-      .filter((result) => (evalRunId ? result.evalRunId === evalRunId : true))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    throw new Error("Supabase is required to list eval results.");
   }
 
   let query = supabase.from("eval_results").select("*").order("created_at", {
@@ -472,9 +414,7 @@ export async function listEvalResults(evalRunId?: string) {
   const { data, error } = await query;
 
   if (error) {
-    return localStore.results.filter((result) =>
-      evalRunId ? result.evalRunId === evalRunId : true,
-    );
+    throw new Error(error.message);
   }
 
   return (data as EvalResultRow[]).map(resultFromRow);
@@ -482,11 +422,10 @@ export async function listEvalResults(evalRunId?: string) {
 
 export async function saveAgentTrace(input: Partial<AgentTrace>) {
   const trace = normalizeAgentTrace(input);
-  localStore.traces.unshift(trace);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { trace, storage: "local" as const };
+    throw new Error("Supabase is required to save agent traces.");
   }
 
   const { data, error } = await supabase
@@ -496,7 +435,7 @@ export async function saveAgentTrace(input: Partial<AgentTrace>) {
     .single();
 
   if (error) {
-    return { trace, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { trace: traceFromRow(data as AgentTraceRow), storage: "supabase" as const };

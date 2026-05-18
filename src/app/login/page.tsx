@@ -16,8 +16,8 @@ export default function LoginPage() {
           <CardDescription>
             Production identity is designed for Supabase Auth and
             organization memberships. The role selector below is a local
-            internal fallback and should be disabled in production unless
-            explicitly allowed with `DG_DEV_ROLE_SESSION=true`.
+            internal development tool and should be disabled in production
+            unless explicitly allowed with `DG_DEV_ROLE_SESSION=true`.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-sm leading-6 text-muted-foreground">

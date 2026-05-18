@@ -46,24 +46,6 @@ type FeedbackRow = {
   created_at: string;
 };
 
-type PortalStore = {
-  access: ClientPortalAccess[];
-  items: ClientPortalItem[];
-  feedback: ClientFeedback[];
-};
-
-const globalForPortalStore = globalThis as typeof globalThis & {
-  __dgClientPortalStore?: PortalStore;
-};
-
-const localStore =
-  globalForPortalStore.__dgClientPortalStore ??
-  (globalForPortalStore.__dgClientPortalStore = {
-    access: [],
-    items: [],
-    feedback: [],
-  });
-
 function accessToRow(access: ClientPortalAccess) {
   return {
     id: access.id,
@@ -148,26 +130,6 @@ function feedbackFromRow(row: FeedbackRow) {
   });
 }
 
-function upsertLocalAccess(access: ClientPortalAccess) {
-  const index = localStore.access.findIndex((item) => item.id === access.id);
-  if (index >= 0) {
-    localStore.access[index] = access;
-  } else {
-    localStore.access.unshift(access);
-  }
-  return access;
-}
-
-function upsertLocalItem(item: ClientPortalItem) {
-  const index = localStore.items.findIndex((existing) => existing.id === item.id);
-  if (index >= 0) {
-    localStore.items[index] = item;
-  } else {
-    localStore.items.unshift(item);
-  }
-  return item;
-}
-
 export function publicPortalAccess(access: ClientPortalAccess) {
   return {
     id: access.id,
@@ -184,9 +146,7 @@ export async function listPortalAccess(clientId?: string) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.access
-      .filter((access) => (clientId ? access.clientId === clientId : true))
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    throw new Error("Supabase is required to list portal access.");
   }
 
   let query = supabase
@@ -200,9 +160,7 @@ export async function listPortalAccess(clientId?: string) {
 
   const { data, error } = await query;
   if (error) {
-    return localStore.access.filter((access) =>
-      clientId ? access.clientId === clientId : true,
-    );
+    throw new Error(error.message);
   }
 
   return (data as AccessRow[]).map(accessFromRow);
@@ -213,11 +171,10 @@ export async function savePortalAccess(input: Partial<ClientPortalAccess>) {
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  upsertLocalAccess(access);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { access, storage: "local" as const };
+    throw new Error("Supabase is required to save portal access.");
   }
 
   const { data, error } = await supabase
@@ -227,29 +184,16 @@ export async function savePortalAccess(input: Partial<ClientPortalAccess>) {
     .single();
 
   if (error) {
-    return { access, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { access: accessFromRow(data as AccessRow), storage: "supabase" as const };
 }
 
 export async function revokePortalAccess(id: string) {
-  const existing = localStore.access.find((access) => access.id === id);
-  const updated = existing
-    ? normalizePortalAccess({
-        ...existing,
-        status: "Revoked",
-        updatedAt: new Date().toISOString(),
-      })
-    : null;
-
-  if (updated) {
-    upsertLocalAccess(updated);
-  }
-
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return { access: updated, storage: "local" as const };
+    throw new Error("Supabase is required to revoke portal access.");
   }
 
   const { data, error } = await supabase
@@ -260,7 +204,7 @@ export async function revokePortalAccess(id: string) {
     .maybeSingle();
 
   if (error || !data) {
-    return { access: updated, storage: "local" as const };
+    throw new Error(error?.message ?? "Portal access record was not found.");
   }
 
   return { access: accessFromRow(data as AccessRow), storage: "supabase" as const };
@@ -271,20 +215,22 @@ export async function validatePortalToken(
 ): Promise<PortalAccessValidation> {
   const tokenHash = hashPortalToken(token);
   const supabase = getSupabaseServerClient();
-  let access: ClientPortalAccess | null = null;
 
-  if (supabase) {
-    const { data, error } = await supabase
-      .from("client_portal_access")
-      .select("*")
-      .eq("access_token_hash", tokenHash)
-      .maybeSingle();
-    access = !error && data ? accessFromRow(data as AccessRow) : null;
+  if (!supabase) {
+    throw new Error("Supabase is required to validate portal tokens.");
   }
 
-  if (!access) {
-    access = localStore.access.find((item) => item.accessTokenHash === tokenHash) ?? null;
+  const { data, error } = await supabase
+    .from("client_portal_access")
+    .select("*")
+    .eq("access_token_hash", tokenHash)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
   }
+
+  const access = data ? accessFromRow(data as AccessRow) : null;
 
   if (!access) {
     return { status: "not_found", access: null };
@@ -309,14 +255,7 @@ export async function listPortalItems(
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.items
-      .filter((item) => item.clientId === clientId)
-      .filter((item) =>
-        options.publishedOnly
-          ? item.status === "Published" && item.visibility === "Client Visible"
-          : true,
-      )
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    throw new Error("Supabase is required to list portal items.");
   }
 
   let query = supabase
@@ -331,7 +270,7 @@ export async function listPortalItems(
 
   const { data, error } = await query;
   if (error) {
-    return localStore.items.filter((item) => item.clientId === clientId);
+    throw new Error(error.message);
   }
 
   return (data as ItemRow[]).map(itemFromRow);
@@ -347,11 +286,10 @@ export async function savePortalItem(input: Partial<ClientPortalItem>) {
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  upsertLocalItem(item);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { item, storage: "local" as const };
+    throw new Error("Supabase is required to save portal items.");
   }
 
   const { data, error } = await supabase
@@ -361,7 +299,7 @@ export async function savePortalItem(input: Partial<ClientPortalItem>) {
     .single();
 
   if (error) {
-    return { item, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { item: itemFromRow(data as ItemRow), storage: "supabase" as const };
@@ -371,9 +309,7 @@ export async function listClientFeedback(clientId?: string) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.feedback
-      .filter((feedback) => (clientId ? feedback.clientId === clientId : true))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    throw new Error("Supabase is required to list client feedback.");
   }
 
   let query = supabase
@@ -387,9 +323,7 @@ export async function listClientFeedback(clientId?: string) {
 
   const { data, error } = await query;
   if (error) {
-    return localStore.feedback.filter((feedback) =>
-      clientId ? feedback.clientId === clientId : true,
-    );
+    throw new Error(error.message);
   }
 
   return (data as FeedbackRow[]).map(feedbackFromRow);
@@ -397,11 +331,10 @@ export async function listClientFeedback(clientId?: string) {
 
 export async function saveClientFeedback(input: Partial<ClientFeedback>) {
   const feedback = normalizeClientFeedback(input);
-  localStore.feedback.unshift(feedback);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { feedback, storage: "local" as const };
+    throw new Error("Supabase is required to save client feedback.");
   }
 
   const { data, error } = await supabase
@@ -411,7 +344,7 @@ export async function saveClientFeedback(input: Partial<ClientFeedback>) {
     .single();
 
   if (error) {
-    return { feedback, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { feedback: feedbackFromRow(data as FeedbackRow), storage: "supabase" as const };

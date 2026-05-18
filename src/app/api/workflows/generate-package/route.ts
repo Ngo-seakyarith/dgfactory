@@ -90,9 +90,7 @@ export async function POST(request: Request) {
       traceSummary: result.traceSummary,
       knowledgeUsed,
       state: result.state,
-      mode: result.traceSummary.some((item) => item.mode === "openai")
-        ? "openai"
-        : "mock",
+      mode: "openai",
     });
   } catch (error) {
     const state =

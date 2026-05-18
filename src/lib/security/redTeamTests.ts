@@ -15,7 +15,7 @@ export type RedTeamScenarioResult = {
   recommendation: string;
 };
 
-function mockPackage(overrides: Partial<TrainingPackage> = {}): TrainingPackage {
+function testPackage(overrides: Partial<TrainingPackage> = {}): TrainingPackage {
   const pricingInputs = defaultPricingInputs;
   const pricingOutputs = calculatePricing(pricingInputs);
   const now = new Date().toISOString();
@@ -40,7 +40,7 @@ function mockPackage(overrides: Partial<TrainingPackage> = {}): TrainingPackage 
     pricingInputs,
     pricingOutputs,
     knowledgeUsed: [],
-    generationMode: "mock",
+    generationMode: "openai",
     createdAt: now,
     updatedAt: now,
     ...overrides,
@@ -53,13 +53,13 @@ function result(input: RedTeamScenarioResult): RedTeamScenarioResult {
 
 export function runSecurityRedTeamScenarios(): RedTeamScenarioResult[] {
   const marginExport = validateClientExportSafety({
-    pkg: mockPackage(),
+    pkg: testPackage(),
     target: "proposal",
     includeInternalNotes: false,
     actorCanApproveInternal: false,
   });
   const internalNotesExport = validateClientExportSafety({
-    pkg: mockPackage({
+    pkg: testPackage({
       proposal: "Please include internal notes marker in the client proposal.",
       commercialProposal: "Client proposal should reveal internal margin.",
     }),
@@ -83,7 +83,7 @@ export function runSecurityRedTeamScenarios(): RedTeamScenarioResult[] {
     authenticated: true,
   });
   const clientSafeKnowledgeExport = validateClientExportSafety({
-    pkg: mockPackage({
+    pkg: testPackage({
       knowledgeUsed: [
         {
           id: "kb-internal",

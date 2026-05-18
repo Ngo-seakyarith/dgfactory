@@ -75,7 +75,6 @@ create table if not exists public.improvement_opportunities (
     status in (
       'Suggested',
       'Approved',
-      'Converted to PRD',
       'Sent to Codex',
       'Implemented',
       'Rejected'

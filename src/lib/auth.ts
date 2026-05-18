@@ -19,8 +19,7 @@ export type Permission =
   | "generate_follow_ups"
   | "client_exports"
   | "approve_requests"
-  | "run_loops"
-  | "seed_demo_data";
+  | "run_loops";
 
 export type AuthUser = {
   actor: string;
@@ -46,7 +45,6 @@ const rolePermissions: Record<UserRole, Permission[]> = {
     "client_exports",
     "approve_requests",
     "run_loops",
-    "seed_demo_data",
   ],
   Trainer: [
     "read",

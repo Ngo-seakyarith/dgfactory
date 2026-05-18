@@ -35,22 +35,6 @@ type OpportunityRow = {
   updated_at: string;
 };
 
-type CrmStore = {
-  clients: Client[];
-  opportunities: Opportunity[];
-};
-
-const globalForCrmStore = globalThis as typeof globalThis & {
-  __dgCrmStore?: CrmStore;
-};
-
-const localStore =
-  globalForCrmStore.__dgCrmStore ??
-  (globalForCrmStore.__dgCrmStore = {
-    clients: [],
-    opportunities: [],
-  });
-
 function clientToRow(client: Client) {
   return {
     id: client.id,
@@ -115,39 +99,11 @@ function opportunityFromRow(row: OpportunityRow): Opportunity {
   });
 }
 
-function upsertLocalClient(client: Client) {
-  const index = localStore.clients.findIndex((item) => item.id === client.id);
-
-  if (index >= 0) {
-    localStore.clients[index] = client;
-  } else {
-    localStore.clients.unshift(client);
-  }
-
-  return client;
-}
-
-function upsertLocalOpportunity(opportunity: Opportunity) {
-  const index = localStore.opportunities.findIndex(
-    (item) => item.id === opportunity.id,
-  );
-
-  if (index >= 0) {
-    localStore.opportunities[index] = opportunity;
-  } else {
-    localStore.opportunities.unshift(opportunity);
-  }
-
-  return opportunity;
-}
-
 export async function listClients() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.clients].sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
+    throw new Error("Supabase is required to list clients.");
   }
 
   const { data, error } = await supabase
@@ -156,7 +112,7 @@ export async function listClients() {
     .order("updated_at", { ascending: false });
 
   if (error) {
-    return [...localStore.clients];
+    throw new Error(error.message);
   }
 
   return (data as ClientRow[]).map(clientFromRow);
@@ -177,7 +133,7 @@ export async function getClient(id: string) {
     }
   }
 
-  return localStore.clients.find((client) => client.id === id) ?? null;
+  throw new Error("Supabase is required to load clients.");
 }
 
 export async function saveClient(input: Partial<Client>) {
@@ -185,12 +141,10 @@ export async function saveClient(input: Partial<Client>) {
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  upsertLocalClient(client);
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { client, storage: "local" as const };
+    throw new Error("Supabase is required to save clients.");
   }
 
   const { data, error } = await supabase
@@ -200,32 +154,31 @@ export async function saveClient(input: Partial<Client>) {
     .single();
 
   if (error) {
-    return { client, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { client: clientFromRow(data as ClientRow), storage: "supabase" as const };
 }
 
 export async function deleteClient(id: string) {
-  localStore.clients = localStore.clients.filter((client) => client.id !== id);
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { deleted: true, storage: "local" as const };
+    throw new Error("Supabase is required to delete clients.");
   }
 
   const { error } = await supabase.from("clients").delete().eq("id", id);
-  return { deleted: true, storage: error ? "local" as const : "supabase" as const };
+  if (error) {
+    throw new Error(error.message);
+  }
+  return { deleted: true, storage: "supabase" as const };
 }
 
 export async function listOpportunities() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.opportunities].sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
+    throw new Error("Supabase is required to list opportunities.");
   }
 
   const { data, error } = await supabase
@@ -234,7 +187,7 @@ export async function listOpportunities() {
     .order("updated_at", { ascending: false });
 
   if (error) {
-    return [...localStore.opportunities];
+    throw new Error(error.message);
   }
 
   return (data as OpportunityRow[]).map(opportunityFromRow);
@@ -255,7 +208,7 @@ export async function getOpportunity(id: string) {
     }
   }
 
-  return localStore.opportunities.find((item) => item.id === id) ?? null;
+  throw new Error("Supabase is required to load opportunities.");
 }
 
 export async function saveOpportunity(input: Partial<Opportunity>) {
@@ -263,12 +216,10 @@ export async function saveOpportunity(input: Partial<Opportunity>) {
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  upsertLocalOpportunity(opportunity);
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { opportunity, storage: "local" as const };
+    throw new Error("Supabase is required to save opportunities.");
   }
 
   const { data, error } = await supabase
@@ -278,7 +229,7 @@ export async function saveOpportunity(input: Partial<Opportunity>) {
     .single();
 
   if (error) {
-    return { opportunity, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -288,16 +239,15 @@ export async function saveOpportunity(input: Partial<Opportunity>) {
 }
 
 export async function deleteOpportunity(id: string) {
-  localStore.opportunities = localStore.opportunities.filter(
-    (opportunity) => opportunity.id !== id,
-  );
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { deleted: true, storage: "local" as const };
+    throw new Error("Supabase is required to delete opportunities.");
   }
 
   const { error } = await supabase.from("opportunities").delete().eq("id", id);
-  return { deleted: true, storage: error ? "local" as const : "supabase" as const };
+  if (error) {
+    throw new Error(error.message);
+  }
+  return { deleted: true, storage: "supabase" as const };
 }

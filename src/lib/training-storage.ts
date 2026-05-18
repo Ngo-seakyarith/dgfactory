@@ -36,24 +36,10 @@ type PackageRow = {
   knowledge_used?: KnowledgeSourceNote[] | null;
   email?: string;
   checklist?: string;
-  generation_mode: "mock" | "openai" | null;
+  generation_mode: "openai" | null;
   created_at: string;
   updated_at: string;
 };
-
-type TrainingStore = {
-  packages: TrainingPackage[];
-};
-
-const globalForTrainingStore = globalThis as typeof globalThis & {
-  __dgTrainingStore?: TrainingStore;
-};
-
-const localStore =
-  globalForTrainingStore.__dgTrainingStore ??
-  (globalForTrainingStore.__dgTrainingStore = {
-    packages: [],
-  });
 
 function toRow(pkg: TrainingPackage) {
   return {
@@ -75,7 +61,7 @@ function toRow(pkg: TrainingPackage) {
     pricing_inputs: pkg.pricingInputs,
     pricing_outputs: pkg.pricingOutputs,
     knowledge_used: pkg.knowledgeUsed ?? [],
-    generation_mode: pkg.generationMode ?? "mock",
+    generation_mode: pkg.generationMode ?? "openai",
     created_at: pkg.createdAt,
     updated_at: pkg.updatedAt,
   };
@@ -139,31 +125,17 @@ function fromRow(row: PackageRow): TrainingPackage {
     pricingInputs,
     pricingOutputs,
     knowledgeUsed: Array.isArray(row.knowledge_used) ? row.knowledge_used : [],
-    generationMode: row.generation_mode ?? "mock",
+    generationMode: row.generation_mode ?? "openai",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-function upsertLocalPackage(pkg: TrainingPackage) {
-  const index = localStore.packages.findIndex((item) => item.id === pkg.id);
-
-  if (index >= 0) {
-    localStore.packages[index] = pkg;
-  } else {
-    localStore.packages.unshift(pkg);
-  }
-
-  return pkg;
 }
 
 export async function listTrainingPackages() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.packages].sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
+    throw new Error("Supabase is required to list training packages.");
   }
 
   const { data, error } = await supabase
@@ -172,9 +144,7 @@ export async function listTrainingPackages() {
     .order("updated_at", { ascending: false });
 
   if (error) {
-    return [...localStore.packages].sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
+    throw new Error(error.message);
   }
 
   return (data as PackageRow[]).map(fromRow);
@@ -195,7 +165,7 @@ export async function getTrainingPackage(id: string) {
     }
   }
 
-  return localStore.packages.find((pkg) => pkg.id === id) ?? null;
+  throw new Error("Supabase is required to load training packages.");
 }
 
 export async function saveTrainingPackage(pkg: TrainingPackage) {
@@ -204,12 +174,10 @@ export async function saveTrainingPackage(pkg: TrainingPackage) {
     updatedAt: new Date().toISOString(),
   };
 
-  upsertLocalPackage(packageToSave);
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { package: packageToSave, storage: "local" as const };
+    throw new Error("Supabase is required to save training packages.");
   }
 
   const { data, error } = await supabase
@@ -219,7 +187,7 @@ export async function saveTrainingPackage(pkg: TrainingPackage) {
     .single();
 
   if (error) {
-    return { package: packageToSave, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -229,18 +197,16 @@ export async function saveTrainingPackage(pkg: TrainingPackage) {
 }
 
 export async function deleteTrainingPackage(id: string) {
-  localStore.packages = localStore.packages.filter((pkg) => pkg.id !== id);
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { deleted: true, storage: "local" as const };
+    throw new Error("Supabase is required to delete training packages.");
   }
 
   const { error } = await supabase.from("training_packages").delete().eq("id", id);
 
   if (error) {
-    return { deleted: true, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { deleted: true, storage: "supabase" as const };

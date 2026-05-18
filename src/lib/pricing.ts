@@ -153,13 +153,13 @@ const numericFields: Array<keyof Omit<
   "taxPercent",
 ];
 
-function toNumber(value: unknown, fallback: number) {
+function toNumber(value: unknown, defaultValue: number) {
   if (value === "" || value === null || value === undefined) {
-    return fallback;
+    return defaultValue;
   }
 
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return Number.isFinite(parsed) ? parsed : defaultValue;
 }
 
 export function normalizePricingInputs(

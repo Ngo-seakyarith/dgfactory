@@ -34,22 +34,6 @@ type PromptTemplateChangeRow = {
   created_at: string;
 };
 
-type PromptTemplateStore = {
-  templates: PromptTemplate[];
-  changes: PromptTemplateChange[];
-};
-
-const globalForPromptTemplates = globalThis as typeof globalThis & {
-  __dgPromptTemplateStore?: PromptTemplateStore;
-};
-
-const localStore =
-  globalForPromptTemplates.__dgPromptTemplateStore ??
-  (globalForPromptTemplates.__dgPromptTemplateStore = {
-    templates: [],
-    changes: [],
-  });
-
 function templateToRow(template: PromptTemplate) {
   return {
     id: template.id,
@@ -106,30 +90,6 @@ function changeFromRow(row: PromptTemplateChangeRow) {
   });
 }
 
-function upsertLocalTemplate(template: PromptTemplate) {
-  const index = localStore.templates.findIndex((item) => item.id === template.id);
-
-  if (index >= 0) {
-    localStore.templates[index] = template;
-  } else {
-    localStore.templates.unshift(template);
-  }
-
-  return template;
-}
-
-function upsertLocalChange(change: PromptTemplateChange) {
-  const index = localStore.changes.findIndex((item) => item.id === change.id);
-
-  if (index >= 0) {
-    localStore.changes[index] = change;
-  } else {
-    localStore.changes.unshift(change);
-  }
-
-  return change;
-}
-
 function sortTemplates(templates: PromptTemplate[]) {
   return [...templates].sort(
     (a, b) =>
@@ -144,23 +104,7 @@ export async function ensureSeedPromptTemplates(seeds: PromptTemplateSeed[]) {
   const created: PromptTemplate[] = [];
 
   if (!supabase) {
-    seeds.forEach((seed) => {
-      const exists = localStore.templates.some(
-        (template) => template.agentName === seed.agentName,
-      );
-
-      if (!exists) {
-        const template = normalizePromptTemplate({
-          ...seed,
-          version: seed.version ?? 1,
-          status: "Active",
-        });
-        upsertLocalTemplate(template);
-        created.push(template);
-      }
-    });
-
-    return { created, storage: "local" as const };
+    throw new Error("Supabase is required to seed prompt templates.");
   }
 
   for (const seed of seeds) {
@@ -179,7 +123,6 @@ export async function ensureSeedPromptTemplates(seeds: PromptTemplateSeed[]) {
       version: seed.version ?? 1,
       status: "Active",
     });
-    upsertLocalTemplate(template);
     const { data, error } = await supabase
       .from("prompt_templates")
       .insert(templateToRow(template))
@@ -199,15 +142,7 @@ export async function listPromptTemplates(filters: {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return sortTemplates(
-      localStore.templates
-        .filter((template) =>
-          filters.agentName ? template.agentName === filters.agentName : true,
-        )
-        .filter((template) =>
-          filters.status ? template.status === filters.status : true,
-        ),
-    );
+    throw new Error("Supabase is required to list prompt templates.");
   }
 
   let query = supabase
@@ -227,25 +162,10 @@ export async function listPromptTemplates(filters: {
   const { data, error } = await query;
 
   if (error) {
-    return listPromptTemplatesLocal(filters);
+    throw new Error(error.message);
   }
 
   return (data as PromptTemplateRow[]).map(templateFromRow);
-}
-
-function listPromptTemplatesLocal(filters: {
-  agentName?: string;
-  status?: PromptTemplateStatus;
-}) {
-  return sortTemplates(
-    localStore.templates
-      .filter((template) =>
-        filters.agentName ? template.agentName === filters.agentName : true,
-      )
-      .filter((template) =>
-        filters.status ? template.status === filters.status : true,
-      ),
-  );
 }
 
 export async function getActivePromptTemplate(agentName: string) {
@@ -257,11 +177,7 @@ export async function listPromptTemplateChanges(promptTemplateId?: string) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.changes
-      .filter((change) =>
-        promptTemplateId ? change.promptTemplateId === promptTemplateId : true,
-      )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    throw new Error("Supabase is required to list prompt template changes.");
   }
 
   let query = supabase
@@ -276,7 +192,7 @@ export async function listPromptTemplateChanges(promptTemplateId?: string) {
   const { data, error } = await query;
 
   if (error) {
-    return localStore.changes;
+    throw new Error(error.message);
   }
 
   return (data as PromptTemplateChangeRow[]).map(changeFromRow);
@@ -284,11 +200,10 @@ export async function listPromptTemplateChanges(promptTemplateId?: string) {
 
 export async function savePromptTemplate(input: Partial<PromptTemplate>) {
   const template = normalizePromptTemplate(input);
-  upsertLocalTemplate(template);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { template, storage: "local" as const };
+    throw new Error("Supabase is required to save prompt templates.");
   }
 
   const { data, error } = await supabase
@@ -298,7 +213,7 @@ export async function savePromptTemplate(input: Partial<PromptTemplate>) {
     .single();
 
   if (error) {
-    return { template, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -309,11 +224,10 @@ export async function savePromptTemplate(input: Partial<PromptTemplate>) {
 
 async function savePromptTemplateChange(input: Partial<PromptTemplateChange>) {
   const change = normalizePromptTemplateChange(input);
-  upsertLocalChange(change);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { change, storage: "local" as const };
+    throw new Error("Supabase is required to save prompt template changes.");
   }
 
   const { data, error } = await supabase
@@ -323,7 +237,7 @@ async function savePromptTemplateChange(input: Partial<PromptTemplateChange>) {
     .single();
 
   if (error) {
-    return { change, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {

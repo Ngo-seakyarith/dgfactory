@@ -55,7 +55,7 @@ export async function POST(request: Request) {
       warnings: [],
     },
     knowledgeUsed: [],
-    generationMode: "mock",
+    generationMode: "openai",
     createdAt: now,
     updatedAt: now,
   };

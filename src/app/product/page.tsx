@@ -13,7 +13,7 @@ import {
   Users,
 } from "lucide-react";
 
-import { DemoSeedButton, ProductBriefExportButtons } from "@/app/product/_components/productization-components";
+import { ProductBriefExportButtons } from "@/app/product/_components/productization-components";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -77,7 +77,7 @@ const packages = [
     name: "Starter",
     scope: "Internal training package generator",
     price: "Pricing placeholder",
-    includes: ["Package generation", "Copy/export", "Mock mode", "Basic setup"],
+    includes: ["Package generation", "Copy/export", "Configured AI", "Basic setup"],
   },
   {
     name: "Professional",
@@ -233,7 +233,7 @@ export default function ProductPage() {
         </div>
       </section>
 
-      <section className="grid gap-5 lg:grid-cols-2">
+      <section>
         <Card className="border-white/10 bg-white/[0.04] shadow-executive">
           <CardHeader>
             <CardTitle>Product brief</CardTitle>
@@ -245,7 +245,6 @@ export default function ProductPage() {
             <ProductBriefExportButtons />
           </CardContent>
         </Card>
-        <DemoSeedButton />
       </section>
 
       <section className="rounded-lg border border-teal-300/20 bg-teal-300/10 p-6 shadow-executive">
@@ -258,7 +257,7 @@ export default function ProductPage() {
               Demonstrate DG Capability Factory with a real client scenario.
             </h2>
             <p className="mt-3 max-w-3xl text-sm leading-7 text-teal-50/90">
-              Use the demo workspace, guided script, ROI calculator, and product
+              Use a real client scenario, guided script, ROI calculator, and product
               brief to show how the system turns strategy into operational training
               delivery.
             </p>

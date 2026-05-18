@@ -1,8 +1,8 @@
 import {
   calculatePipelineMetrics,
-  createMockFollowUpDraft,
   formatCrmMoney,
   type Client,
+  type FollowUpDraft,
   type Opportunity,
 } from "@/lib/crm";
 import { listClients, listOpportunities } from "@/lib/crm-storage";
@@ -14,6 +14,7 @@ import { listKnowledgeDocuments } from "@/lib/knowledge-storage";
 import { listAdaptiveGrowthData } from "@/lib/adaptive-growth-storage";
 import { calculateOfferFitness } from "@/lib/adaptive-growth/fitness";
 import { mutationStrategies } from "@/lib/brain/agents";
+import { routeBrainTask } from "@/lib/brain/router";
 import { saveApprovalRequest } from "@/lib/orchestrator/storage";
 import { buildPilotReport, calculatePilotMetrics } from "@/lib/pilot";
 import { getPilotSnapshot } from "@/lib/pilot-storage";
@@ -407,15 +408,20 @@ async function runStaleOpportunityFollowUp(): Promise<LoopResult> {
     listOpportunities(),
   ]);
   const stale = getStuckOpportunities(opportunities);
-  const drafts = stale.map((opportunity) => {
+  const drafts = await Promise.all(stale.map(async (opportunity) => {
     const clientName = clientNameFor(opportunity, clients);
-    const draft = createMockFollowUpDraft({
+    const input = {
       clientName,
       status: opportunity.status,
       trainingNeed: opportunity.trainingNeed,
       lastNotes: opportunity.notes,
       nextFollowUpDate: opportunity.nextFollowUpDate,
+    };
+    const result = await routeBrainTask<typeof input, FollowUpDraft>({
+      taskType: "follow_up",
+      input,
     });
+    const draft = result.output;
 
     return {
       opportunity: opportunitySummary(opportunity, clients),
@@ -427,7 +433,7 @@ async function runStaleOpportunityFollowUp(): Promise<LoopResult> {
           ? "High"
           : "Medium",
     };
-  });
+  }));
 
   const recommendations = [
     stale.length

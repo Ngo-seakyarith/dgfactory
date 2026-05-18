@@ -50,118 +50,7 @@ import {
   type Opportunity,
 } from "@/lib/crm";
 import type { TrainingPackage } from "@/lib/training-packages";
-import {
-  getLocalTrainingPackage,
-  getLocalTrainingPackages,
-} from "@/app/packages/_components/training-package-factory";
 import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
-
-const deliveryProjectsStorageKey = "dg-academy-delivery-projects-v1";
-const deliveryTasksStorageKey = "dg-academy-delivery-tasks-v1";
-const clientsStorageKey = "dg-academy-crm-clients-v1";
-const opportunitiesStorageKey = "dg-academy-crm-opportunities-v1";
-
-function readStorage<T>(key: string, fallback: T[] = []) {
-  if (typeof window === "undefined") {
-    return fallback;
-  }
-
-  try {
-    const raw = window.localStorage.getItem(key);
-    return raw ? (JSON.parse(raw) as T[]) : fallback;
-  } catch {
-    return fallback;
-  }
-}
-
-function readLocalDeliveryProjects() {
-  return readStorage<DeliveryProject>(deliveryProjectsStorageKey).map(
-    normalizeDeliveryProject,
-  );
-}
-
-function readLocalDeliveryTasks() {
-  return readStorage<DeliveryTask>(deliveryTasksStorageKey).map(
-    normalizeDeliveryTask,
-  );
-}
-
-function readLocalClients() {
-  return readStorage<Client>(clientsStorageKey).map(normalizeClient);
-}
-
-function readLocalOpportunities() {
-  return readStorage<Opportunity>(opportunitiesStorageKey).map(
-    normalizeOpportunity,
-  );
-}
-
-export function saveDeliveryProjectLocally(project: DeliveryProject) {
-  const projects = readLocalDeliveryProjects();
-  const index = projects.findIndex((item) => item.id === project.id);
-
-  if (index >= 0) {
-    projects[index] = project;
-  } else {
-    projects.unshift(project);
-  }
-
-  window.localStorage.setItem(
-    deliveryProjectsStorageKey,
-    JSON.stringify(projects),
-  );
-}
-
-export function saveDeliveryTaskLocally(task: DeliveryTask) {
-  const tasks = readLocalDeliveryTasks();
-  const index = tasks.findIndex((item) => item.id === task.id);
-
-  if (index >= 0) {
-    tasks[index] = task;
-  } else {
-    tasks.push(task);
-  }
-
-  window.localStorage.setItem(deliveryTasksStorageKey, JSON.stringify(tasks));
-}
-
-function deleteDeliveryProjectLocally(id: string) {
-  window.localStorage.setItem(
-    deliveryProjectsStorageKey,
-    JSON.stringify(readLocalDeliveryProjects().filter((item) => item.id !== id)),
-  );
-  window.localStorage.setItem(
-    deliveryTasksStorageKey,
-    JSON.stringify(
-      readLocalDeliveryTasks().filter((item) => item.deliveryProjectId !== id),
-    ),
-  );
-}
-
-function deleteDeliveryTaskLocally(id: string) {
-  window.localStorage.setItem(
-    deliveryTasksStorageKey,
-    JSON.stringify(readLocalDeliveryTasks().filter((item) => item.id !== id)),
-  );
-}
-
-function mergeByUpdatedAt<T extends { id: string; updatedAt: string }>(
-  localItems: T[],
-  remoteItems: T[],
-) {
-  const merged = new Map<string, T>();
-
-  [...remoteItems, ...localItems].forEach((item) => {
-    const existing = merged.get(item.id);
-    if (!existing || item.updatedAt > existing.updatedAt) {
-      merged.set(item.id, item);
-    }
-  });
-
-  return Array.from(merged.values()).sort((a, b) =>
-    b.updatedAt.localeCompare(a.updatedAt),
-  );
-}
 
 function useDeliveryData() {
   const [projects, setProjects] = useState<DeliveryProject[]>([]);
@@ -173,18 +62,6 @@ function useDeliveryData() {
   const [notice, setNotice] = useState("Loading delivery projects...");
 
   async function refresh() {
-    const localProjects = readLocalDeliveryProjects();
-    const localTasks = readLocalDeliveryTasks();
-    const localClients = readLocalClients();
-    const localOpportunities = readLocalOpportunities();
-    const localPackages = getLocalTrainingPackages();
-
-    setProjects(localProjects);
-    setTasks(localTasks);
-    setClients(localClients);
-    setOpportunities(localOpportunities);
-    setPackages(localPackages);
-
     try {
       const [
         projectsResponse,
@@ -201,39 +78,39 @@ function useDeliveryData() {
       ]);
       const projectsPayload = (await projectsResponse.json()) as {
         projects?: DeliveryProject[];
+        error?: string;
       };
       const tasksPayload = (await tasksResponse.json()) as {
         tasks?: DeliveryTask[];
+        error?: string;
       };
       const clientsPayload = (await clientsResponse.json()) as {
         clients?: Client[];
+        error?: string;
       };
       const opportunitiesPayload = (await opportunitiesResponse.json()) as {
         opportunities?: Opportunity[];
+        error?: string;
       };
       const packagesPayload = (await packagesResponse.json()) as {
         packages?: TrainingPackage[];
+        error?: string;
       };
-      const remoteProjects = projectsPayload.projects ?? [];
-      const remoteTasks = tasksPayload.tasks ?? [];
-      const remoteClients = clientsPayload.clients ?? [];
-      const remoteOpportunities = opportunitiesPayload.opportunities ?? [];
-      const remotePackages = packagesPayload.packages ?? [];
 
-      remoteProjects.forEach(saveDeliveryProjectLocally);
-      remoteTasks.forEach(saveDeliveryTaskLocally);
-      setProjects(mergeByUpdatedAt(localProjects, remoteProjects));
-      setTasks(mergeByUpdatedAt(localTasks, remoteTasks));
-      setClients(mergeByUpdatedAt(localClients, remoteClients));
-      setOpportunities(mergeByUpdatedAt(localOpportunities, remoteOpportunities));
-      setPackages(mergeByUpdatedAt(localPackages, remotePackages));
-      setNotice(
-        remoteProjects.length
-          ? "Showing local and Supabase-backed delivery projects."
-          : "Showing local delivery records. Supabase will appear when configured.",
-      );
-    } catch {
-      setNotice("Showing local delivery records. Database read was unavailable.");
+      if (!projectsResponse.ok) throw new Error(projectsPayload.error ?? "Delivery project database read failed.");
+      if (!tasksResponse.ok) throw new Error(tasksPayload.error ?? "Delivery task database read failed.");
+      if (!clientsResponse.ok) throw new Error(clientsPayload.error ?? "Client database read failed.");
+      if (!opportunitiesResponse.ok) throw new Error(opportunitiesPayload.error ?? "Opportunity database read failed.");
+      if (!packagesResponse.ok) throw new Error(packagesPayload.error ?? "Package database read failed.");
+
+      setProjects(projectsPayload.projects ?? []);
+      setTasks(tasksPayload.tasks ?? []);
+      setClients(clientsPayload.clients ?? []);
+      setOpportunities(opportunitiesPayload.opportunities ?? []);
+      setPackages(packagesPayload.packages ?? []);
+      setNotice("Showing Supabase-backed delivery records.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Database read was unavailable.");
     } finally {
       setIsLoading(false);
     }
@@ -289,9 +166,6 @@ export function DeliveryProjectForm({
       packages.find(
         (pkg) =>
           pkg.id === (sourceOpportunity?.linkedPackageId ?? packageIdFromQuery),
-      ) ??
-      getLocalTrainingPackage(
-        sourceOpportunity?.linkedPackageId ?? packageIdFromQuery,
       ),
     [packageIdFromQuery, packages, sourceOpportunity],
   );
@@ -354,7 +228,6 @@ export function DeliveryProjectForm({
     });
 
     try {
-      saveDeliveryProjectLocally(projectToSave);
       const response = await fetch("/api/delivery-projects", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -369,18 +242,19 @@ export function DeliveryProjectForm({
         throw new Error(payload.error ?? "Delivery project save failed.");
       }
 
-      saveDeliveryProjectLocally(payload.project);
-
       if (!existingProject) {
         const defaultTasks = createDefaultDeliveryTasks(payload.project.id);
         await Promise.all(
           defaultTasks.map(async (task) => {
-            saveDeliveryTaskLocally(task);
-            await fetch("/api/delivery-tasks", {
+            const taskResponse = await fetch("/api/delivery-tasks", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(task),
             });
+            if (!taskResponse.ok) {
+              const taskPayload = (await taskResponse.json().catch(() => ({}))) as { error?: string };
+              throw new Error(taskPayload.error ?? "Default delivery task save failed.");
+            }
           }),
         );
       }
@@ -632,18 +506,22 @@ export function DeliveryProjectDetailClient({ id }: { id: string }) {
       ...nextProject,
       updatedAt: new Date().toISOString(),
     });
-    saveDeliveryProjectLocally(normalized);
-    setProjects((current) =>
-      mergeByUpdatedAt(
-        current.filter((item) => item.id !== normalized.id),
-        [normalized],
-      ),
-    );
-    await fetch("/api/delivery-projects", {
+    const response = await fetch("/api/delivery-projects", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(normalized),
     });
+    const payload = (await response.json().catch(() => ({}))) as {
+      project?: DeliveryProject;
+      error?: string;
+    };
+    if (!response.ok || !payload.project) {
+      throw new Error(payload.error ?? "Delivery project update failed.");
+    }
+    setProjects((current) => [
+      payload.project as DeliveryProject,
+      ...current.filter((item) => item.id !== payload.project?.id),
+    ]);
   }
 
   async function saveTask(nextTask: DeliveryTask) {
@@ -651,18 +529,22 @@ export function DeliveryProjectDetailClient({ id }: { id: string }) {
       ...nextTask,
       updatedAt: new Date().toISOString(),
     });
-    saveDeliveryTaskLocally(normalized);
-    setTasks((current) =>
-      mergeByUpdatedAt(
-        current.filter((item) => item.id !== normalized.id),
-        [normalized],
-      ),
-    );
-    await fetch("/api/delivery-tasks", {
+    const response = await fetch("/api/delivery-tasks", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(normalized),
     });
+    const payload = (await response.json().catch(() => ({}))) as {
+      task?: DeliveryTask;
+      error?: string;
+    };
+    if (!response.ok || !payload.task) {
+      throw new Error(payload.error ?? "Delivery task update failed.");
+    }
+    setTasks((current) => [
+      payload.task as DeliveryTask,
+      ...current.filter((item) => item.id !== payload.task?.id),
+    ]);
   }
 
   async function deleteProject() {
@@ -670,15 +552,17 @@ export function DeliveryProjectDetailClient({ id }: { id: string }) {
       return;
     }
 
-    deleteDeliveryProjectLocally(project.id);
-    await fetch(`/api/delivery-projects/${project.id}`, { method: "DELETE" });
-    router.push("/delivery");
+    const response = await fetch(`/api/delivery-projects/${project.id}`, { method: "DELETE" });
+    if (response.ok) {
+      router.push("/delivery");
+    }
   }
 
   async function deleteTask(id: string) {
-    deleteDeliveryTaskLocally(id);
-    setTasks((current) => current.filter((task) => task.id !== id));
-    await fetch(`/api/delivery-tasks/${id}`, { method: "DELETE" });
+    const response = await fetch(`/api/delivery-tasks/${id}`, { method: "DELETE" });
+    if (response.ok) {
+      setTasks((current) => current.filter((task) => task.id !== id));
+    }
   }
 
   if (isLoading && !project) {
@@ -1160,7 +1044,7 @@ export function PostTrainingReportGenerator({
       });
       const payload = (await response.json()) as {
         draft?: DeliveryDraft;
-        mode?: "mock" | "openai";
+        mode?: "openai";
         notice?: string;
         error?: string;
       };

@@ -8,11 +8,6 @@ import {
   type SecuritySeverity,
 } from "@/lib/security/types";
 
-type SecurityStore = {
-  audits: SecurityAudit[];
-  items: SecurityAuditItem[];
-};
-
 type SecurityAuditRow = {
   id: string;
   title: string;
@@ -37,17 +32,6 @@ type SecurityAuditItemRow = {
   created_at: string;
   updated_at: string;
 };
-
-const globalForSecurityStore = globalThis as typeof globalThis & {
-  __dgSecurityStore?: SecurityStore;
-};
-
-const localStore =
-  globalForSecurityStore.__dgSecurityStore ??
-  (globalForSecurityStore.__dgSecurityStore = {
-    audits: [],
-    items: [],
-  });
 
 function auditToRow(audit: SecurityAudit) {
   return {
@@ -112,17 +96,10 @@ export async function saveSecurityAudit(input: Partial<SecurityAudit>) {
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  const index = localStore.audits.findIndex((item) => item.id === audit.id);
-
-  if (index >= 0) {
-    localStore.audits[index] = audit;
-  } else {
-    localStore.audits.unshift(audit);
-  }
 
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return { audit, storage: "local" as const };
+    throw new Error("Supabase is required to save security audits.");
   }
 
   const { data, error } = await supabase
@@ -132,26 +109,16 @@ export async function saveSecurityAudit(input: Partial<SecurityAudit>) {
     .single();
 
   if (error) {
-    return { audit, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { audit: auditFromRow(data as SecurityAuditRow), storage: "supabase" as const };
 }
 
 export async function saveSecurityAuditItems(items: SecurityAuditItem[]) {
-  items.forEach((item) => {
-    const normalized = normalizeSecurityAuditItem(item);
-    const index = localStore.items.findIndex((current) => current.id === normalized.id);
-    if (index >= 0) {
-      localStore.items[index] = normalized;
-    } else {
-      localStore.items.unshift(normalized);
-    }
-  });
-
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return { items, storage: "local" as const };
+    throw new Error("Supabase is required to save security audit items.");
   }
 
   const { data, error } = await supabase
@@ -160,7 +127,7 @@ export async function saveSecurityAuditItems(items: SecurityAuditItem[]) {
     .select("*");
 
   if (error) {
-    return { items, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -173,7 +140,7 @@ export async function listSecurityAudits() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.audits].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    throw new Error("Supabase is required to list security audits.");
   }
 
   const { data, error } = await supabase
@@ -182,7 +149,7 @@ export async function listSecurityAudits() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return localStore.audits;
+    throw new Error(error.message);
   }
 
   return (data as SecurityAuditRow[]).map(auditFromRow);
@@ -192,9 +159,7 @@ export async function listSecurityAuditItems(auditId?: string) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.items
-      .filter((item) => (auditId ? item.auditId === auditId : true))
-      .sort((a, b) => a.category.localeCompare(b.category));
+    throw new Error("Supabase is required to list security audit items.");
   }
 
   let query = supabase.from("security_audit_items").select("*").order("category");
@@ -204,7 +169,7 @@ export async function listSecurityAuditItems(auditId?: string) {
   const { data, error } = await query;
 
   if (error) {
-    return localStore.items.filter((item) => (auditId ? item.auditId === auditId : true));
+    throw new Error(error.message);
   }
 
   return (data as SecurityAuditItemRow[]).map(itemFromRow);

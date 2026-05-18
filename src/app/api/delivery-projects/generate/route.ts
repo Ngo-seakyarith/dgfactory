@@ -1,8 +1,7 @@
-import OpenAI from "openai";
 import { NextResponse } from "next/server";
 
+import { routeBrainTask } from "@/lib/brain/router";
 import {
-  createMockDeliveryDraft,
   normalizeDeliveryProject,
   type DeliveryDraft,
   type DeliveryDraftKind,
@@ -17,43 +16,7 @@ const draftKinds: DeliveryDraftKind[] = [
   "post-training-report",
 ];
 
-let openaiClient: OpenAI | null = null;
-
-function getOpenAIClient() {
-  if (!process.env.OPENAI_API_KEY) {
-    return null;
-  }
-
-  if (!openaiClient) {
-    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
-  }
-
-  return openaiClient;
-}
-
-function normalizeDraft(value: unknown): DeliveryDraft | null {
-  if (!value || typeof value !== "object") {
-    return null;
-  }
-
-  const record = value as Record<string, unknown>;
-
-  if (
-    typeof record.title !== "string" ||
-    typeof record.body !== "string" ||
-    typeof record.suggestedNextStep !== "string"
-  ) {
-    return null;
-  }
-
-  return {
-    title: record.title,
-    body: record.body,
-    suggestedNextStep: record.suggestedNextStep,
-  };
-}
-
-function safeNotice(error: unknown) {
+function safeError(error: unknown) {
   const status =
     typeof error === "object" &&
     error !== null &&
@@ -63,14 +26,16 @@ function safeNotice(error: unknown) {
       : undefined;
 
   if (status === 401) {
-    return "OpenAI key was rejected, so mock delivery drafts were used.";
+    return "OpenAI key was rejected. Delivery draft generation failed.";
   }
 
   if (status === 429) {
-    return "OpenAI rate limit or quota was reached, so mock delivery drafts were used.";
+    return "OpenAI rate limit or quota was reached. Delivery draft generation failed.";
   }
 
-  return "OpenAI delivery generation was unavailable, so mock drafts were used.";
+  return error instanceof Error
+    ? error.message
+    : "OpenAI delivery generation failed.";
 }
 
 export async function POST(request: Request) {
@@ -94,59 +59,36 @@ export async function POST(request: Request) {
     packageTitle: String(body.packageTitle ?? "").trim(),
     learningObjectives: String(body.learningObjectives ?? "").trim(),
   };
-  const client = getOpenAIClient();
-
-  if (!client) {
-    return NextResponse.json({
-      draft: createMockDeliveryDraft(input),
-      mode: "mock",
-      notice: "OPENAI_API_KEY is missing, so mock delivery drafts were used.",
-    });
+  if (!process.env.OPENAI_API_KEY) {
+    return NextResponse.json(
+      { error: "OPENAI_API_KEY is required for delivery draft generation." },
+      { status: 503 },
+    );
   }
 
   try {
-    const completion = await client.chat.completions.create({
-      model: process.env.OPENAI_MODEL ?? "gpt-4o-mini",
-      temperature: 0.4,
-      response_format: { type: "json_object" },
-      messages: [
-        {
-          role: "system",
-          content:
-            "You are DG Academy's training delivery operations assistant. Return only JSON with title, body, and suggestedNextStep. Draft documents only; never imply that anything was sent to a client.",
-        },
-        {
-          role: "user",
-          content: JSON.stringify({
-            task:
-              "Generate a practical delivery support draft for an internal DG Academy training project.",
-            input,
-            rules: [
-              "Suitable for corporate training delivery in Cambodia.",
-              "Use a professional, concise, client-ready tone where relevant.",
-              "Do not invent attendance or evaluation facts beyond provided inputs.",
-              "Do not send messages or imply messages were sent.",
-              "For post-training reports, include overview, participant count, objectives, delivery summary, evaluation result, feedback, recommendations, and next opportunities.",
-            ],
-          }),
-        },
-      ],
+    const result = await routeBrainTask<Record<string, unknown>, DeliveryDraft>({
+      taskType: "delivery_report",
+      input: {
+        task:
+          "Generate a practical delivery support draft for an internal DG Academy training project.",
+        input,
+        rules: [
+          "Suitable for corporate training delivery in Cambodia.",
+          "Use a professional, concise, client-ready tone where relevant.",
+          "Do not invent attendance or evaluation facts beyond provided inputs.",
+          "Do not send messages or imply messages were sent.",
+          "For post-training reports, include overview, participant count, objectives, delivery summary, evaluation result, feedback, recommendations, and next opportunities.",
+        ],
+      },
     });
-    const parsed = completion.choices[0]?.message.content
-      ? JSON.parse(completion.choices[0].message.content)
-      : null;
-    const draft = normalizeDraft(parsed);
 
-    if (!draft) {
-      throw new Error("Invalid delivery draft output.");
-    }
-
-    return NextResponse.json({ draft, mode: "openai" });
-  } catch (error) {
     return NextResponse.json({
-      draft: createMockDeliveryDraft(input),
-      mode: "mock",
-      notice: safeNotice(error),
+      draft: result.output,
+      mode: result.mode,
+      model: result.model,
     });
+  } catch (error) {
+    return NextResponse.json({ error: safeError(error) }, { status: 500 });
   }
 }

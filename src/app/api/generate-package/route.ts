@@ -8,7 +8,7 @@ export async function POST(request: Request) {
   const response = await generateTrainingPackage(request);
   const payload = (await response.json()) as {
     outputs?: TrainingPackageOutputs;
-    mode?: "mock" | "openai";
+    mode?: "openai";
     notice?: string;
     knowledgeUsed?: KnowledgeSourceNote[];
     error?: string;

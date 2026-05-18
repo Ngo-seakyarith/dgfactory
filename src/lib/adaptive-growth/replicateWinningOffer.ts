@@ -35,7 +35,7 @@ export type ReplicateWinningOfferResult = {
     visibility: "Internal" | "Client-safe";
   }>;
   recommendedExpansionPaths: string[];
-  mode: "mock" | "openai";
+  mode: "deterministic" | "openai";
   model: string;
   notice?: string;
 };
@@ -65,8 +65,8 @@ function failedPatternForDecision(decision: SelectionDecision) {
   return decision.decision === "Kill" || decision.decision === "Park";
 }
 
-function normalizeInclude(value: unknown, fallback = true) {
-  return typeof value === "boolean" ? value : fallback;
+function normalizeInclude(value: unknown, defaultValue = true) {
+  return typeof value === "boolean" ? value : defaultValue;
 }
 
 export async function replicateWinningOffer({
@@ -125,7 +125,7 @@ export async function replicateWinningOffer({
         retries: 1,
       })
     : {
-        mode: "mock" as const,
+        mode: "deterministic" as const,
         model: "deterministic",
         output: {
           replication_summary: `${offer.title} was ${selectionDecision.decision}. Store the failure pattern so DG Academy does not repeat the weak signal without stronger evidence.`,
@@ -270,6 +270,5 @@ export async function replicateWinningOffer({
     recommendedExpansionPaths: routeResult.output.recommended_expansion_paths,
     mode: routeResult.mode,
     model: routeResult.model,
-    notice: routeResult.notice,
   };
 }

@@ -7,7 +7,6 @@ import {
   Download,
   FileText,
   Loader2,
-  PlayCircle,
   Sparkles,
 } from "lucide-react";
 
@@ -93,61 +92,6 @@ export function ProductBriefExportButtons() {
       </div>
       {notice ? <p className="text-sm text-teal-50">{notice}</p> : null}
     </div>
-  );
-}
-
-export function DemoSeedButton() {
-  const [isSeeding, setIsSeeding] = useState(false);
-  const [notice, setNotice] = useState("");
-
-  async function seedDemo() {
-    setIsSeeding(true);
-    setNotice("");
-
-    try {
-      const response = await fetch("/api/demo/seed", { method: "POST" });
-      const payload = (await response.json()) as {
-        note?: string;
-        error?: string;
-      };
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Demo workspace creation failed.");
-      }
-
-      setNotice(payload.note ?? "Demo workspace data created.");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Demo workspace creation failed.");
-    } finally {
-      setIsSeeding(false);
-    }
-  }
-
-  return (
-    <Card className="border-teal-300/20 bg-teal-300/10 shadow-executive">
-      <CardHeader>
-        <div className="mb-2 flex flex-wrap gap-2">
-          <Badge variant="teal">Demo Mode</Badge>
-          <Badge variant="outline">Explicit admin action</Badge>
-        </div>
-        <CardTitle>Create Demo Workspace</CardTitle>
-        <CardDescription>
-          Adds clearly marked sample client, package, pricing, proposal, pipeline,
-          delivery project, knowledge note, and quality report records.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Button type="button" variant="gold" onClick={seedDemo} disabled={isSeeding}>
-          {isSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlayCircle className="h-4 w-4" />}
-          Create Demo Workspace
-        </Button>
-        {notice ? (
-          <p className="rounded-lg border border-teal-300/20 bg-[#07111f]/55 p-3 text-sm text-teal-50">
-            {notice}
-          </p>
-        ) : null}
-      </CardContent>
-    </Card>
   );
 }
 

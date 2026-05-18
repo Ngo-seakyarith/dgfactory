@@ -68,8 +68,6 @@ import {
   type PricingTemplateMode,
 } from "@/lib/pricing";
 
-const storageKey = "dg-academy-training-packages-v1";
-
 type QaReviewOutput = {
   score: number;
   strengths: string[];
@@ -102,7 +100,7 @@ type WorkflowStepName =
 type WorkflowTraceItem = {
   step: WorkflowStepName | "Follow-up";
   agent: string;
-  mode: "mock" | "openai";
+  mode: "openai";
   model: string;
   summary: string;
 };
@@ -127,83 +125,6 @@ const defaultInput: TrainingPackageInput = {
   context: "",
   tone: "Executive, practical, commercially sharp",
 };
-
-function readLocalPackages() {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const raw = window.localStorage.getItem(storageKey);
-    const packages = raw ? (JSON.parse(raw) as Array<TrainingPackage & {
-      email?: string;
-      checklist?: string;
-    }>) : [];
-
-    return packages.map((pkg) => {
-      const pricingInputs = normalizePricingInputs(pkg.pricingInputs);
-      const pricingOutputs = pkg.pricingOutputs ?? calculatePricing(pricingInputs);
-
-      return {
-        ...pkg,
-        title: pkg.title,
-        followUpEmail: pkg.followUpEmail ?? pkg.email ?? "",
-        qualityChecklist:
-          pkg.qualityChecklist ??
-          (pkg.checklist
-            ? pkg.checklist
-                .split("\n")
-                .map((line) => line.replace(/^[-*]\s*/, "").trim())
-                .filter(Boolean)
-                .map((item) => ({
-                  category: "Imported",
-                  item,
-                  status: "review" as const,
-                }))
-            : []),
-        pricingInputs,
-        pricingOutputs,
-        commercialProposal:
-          pkg.commercialProposal ??
-          buildCommercialProposalSection({
-            title: pkg.title,
-            client: pkg.client,
-            inputs: pricingInputs,
-            outputs: pricingOutputs,
-          }),
-        knowledgeUsed: pkg.knowledgeUsed ?? [],
-      };
-    }) as TrainingPackage[];
-  } catch {
-    return [];
-  }
-}
-
-export function savePackageLocally(pkg: TrainingPackage) {
-  const packages = readLocalPackages();
-  const index = packages.findIndex((item) => item.id === pkg.id);
-
-  if (index >= 0) {
-    packages[index] = pkg;
-  } else {
-    packages.unshift(pkg);
-  }
-
-  window.localStorage.setItem(storageKey, JSON.stringify(packages));
-}
-
-export function getLocalTrainingPackages() {
-  return readLocalPackages().sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
-}
-
-export function getLocalTrainingPackage(id: string) {
-  return readLocalPackages().find((pkg) => pkg.id === id) ?? null;
-}
-
-export function deletePackageLocally(id: string) {
-  const packages = readLocalPackages().filter((pkg) => pkg.id !== id);
-  window.localStorage.setItem(storageKey, JSON.stringify(packages));
-}
 
 export function PackageForm() {
   const router = useRouter();
@@ -305,7 +226,7 @@ export function PackageForm() {
         knowledgeUsed?: KnowledgeSourceNote[];
         state?: { currentStep?: string; error?: string };
         qaScore?: number;
-        mode?: "mock" | "openai";
+        mode?: "openai";
         notice?: string;
         error?: string;
       };
@@ -337,7 +258,7 @@ export function PackageForm() {
       const pkg = buildPackageFromParts({
         input: form,
         outputs,
-        generationMode: payload.mode ?? "mock",
+        generationMode: "openai",
         pricingInputs,
         knowledgeUsed: payload.knowledgeUsed ?? [],
       });
@@ -349,7 +270,7 @@ export function PackageForm() {
         payload.notice ??
           (useMultiAgent
             ? `Multi-agent workflow completed${payload.qaScore ? ` with QA score ${payload.qaScore}/100` : ""}.`
-            : `Generated with ${payload.mode === "openai" ? "OpenAI" : "mock content"}.`),
+            : "Generated with OpenAI."),
       );
     } catch (generationError) {
       setError(
@@ -377,8 +298,6 @@ export function PackageForm() {
     };
 
     try {
-      savePackageLocally(packageToSave);
-
       const response = await fetch("/api/training-packages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -386,7 +305,7 @@ export function PackageForm() {
       });
       const payload = (await response.json()) as {
         package?: TrainingPackage;
-        storage?: "local" | "supabase";
+        storage?: "supabase";
         error?: string;
       };
 
@@ -394,16 +313,10 @@ export function PackageForm() {
         throw new Error(payload.error ?? "Database save failed.");
       }
 
-      savePackageLocally(payload.package);
       setCurrentPackage(payload.package);
-      setNotice(
-        payload.storage === "supabase"
-          ? "Saved locally and in Supabase."
-          : "Saved locally. Supabase is not configured or the table is unavailable.",
-      );
+      setNotice("Saved in Supabase.");
       router.push(`/packages/${payload.package.id}`);
     } catch (saveError) {
-      setNotice("Saved locally. Database save did not complete.");
       setError(saveError instanceof Error ? saveError.message : "Database save failed.");
     } finally {
       setIsSaving(false);
@@ -567,11 +480,7 @@ export function PackageForm() {
               packaging.
             </CardDescription>
           </div>
-          {currentPackage?.generationMode ? (
-            <Badge variant={currentPackage.generationMode === "openai" ? "teal" : "gold"}>
-              {currentPackage.generationMode === "openai" ? "OpenAI" : "Mock"}
-            </Badge>
-          ) : null}
+          {currentPackage?.generationMode ? <Badge variant="teal">OpenAI</Badge> : null}
         </CardHeader>
         <CardContent>
           {useMultiAgent || workflowTrace.length > 0 || workflowFailedStep ? (
@@ -1225,7 +1134,7 @@ function FeedbackPanel({ pkg }: { pkg: TrainingPackage }) {
       const payload = (await response.json()) as {
         evaluation?: EvaluateOutputResult;
         savedSuggestions?: PromptImprovementSuggestion[];
-        mode?: "mock" | "openai";
+        mode?: "openai";
         model?: string;
         notice?: string;
         error?: string;
@@ -1243,7 +1152,7 @@ function FeedbackPanel({ pkg }: { pkg: TrainingPackage }) {
       setImprovementSuggestions(payload.evaluation.improvementSuggestions.join("\n"));
       setNotice(
         payload.notice ??
-          `AI evaluation completed with ${payload.mode === "openai" ? payload.model : "mock mode"}. Suggestions require human approval.`,
+          `AI evaluation completed with ${payload.model ?? "OpenAI"}. Suggestions require human approval.`,
       );
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "AI evaluation failed.");
@@ -1685,7 +1594,7 @@ export function OutputTabs({
       });
       const payload = (await response.json()) as {
         review?: QaReviewOutput;
-        mode?: "mock" | "openai";
+        mode?: "openai";
         model?: string;
         notice?: string;
         error?: string;
@@ -1698,7 +1607,7 @@ export function OutputTabs({
       setQaReview(payload.review);
       setQaNotice(
         payload.notice ??
-          `QA review completed with ${payload.mode === "openai" ? payload.model : "mock mode"}.`,
+          `QA review completed with ${payload.model ?? "OpenAI"}.`,
       );
     } catch (error) {
       setQaNotice(error instanceof Error ? error.message : "QA review failed.");
@@ -1741,7 +1650,7 @@ export function OutputTabs({
       const payload = (await response.json()) as {
         section?: RegeneratablePackageSection;
         content?: string;
-        mode?: "mock" | "openai";
+        mode?: "openai";
         error?: string;
       };
 
@@ -1756,7 +1665,7 @@ export function OutputTabs({
       };
       await onPackageUpdate?.(updatedPackage);
       setRegenerateNotice(
-        `${sectionLabel(payload.section)} regenerated with ${payload.mode ?? "mock"} mode.`,
+        `${sectionLabel(payload.section)} regenerated with ${payload.mode ?? "openai"} mode.`,
       );
     } catch (error) {
       setRegenerateNotice(

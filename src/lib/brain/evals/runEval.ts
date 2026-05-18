@@ -1,6 +1,7 @@
 import type { BrainTaskType } from "@/lib/brain/agents";
+import { getBrainModel } from "@/lib/brain/client";
 import { getAgentForTask, routeBrainTask } from "@/lib/brain/router";
-import { createMockEvaluation, type OutputEvaluationType } from "@/lib/evaluations";
+import { createDeterministicEvaluation, type OutputEvaluationType } from "@/lib/evaluations";
 import {
   getEvalDataset,
   listEvalExamples,
@@ -152,7 +153,7 @@ export async function runEvalDataset({
   const running = normalizeEvalRun({
     datasetId,
     targetAgent: dataset.targetAgent,
-    modelName: process.env.AI_BRAIN_MODEL ?? process.env.OPENAI_MODEL ?? "mock",
+    modelName: getBrainModel(),
     status: "Running",
     summary: "Eval run started.",
   });
@@ -172,7 +173,7 @@ export async function runEvalDataset({
       });
       modelName = routed.model;
       const text = outputToEvaluationText(routed.output);
-      const evaluation = createMockEvaluation({
+      const evaluation = createDeterministicEvaluation({
         output: text,
         outputType: outputTypeForTask(dataset.targetAgent),
         targetAudience: String(example.input.audience ?? "DG Academy audience"),
@@ -211,7 +212,7 @@ export async function runEvalDataset({
         taskType: dataset.targetAgent,
         inputSummary: safeStringify(example.input, 600),
         outputSummary: safeStringify(routed.output, 600),
-        status: routed.mode === "mock" ? "Mock" : "Completed",
+        status: "Completed",
         durationMs: Date.now() - started,
       });
     } catch (error) {

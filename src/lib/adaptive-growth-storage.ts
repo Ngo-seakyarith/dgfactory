@@ -7,7 +7,6 @@ import {
   normalizeMarketSignal,
   normalizeOfferVariant,
   normalizeSelectionDecision,
-  type AdaptiveGrowthData,
   type AdaptiveGrowthKind,
   type ExperimentMetrics,
   type GrowthExperiment,
@@ -15,24 +14,8 @@ import {
   type MarketSignal,
   type OfferVariant,
   type SelectionDecision,
+  type AdaptiveGrowthData,
 } from "@/lib/adaptive-growth";
-
-type GrowthStore = AdaptiveGrowthData;
-
-const globalForGrowthStore = globalThis as typeof globalThis & {
-  __dgAdaptiveGrowthStore?: GrowthStore;
-};
-
-const localStore =
-  globalForGrowthStore.__dgAdaptiveGrowthStore ??
-  (globalForGrowthStore.__dgAdaptiveGrowthStore = {
-    signals: [],
-    offers: [],
-    experiments: [],
-    metrics: [],
-    decisions: [],
-    genomeItems: [],
-  });
 
 type SignalRow = {
   id: string;
@@ -337,27 +320,11 @@ function genomeFromRow(row: GenomeRow) {
   });
 }
 
-function upsertLocal<T extends { id: string }>(items: T[], item: T) {
-  const index = items.findIndex((existing) => existing.id === item.id);
-  if (index >= 0) {
-    items[index] = item;
-  } else {
-    items.unshift(item);
-  }
-}
-
 export async function listAdaptiveGrowthData(): Promise<AdaptiveGrowthData> {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return {
-      signals: [...localStore.signals].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-      offers: [...localStore.offers].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-      experiments: [...localStore.experiments].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-      metrics: [...localStore.metrics].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-      decisions: [...localStore.decisions].sort((a, b) => b.createdAt.localeCompare(a.createdAt)),
-      genomeItems: [...localStore.genomeItems].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt)),
-    };
+    throw new Error("Supabase is required to list Adaptive Growth data.");
   }
 
   const [
@@ -384,7 +351,15 @@ export async function listAdaptiveGrowthData(): Promise<AdaptiveGrowthData> {
     decisions.error ||
     genomeItems.error
   ) {
-    return listAdaptiveGrowthDataLocal();
+    const message =
+      signals.error?.message ||
+      offers.error?.message ||
+      experiments.error?.message ||
+      metrics.error?.message ||
+      decisions.error?.message ||
+      genomeItems.error?.message ||
+      "Failed to list Adaptive Growth data.";
+    throw new Error(message);
   }
 
   return {
@@ -397,64 +372,48 @@ export async function listAdaptiveGrowthData(): Promise<AdaptiveGrowthData> {
   };
 }
 
-function listAdaptiveGrowthDataLocal(): AdaptiveGrowthData {
-  return {
-    signals: [...localStore.signals],
-    offers: [...localStore.offers],
-    experiments: [...localStore.experiments],
-    metrics: [...localStore.metrics],
-    decisions: [...localStore.decisions],
-    genomeItems: [...localStore.genomeItems],
-  };
-}
-
 export async function saveAdaptiveGrowthRecord(kind: AdaptiveGrowthKind, input: unknown) {
   const supabase = getSupabaseServerClient();
   const now = new Date().toISOString();
 
+  if (!supabase) {
+    throw new Error("Supabase is required to save Adaptive Growth records.");
+  }
+
   if (kind === "signal") {
     const signal = normalizeMarketSignal({ ...(input as Partial<MarketSignal>), updatedAt: now });
-    upsertLocal(localStore.signals, signal);
-    if (!supabase) return { record: signal, storage: "local" as const };
     const { data, error } = await supabase.from("market_signals").upsert(signalToRow(signal), { onConflict: "id" }).select("*").single();
-    return { record: error ? signal : signalFromRow(data as SignalRow), storage: error ? "local" as const : "supabase" as const };
+    if (error) throw new Error(error.message);
+    return { record: signalFromRow(data as SignalRow), storage: "supabase" as const };
   }
 
   if (kind === "offer") {
     const offer = normalizeOfferVariant({ ...(input as Partial<OfferVariant>), updatedAt: now });
-    upsertLocal(localStore.offers, offer);
-    if (offer.signalId) {
-      const signal = localStore.signals.find((item) => item.id === offer.signalId);
-      if (signal) upsertLocal(localStore.signals, normalizeMarketSignal({ ...signal, status: "Converted to Offer", updatedAt: now }));
-    }
-    if (!supabase) return { record: offer, storage: "local" as const };
     const { data, error } = await supabase.from("offer_variants").upsert(offerToRow(offer), { onConflict: "id" }).select("*").single();
-    if (!error && offer.signalId) {
-      await supabase.from("market_signals").update({ status: "Converted to Offer", updated_at: now }).eq("id", offer.signalId);
+    if (error) throw new Error(error.message);
+    if (offer.signalId) {
+      const update = await supabase.from("market_signals").update({ status: "Converted to Offer", updated_at: now }).eq("id", offer.signalId);
+      if (update.error) throw new Error(update.error.message);
     }
-    return { record: error ? offer : offerFromRow(data as OfferRow), storage: error ? "local" as const : "supabase" as const };
+    return { record: offerFromRow(data as OfferRow), storage: "supabase" as const };
   }
 
   if (kind === "experiment") {
     const experiment = normalizeGrowthExperiment({ ...(input as Partial<GrowthExperiment>), updatedAt: now });
-    upsertLocal(localStore.experiments, experiment);
-    if (!supabase) return { record: experiment, storage: "local" as const };
     const { data, error } = await supabase.from("growth_experiments").upsert(experimentToRow(experiment), { onConflict: "id" }).select("*").single();
-    return { record: error ? experiment : experimentFromRow(data as ExperimentRow), storage: error ? "local" as const : "supabase" as const };
+    if (error) throw new Error(error.message);
+    return { record: experimentFromRow(data as ExperimentRow), storage: "supabase" as const };
   }
 
   if (kind === "metric") {
     const metric = normalizeExperimentMetrics({ ...(input as Partial<ExperimentMetrics>), updatedAt: now });
-    upsertLocal(localStore.metrics, metric);
-    if (!supabase) return { record: metric, storage: "local" as const };
     const { data, error } = await supabase.from("experiment_metrics").upsert(metricToRow(metric), { onConflict: "id" }).select("*").single();
-    return { record: error ? metric : metricFromRow(data as MetricRow), storage: error ? "local" as const : "supabase" as const };
+    if (error) throw new Error(error.message);
+    return { record: metricFromRow(data as MetricRow), storage: "supabase" as const };
   }
 
   if (kind === "decision") {
     const decision = normalizeSelectionDecision(input as Partial<SelectionDecision>);
-    upsertLocal(localStore.decisions, decision);
-    const offer = localStore.offers.find((item) => item.id === decision.offerVariantId);
     const offerStatus =
       decision.decision === "Scale" || decision.decision === "Productize"
         ? "Scaling"
@@ -463,20 +422,17 @@ export async function saveAdaptiveGrowthRecord(kind: AdaptiveGrowthKind, input: 
           : decision.decision === "Park"
             ? "Parked"
             : "Iterating";
-    if (offer) upsertLocal(localStore.offers, normalizeOfferVariant({ ...offer, status: offerStatus, updatedAt: now }));
-    if (!supabase) return { record: decision, storage: "local" as const };
     const { data, error } = await supabase.from("selection_decisions").insert(decisionToRow(decision)).select("*").single();
-    if (!error && offer) {
-      await supabase.from("offer_variants").update({ status: offerStatus, updated_at: now }).eq("id", offer.id);
-    }
-    return { record: error ? decision : decisionFromRow(data as DecisionRow), storage: error ? "local" as const : "supabase" as const };
+    if (error) throw new Error(error.message);
+    const update = await supabase.from("offer_variants").update({ status: offerStatus, updated_at: now }).eq("id", decision.offerVariantId);
+    if (update.error) throw new Error(update.error.message);
+    return { record: decisionFromRow(data as DecisionRow), storage: "supabase" as const };
   }
 
   const item = normalizeLearningGenomeItem({ ...(input as Partial<LearningGenomeItem>), updatedAt: now });
-  upsertLocal(localStore.genomeItems, item);
-  if (!supabase) return { record: item, storage: "local" as const };
   const { data, error } = await supabase.from("learning_genome_items").upsert(genomeToRow(item), { onConflict: "id" }).select("*").single();
-  return { record: error ? item : genomeFromRow(data as GenomeRow), storage: error ? "local" as const : "supabase" as const };
+  if (error) throw new Error(error.message);
+  return { record: genomeFromRow(data as GenomeRow), storage: "supabase" as const };
 }
 
 export async function deleteAdaptiveGrowthRecord(kind: AdaptiveGrowthKind, id: string) {
@@ -490,19 +446,13 @@ export async function deleteAdaptiveGrowthRecord(kind: AdaptiveGrowthKind, id: s
     genome: "learning_genome_items",
   };
 
-  localStore.signals = kind === "signal" ? localStore.signals.filter((item) => item.id !== id) : localStore.signals;
-  localStore.offers = kind === "offer" ? localStore.offers.filter((item) => item.id !== id) : localStore.offers;
-  localStore.experiments = kind === "experiment" ? localStore.experiments.filter((item) => item.id !== id) : localStore.experiments;
-  localStore.metrics = kind === "metric" ? localStore.metrics.filter((item) => item.id !== id) : localStore.metrics;
-  localStore.decisions = kind === "decision" ? localStore.decisions.filter((item) => item.id !== id) : localStore.decisions;
-  localStore.genomeItems = kind === "genome" ? localStore.genomeItems.filter((item) => item.id !== id) : localStore.genomeItems;
-
   if (!supabase) {
-    return { deleted: true, storage: "local" as const };
+    throw new Error("Supabase is required to delete Adaptive Growth records.");
   }
 
   const { error } = await supabase.from(tableMap[kind]).delete().eq("id", id);
-  return { deleted: true, storage: error ? "local" as const : "supabase" as const };
+  if (error) throw new Error(error.message);
+  return { deleted: true, storage: "supabase" as const };
 }
 
 export async function getGrowthDashboardMetrics() {

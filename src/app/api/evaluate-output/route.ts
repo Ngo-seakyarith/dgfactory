@@ -4,7 +4,6 @@ import { generateStructuredOutput } from "@/lib/brain/client";
 import { outputEvaluationResultSchema } from "@/lib/brain/schemas";
 import { getRubricForOutputType } from "@/lib/brain/evals/rubrics";
 import {
-  createMockEvaluation,
   createSuggestionsFromEvaluation,
   isOutputEvaluationType,
   normalizeOutputEvaluation,
@@ -43,7 +42,6 @@ const evaluationAgent: BrainAgentDefinition<
     },
   },
   outputSchema: outputEvaluationResultSchema,
-  mockOutput: createMockEvaluation,
 };
 
 export async function POST(request: Request) {

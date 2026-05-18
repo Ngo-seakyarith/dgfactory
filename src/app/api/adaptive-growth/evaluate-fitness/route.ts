@@ -66,7 +66,7 @@ export async function POST(request: Request) {
   });
 
   let rationale = result.rationale;
-  let rationaleMode: "deterministic" | "openai" | "mock" = "deterministic";
+  let rationaleMode: "deterministic" | "openai" = "deterministic";
 
   try {
     const brain = await routeBrainTask<Record<string, unknown>, TextAgentOutput>({
@@ -96,11 +96,9 @@ export async function POST(request: Request) {
       retries: 1,
     });
 
-    if (brain.mode === "openai" && brain.output.content) {
+    if (brain.output.content) {
       rationale = brain.output.content;
       rationaleMode = "openai";
-    } else {
-      rationaleMode = brain.mode;
     }
   } catch {
     rationaleMode = "deterministic";

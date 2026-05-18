@@ -3,7 +3,6 @@ import {
   createKnowledgeChunks,
   normalizeKnowledgeChunk,
   normalizeKnowledgeDocument,
-  seedKnowledgeDocuments,
   type KnowledgeChunk,
   type KnowledgeDocument,
   type KnowledgeDocumentType,
@@ -31,22 +30,6 @@ type KnowledgeChunkRow = {
   metadata: Record<string, unknown> | null;
   created_at: string;
 };
-
-type KnowledgeStore = {
-  documents: KnowledgeDocument[];
-  chunks: KnowledgeChunk[];
-};
-
-const globalForKnowledgeStore = globalThis as typeof globalThis & {
-  __dgKnowledgeStore?: KnowledgeStore;
-};
-
-const localStore =
-  globalForKnowledgeStore.__dgKnowledgeStore ??
-  (globalForKnowledgeStore.__dgKnowledgeStore = {
-    documents: [...seedKnowledgeDocuments],
-    chunks: seedKnowledgeDocuments.flatMap(createKnowledgeChunks),
-  });
 
 function documentToRow(document: KnowledgeDocument) {
   return {
@@ -99,30 +82,11 @@ function chunkFromRow(row: KnowledgeChunkRow): KnowledgeChunk {
   });
 }
 
-function upsertLocalDocument(document: KnowledgeDocument) {
-  const index = localStore.documents.findIndex((item) => item.id === document.id);
-
-  if (index >= 0) {
-    localStore.documents[index] = document;
-  } else {
-    localStore.documents.unshift(document);
-  }
-
-  localStore.chunks = [
-    ...localStore.chunks.filter((chunk) => chunk.documentId !== document.id),
-    ...createKnowledgeChunks(document),
-  ];
-
-  return document;
-}
-
 export async function listKnowledgeDocuments() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.documents].sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
+    throw new Error("Supabase is required to list knowledge documents.");
   }
 
   const { data, error } = await supabase
@@ -131,18 +95,10 @@ export async function listKnowledgeDocuments() {
     .order("updated_at", { ascending: false });
 
   if (error) {
-    return [...localStore.documents].sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
+    throw new Error(error.message);
   }
 
-  const remoteDocuments = (data as KnowledgeDocumentRow[]).map(documentFromRow);
-  const merged = new Map<string, KnowledgeDocument>();
-  [...seedKnowledgeDocuments, ...remoteDocuments, ...localStore.documents].forEach(
-    (document) => merged.set(document.id, document),
-  );
-
-  return Array.from(merged.values()).sort((a, b) =>
+  return (data as KnowledgeDocumentRow[]).map(documentFromRow).sort((a, b) =>
     b.updatedAt.localeCompare(a.updatedAt),
   );
 }
@@ -162,7 +118,7 @@ export async function getKnowledgeDocument(id: string) {
     }
   }
 
-  return localStore.documents.find((document) => document.id === id) ?? null;
+  throw new Error("Supabase is required to load knowledge documents.");
 }
 
 export async function saveKnowledgeDocument(input: Partial<KnowledgeDocument>) {
@@ -171,12 +127,11 @@ export async function saveKnowledgeDocument(input: Partial<KnowledgeDocument>) {
     updatedAt: new Date().toISOString(),
   });
   const chunks = createKnowledgeChunks(document);
-  upsertLocalDocument(document);
 
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { document, chunks, storage: "local" as const };
+    throw new Error("Supabase is required to save knowledge documents.");
   }
 
   const { data, error } = await supabase
@@ -186,7 +141,7 @@ export async function saveKnowledgeDocument(input: Partial<KnowledgeDocument>) {
     .single();
 
   if (error) {
-    return { document, chunks, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   await supabase.from("knowledge_chunks").delete().eq("document_id", document.id);
@@ -202,26 +157,24 @@ export async function saveKnowledgeDocument(input: Partial<KnowledgeDocument>) {
 }
 
 export async function deleteKnowledgeDocument(id: string) {
-  localStore.documents = localStore.documents.filter((document) => document.id !== id);
-  localStore.chunks = localStore.chunks.filter((chunk) => chunk.documentId !== id);
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { deleted: true, storage: "local" as const };
+    throw new Error("Supabase is required to delete knowledge documents.");
   }
 
   const { error } = await supabase.from("knowledge_documents").delete().eq("id", id);
-  return { deleted: true, storage: error ? "local" as const : "supabase" as const };
+  if (error) {
+    throw new Error(error.message);
+  }
+  return { deleted: true, storage: "supabase" as const };
 }
 
 export async function listKnowledgeChunks(documentId?: string) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.chunks
-      .filter((chunk) => (documentId ? chunk.documentId === documentId : true))
-      .sort((a, b) => a.chunkIndex - b.chunkIndex);
+    throw new Error("Supabase is required to list knowledge chunks.");
   }
 
   let query = supabase.from("knowledge_chunks").select("*").order("chunk_index");
@@ -233,13 +186,8 @@ export async function listKnowledgeChunks(documentId?: string) {
   const { data, error } = await query;
 
   if (error) {
-    return localStore.chunks.filter((chunk) =>
-      documentId ? chunk.documentId === documentId : true,
-    );
+    throw new Error(error.message);
   }
 
-  const remoteChunks = (data as KnowledgeChunkRow[]).map(chunkFromRow);
-  const seededChunks = seedKnowledgeDocuments.flatMap(createKnowledgeChunks);
-
-  return [...seededChunks, ...remoteChunks];
+  return (data as KnowledgeChunkRow[]).map(chunkFromRow);
 }

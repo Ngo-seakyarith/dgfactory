@@ -6,11 +6,8 @@ import {
 } from "@/lib/brain/schemas";
 import type { BrainAgentDefinition, BrainMode } from "@/lib/brain/agents";
 import {
-  fallbackModel,
   intendedBrainModel,
   recordBrainModelError,
-  recordBrainModelFallback,
-  recordBrainModelMock,
   recordBrainModelSuccess,
   getBrainModelStatus,
 } from "@/lib/brain/modelConfig";
@@ -37,10 +34,6 @@ export function getBrainModel() {
   return intendedBrainModel;
 }
 
-function getFallbackModel(primaryModel: string) {
-  return fallbackModel === primaryModel ? "gpt-4o-mini" : fallbackModel;
-}
-
 function getOpenAIClient() {
   if (!process.env.OPENAI_API_KEY) {
     return null;
@@ -51,49 +44,6 @@ function getOpenAIClient() {
   }
 
   return openaiClient;
-}
-
-function parseModelUnavailable(error: unknown) {
-  const message = error instanceof Error ? error.message.toLowerCase() : "";
-  const status =
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    typeof (error as { status?: unknown }).status === "number"
-      ? (error as { status: number }).status
-      : undefined;
-
-  return (
-    status === 404 ||
-    message.includes("model") && message.includes("not") && message.includes("found") ||
-    message.includes("does not exist") ||
-    message.includes("not have access")
-  );
-}
-
-function safeOpenAINotice(error: unknown) {
-  const message = error instanceof Error ? error.message.toLowerCase() : "";
-  const status =
-    typeof error === "object" &&
-    error !== null &&
-    "status" in error &&
-    typeof (error as { status?: unknown }).status === "number"
-      ? (error as { status: number }).status
-      : undefined;
-
-  if (status === 401 || message.includes("incorrect api key")) {
-    return "OpenAI API key was rejected, so mock Brain Layer output was used.";
-  }
-
-  if (status === 429 || message.includes("rate limit") || message.includes("quota")) {
-    return "OpenAI rate limit or quota was reached, so mock Brain Layer output was used.";
-  }
-
-  if (message.includes("json") || message.includes("schema")) {
-    return "OpenAI returned an unexpected structure, so mock Brain Layer output was used.";
-  }
-
-  return "OpenAI Brain Layer generation was unavailable, so mock output was used.";
 }
 
 function normalizeJsonSchema(schema: JsonSchema) {
@@ -191,26 +141,12 @@ export async function generateStructuredOutput<TInput, TOutput>({
   const requestedModel = getBrainModel();
 
   if (!client) {
-    const output = agent.mockOutput(input);
-    const validation = validateAgainstSchema(output, schema);
-
-    if (!validation.valid) {
-      throw new Error(`Mock output failed schema validation: ${validation.errors.join("; ")}`);
-    }
-
-    recordBrainModelMock("OPENAI_API_KEY is missing, so Brain Layer mock mode was used.");
-
-    return {
-      output,
-      mode: "mock",
-      model: "mock",
-      notice: "OPENAI_API_KEY is missing, so Brain Layer mock mode was used.",
-    };
+    const error = new Error("OPENAI_API_KEY is required for Brain Layer generation.");
+    recordBrainModelError(error);
+    throw error;
   }
 
-  let model = requestedModel;
   let attempts = 0;
-  let fallbackUsed = false;
   let lastError: unknown = null;
 
   while (attempts <= retries) {
@@ -221,7 +157,7 @@ export async function generateStructuredOutput<TInput, TOutput>({
         client,
         agent: agent as BrainAgentDefinition<TInput, unknown>,
         input,
-        model,
+        model: requestedModel,
         schema,
       });
       const validation = validateAgainstSchema(output, schema);
@@ -230,50 +166,22 @@ export async function generateStructuredOutput<TInput, TOutput>({
         throw new Error(`Schema validation failed: ${validation.errors.join("; ")}`);
       }
 
-      recordBrainModelSuccess(model);
+      recordBrainModelSuccess(requestedModel);
 
       return {
         output: output as TOutput,
         mode: "openai",
-        model,
-        notice: fallbackUsed
-          ? `AI_BRAIN_MODEL=${requestedModel} was unavailable, so ${model} was used.`
-          : undefined,
+        model: requestedModel,
       };
     } catch (error) {
       lastError = error;
-
-      if (!fallbackUsed && parseModelUnavailable(error)) {
-        const nextModel = getFallbackModel(model);
-        recordBrainModelFallback({
-          intendedModel: model,
-          nextModel,
-          reason: error instanceof Error ? error.message : "Model unavailable.",
-        });
-        model = nextModel;
-        fallbackUsed = true;
-        attempts = 0;
-        continue;
-      }
     }
   }
 
-  const output = agent.mockOutput(input);
-  const validation = validateAgainstSchema(output, schema);
-
-  if (!validation.valid) {
-    throw new Error(`Mock output failed schema validation: ${validation.errors.join("; ")}`);
-  }
-
   recordBrainModelError(lastError);
-  recordBrainModelMock(safeOpenAINotice(lastError));
-
-  return {
-    output,
-    mode: "mock",
-    model: "mock",
-    notice: safeOpenAINotice(lastError),
-  };
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("OpenAI Brain Layer generation failed.");
 }
 
 export { getBrainModelStatus };

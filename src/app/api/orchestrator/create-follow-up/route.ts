@@ -1,9 +1,8 @@
 import { NextResponse } from "next/server";
 
-import {
-  createMockFollowUpDraft,
-  isOpportunityStatus,
-} from "@/lib/crm";
+import { routeBrainTask } from "@/lib/brain/router";
+import type { FollowUpDraft } from "@/lib/crm";
+import { isOpportunityStatus } from "@/lib/crm";
 import { validateOrchestratorRequest } from "@/lib/orchestrator/auth";
 import { redactForLog } from "@/lib/orchestrator/commands";
 import { saveOrchestratorLog } from "@/lib/orchestrator/storage";
@@ -23,7 +22,10 @@ export async function POST(request: Request) {
     lastNotes: String(body.lastNotes ?? "").trim(),
     nextFollowUpDate: String(body.nextFollowUpDate ?? "").trim(),
   };
-  const draft = createMockFollowUpDraft(input);
+  const result = await routeBrainTask<typeof input, FollowUpDraft>({
+    taskType: "follow_up",
+    input,
+  });
 
   await saveOrchestratorLog({
     command: "GENERATE_FOLLOW_UP",
@@ -33,8 +35,9 @@ export async function POST(request: Request) {
   });
 
   return NextResponse.json({
-    draft,
-    mode: "mock",
+    draft: result.output,
+    mode: result.mode,
+    model: result.model,
     safety: "Draft only. No email, Telegram, WhatsApp, or external message was sent.",
   });
 }

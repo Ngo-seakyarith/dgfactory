@@ -318,7 +318,7 @@ ${evaluation.learnerFeedback || "No learner feedback recorded yet."}
 DG Academy can support the client with deeper practice, executive coaching, workflow implementation, or a follow-up masterclass based on the feedback and business priorities captured during delivery.`;
 }
 
-export function createMockDeliveryDraft({
+export function createDeliveryDraftTemplate({
   kind,
   project,
   clientName,

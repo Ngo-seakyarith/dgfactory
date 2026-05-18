@@ -88,9 +88,9 @@ function isPilotUrgency(value: unknown): value is PilotUrgency {
   return typeof value === "string" && pilotUrgencies.includes(value as PilotUrgency);
 }
 
-function numberValue(value: unknown, fallback = 0) {
+function numberValue(value: unknown, defaultValue = 0) {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return Number.isFinite(parsed) ? parsed : defaultValue;
 }
 
 export function calculatePilotGoalStatus(currentNumber: number, targetNumber: number): PilotGoalStatus {

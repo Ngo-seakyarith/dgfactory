@@ -80,7 +80,7 @@ export function AdaptiveGrowthExecutiveDashboard() {
       };
       if (!response.ok) throw new Error(nextPayload.error ?? "Dashboard load failed.");
       setPayload(nextPayload);
-      setNotice("Dashboard updated from current growth, loop, approval, and Ralph data.");
+      setNotice("Dashboard updated from current growth, loop, approval, and improvement data.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Dashboard load failed.");
     } finally {
@@ -208,7 +208,7 @@ export function AdaptiveGrowthExecutiveDashboard() {
           <OfferFitnessSection report={report} />
           <FunnelSection report={report} />
           <LearningAndExpansionSection report={report} />
-          <LoopAndRalphSection report={report} />
+          <LoopAndImprovementSection report={report} />
           <RecommendationsPanel recommendations={recommendations} isGenerating={isGenerating} />
         </>
       ) : (
@@ -378,7 +378,7 @@ function LearningAndExpansionSection({ report }: { report: AdaptiveGrowthExecuti
   );
 }
 
-function LoopAndRalphSection({ report }: { report: AdaptiveGrowthExecutiveReport }) {
+function LoopAndImprovementSection({ report }: { report: AdaptiveGrowthExecutiveReport }) {
   const loops = [
     ["Market sensing", report.openClawLoopStatus.latestMarketSensingLoop],
     ["Experiment review", report.openClawLoopStatus.latestExperimentReview],
@@ -411,20 +411,12 @@ function LoopAndRalphSection({ report }: { report: AdaptiveGrowthExecutiveReport
       </Card>
       <Card className="border-white/10 bg-white/[0.04] shadow-executive">
         <CardHeader>
-          <CardTitle>RALPH Improvement Status</CardTitle>
+          <CardTitle>Improvement Status</CardTitle>
           <CardDescription>Business learning becomes one-story Codex work only after human approval.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2">
-          <MetricCard label="Approved tasks" value={report.ralphImprovementStatus.approvedImprovementTasks.length} icon={ShieldCheck} />
-          <MetricCard label="Stories in PRD" value={report.ralphImprovementStatus.prdStories} icon={GitBranch} />
-          <MetricCard label="Pending stories" value={report.ralphImprovementStatus.pendingStories} icon={Activity} />
-          <MetricCard label="Implemented" value={report.ralphImprovementStatus.implementedImprovements.length} icon={Target} />
-          <div className="md:col-span-2">
-            <GenomeList title="Build or test warnings" items={report.ralphImprovementStatus.failedBuildOrTestWarnings} />
-          </div>
-          <Button asChild variant="outline" size="sm">
-            <Link href="/improvements/ralph">Open Ralph Dashboard</Link>
-          </Button>
+          <MetricCard label="Approved tasks" value={report.improvementStatus.approvedImprovementTasks.length} icon={ShieldCheck} />
+          <MetricCard label="Implemented" value={report.improvementStatus.implementedImprovements.length} icon={Target} />
         </CardContent>
       </Card>
     </section>

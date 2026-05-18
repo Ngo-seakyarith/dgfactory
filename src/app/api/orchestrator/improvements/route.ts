@@ -2,12 +2,8 @@ import { NextResponse } from "next/server";
 
 import { validateOrchestratorRequest } from "@/lib/orchestrator/auth";
 import { saveOrchestratorLog } from "@/lib/orchestrator/storage";
-import {
-  listImprovementOpportunities,
-  getImprovementOpportunity,
-} from "@/lib/improvement-storage";
+import { listImprovementOpportunities } from "@/lib/improvement-storage";
 import { buildCodexPrompt } from "@/lib/improvements";
-import { appendImprovementToPrd } from "@/lib/ralph";
 
 export async function GET(request: Request) {
   const auth = validateOrchestratorRequest(request);
@@ -43,7 +39,7 @@ export async function GET(request: Request) {
       codexPrompt: buildCodexPrompt(item),
     })),
     safety:
-      "OpenClaw may summarize or request PRD conversion for approved items, but cannot approve, merge, deploy, or execute code changes.",
+      "OpenClaw may summarize approved items, but cannot approve, merge, deploy, or execute code changes.",
   });
 }
 
@@ -54,49 +50,15 @@ export async function POST(request: Request) {
     return auth.response;
   }
 
-  const body = (await request.json().catch(() => ({}))) as {
-    action?: string;
-    id?: string;
-  };
-
-  if (body.action !== "convert_to_prd" || !body.id) {
-    return NextResponse.json(
-      {
-        error:
-          "Unsupported action. OpenClaw may request convert_to_prd for an already Approved improvement only.",
-      },
-      { status: 400 },
-    );
-  }
-
-  const opportunity = await getImprovementOpportunity(body.id);
-
-  if (!opportunity) {
-    return NextResponse.json({ error: "Improvement not found." }, { status: 404 });
-  }
-
-  if (opportunity.status !== "Approved") {
-    return NextResponse.json(
-      {
-        error:
-          "Human approval required before OpenClaw can request PRD conversion.",
-      },
-      { status: 403 },
-    );
-  }
-
-  const result = await appendImprovementToPrd(opportunity);
-
   await saveOrchestratorLog({
-    command: "CONVERT_IMPROVEMENT_TO_PRD",
-    payload: { id: body.id, storyId: result.story.id, written: result.written },
-    resultSummary: result.message,
-    status: "Completed",
+    command: "IMPROVEMENT_WRITE_REQUEST_REJECTED",
+    payload: {},
+    resultSummary: "Task-file conversion is disabled because task files were removed.",
+    status: "Rejected",
   });
 
-  return NextResponse.json({
-    ...result,
-    safety:
-      "PRD story created or returned as content only. No code change, merge, or deployment was executed.",
-  });
+  return NextResponse.json(
+    { error: "Task-file conversion is disabled in this app." },
+    { status: 410 },
+  );
 }

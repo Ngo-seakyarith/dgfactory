@@ -1,11 +1,9 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
-  defaultPilotGoalInputs,
   normalizePilotFeedback,
   normalizePilotGoal,
   normalizePilotIssue,
   type PilotFeedback,
-  type PilotGoal,
   type PilotGoalStatus,
   type PilotIssue,
   type PilotIssueSeverity,
@@ -52,44 +50,6 @@ type PilotFeedbackRow = {
   created_by: string | null;
   created_at: string;
 };
-
-type PilotStore = {
-  goals: PilotGoal[];
-  issues: PilotIssue[];
-  feedback: PilotFeedback[];
-};
-
-const seedGoals = defaultPilotGoalInputs.map((goal) =>
-  normalizePilotGoal({
-    ...goal,
-    currentNumber: 0,
-  }),
-);
-
-const globalForPilotStore = globalThis as typeof globalThis & {
-  __dgPilotStore?: PilotStore;
-};
-
-const localStore =
-  globalForPilotStore.__dgPilotStore ??
-  (globalForPilotStore.__dgPilotStore = {
-    goals: seedGoals,
-    issues: [],
-    feedback: [],
-  });
-
-function goalToRow(goal: PilotGoal) {
-  return {
-    id: goal.id,
-    title: goal.title,
-    target_number: goal.targetNumber,
-    current_number: goal.currentNumber,
-    status: goal.status,
-    notes: goal.notes,
-    created_at: goal.createdAt,
-    updated_at: goal.updatedAt,
-  };
-}
 
 function goalFromRow(row: PilotGoalRow) {
   return normalizePilotGoal({
@@ -174,18 +134,13 @@ export async function ensurePilotGoals() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    if (!localStore.goals.length) {
-      localStore.goals = seedGoals;
-    }
-    return { goals: localStore.goals, storage: "local" as const };
+    throw new Error("Supabase is required to ensure pilot goals.");
   }
 
   const { data } = await supabase.from("pilot_goals").select("id").limit(1);
 
   if (!data?.length) {
-    await supabase.from("pilot_goals").upsert(seedGoals.map(goalToRow), {
-      onConflict: "id",
-    });
+    return { goals: [], storage: "supabase" as const };
   }
 
   return { goals: await listPilotGoals(), storage: "supabase" as const };
@@ -195,7 +150,7 @@ export async function listPilotGoals() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.goals].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    throw new Error("Supabase is required to list pilot goals.");
   }
 
   const { data, error } = await supabase
@@ -204,7 +159,7 @@ export async function listPilotGoals() {
     .order("created_at");
 
   if (error) {
-    return localStore.goals;
+    throw new Error(error.message);
   }
 
   return (data as PilotGoalRow[]).map(goalFromRow);
@@ -214,7 +169,7 @@ export async function listPilotIssues() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.issues].sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    throw new Error("Supabase is required to list pilot issues.");
   }
 
   const { data, error } = await supabase
@@ -223,7 +178,7 @@ export async function listPilotIssues() {
     .order("updated_at", { ascending: false });
 
   if (error) {
-    return localStore.issues;
+    throw new Error(error.message);
   }
 
   return (data as PilotIssueRow[]).map(issueFromRow);
@@ -234,16 +189,10 @@ export async function savePilotIssue(input: Partial<PilotIssue>) {
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  const index = localStore.issues.findIndex((item) => item.id === issue.id);
-  if (index >= 0) {
-    localStore.issues[index] = issue;
-  } else {
-    localStore.issues.unshift(issue);
-  }
 
   const supabase = getSupabaseServerClient();
   if (!supabase) {
-    return { issue, storage: "local" as const };
+    throw new Error("Supabase is required to save pilot issues.");
   }
 
   const { data, error } = await supabase
@@ -253,7 +202,7 @@ export async function savePilotIssue(input: Partial<PilotIssue>) {
     .single();
 
   if (error) {
-    return { issue, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { issue: issueFromRow(data as PilotIssueRow), storage: "supabase" as const };
@@ -263,7 +212,7 @@ export async function listPilotFeedback() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.feedback].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    throw new Error("Supabase is required to list pilot feedback.");
   }
 
   const { data, error } = await supabase
@@ -272,7 +221,7 @@ export async function listPilotFeedback() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return localStore.feedback;
+    throw new Error(error.message);
   }
 
   return (data as PilotFeedbackRow[]).map(feedbackFromRow);
@@ -280,11 +229,10 @@ export async function listPilotFeedback() {
 
 export async function savePilotFeedback(input: Partial<PilotFeedback>) {
   const feedback = normalizePilotFeedback(input);
-  localStore.feedback.unshift(feedback);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { feedback, storage: "local" as const };
+    throw new Error("Supabase is required to save pilot feedback.");
   }
 
   const { data, error } = await supabase
@@ -294,7 +242,7 @@ export async function savePilotFeedback(input: Partial<PilotFeedback>) {
     .single();
 
   if (error) {
-    return { feedback, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {

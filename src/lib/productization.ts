@@ -25,9 +25,9 @@ export const defaultRoiInputs: RoiInputs = {
   revenuePerTraining: 2500,
 };
 
-function safeNumber(value: unknown, fallback = 0) {
+function safeNumber(value: unknown, defaultValue = 0) {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.max(0, parsed) : fallback;
+  return Number.isFinite(parsed) ? Math.max(0, parsed) : defaultValue;
 }
 
 export function calculateProductRoi(input: Partial<RoiInputs>): RoiOutputs {

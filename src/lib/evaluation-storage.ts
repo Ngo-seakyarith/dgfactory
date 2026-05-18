@@ -37,22 +37,6 @@ type PromptImprovementSuggestionRow = {
   updated_at: string;
 };
 
-type EvaluationStore = {
-  evaluations: OutputEvaluation[];
-  suggestions: PromptImprovementSuggestion[];
-};
-
-const globalForEvaluationStore = globalThis as typeof globalThis & {
-  __dgEvaluationStore?: EvaluationStore;
-};
-
-const localStore =
-  globalForEvaluationStore.__dgEvaluationStore ??
-  (globalForEvaluationStore.__dgEvaluationStore = {
-    evaluations: [],
-    suggestions: [],
-  });
-
 function evaluationToRow(evaluation: OutputEvaluation) {
   return {
     id: evaluation.id,
@@ -115,30 +99,6 @@ function suggestionFromRow(row: PromptImprovementSuggestionRow) {
   });
 }
 
-function upsertLocalEvaluation(evaluation: OutputEvaluation) {
-  const index = localStore.evaluations.findIndex((item) => item.id === evaluation.id);
-
-  if (index >= 0) {
-    localStore.evaluations[index] = evaluation;
-  } else {
-    localStore.evaluations.unshift(evaluation);
-  }
-
-  return evaluation;
-}
-
-function upsertLocalSuggestion(suggestion: PromptImprovementSuggestion) {
-  const index = localStore.suggestions.findIndex((item) => item.id === suggestion.id);
-
-  if (index >= 0) {
-    localStore.suggestions[index] = suggestion;
-  } else {
-    localStore.suggestions.unshift(suggestion);
-  }
-
-  return suggestion;
-}
-
 export async function listOutputEvaluations(filters: {
   packageId?: string;
   deliveryProjectId?: string;
@@ -146,16 +106,7 @@ export async function listOutputEvaluations(filters: {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.evaluations
-      .filter((evaluation) =>
-        filters.packageId ? evaluation.packageId === filters.packageId : true,
-      )
-      .filter((evaluation) =>
-        filters.deliveryProjectId
-          ? evaluation.deliveryProjectId === filters.deliveryProjectId
-          : true,
-      )
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    throw new Error("Supabase is required to list output evaluations.");
   }
 
   let query = supabase
@@ -174,35 +125,18 @@ export async function listOutputEvaluations(filters: {
   const { data, error } = await query;
 
   if (error) {
-    return listOutputEvaluationsLocal(filters);
+    throw new Error(error.message);
   }
 
   return (data as OutputEvaluationRow[]).map(evaluationFromRow);
 }
 
-function listOutputEvaluationsLocal(filters: {
-  packageId?: string;
-  deliveryProjectId?: string;
-}) {
-  return localStore.evaluations
-    .filter((evaluation) =>
-      filters.packageId ? evaluation.packageId === filters.packageId : true,
-    )
-    .filter((evaluation) =>
-      filters.deliveryProjectId
-        ? evaluation.deliveryProjectId === filters.deliveryProjectId
-        : true,
-    )
-    .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-}
-
 export async function saveOutputEvaluation(input: Partial<OutputEvaluation>) {
   const evaluation = normalizeOutputEvaluation(input);
-  upsertLocalEvaluation(evaluation);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { evaluation, storage: "local" as const };
+    throw new Error("Supabase is required to save output evaluations.");
   }
 
   const { data, error } = await supabase
@@ -212,7 +146,7 @@ export async function saveOutputEvaluation(input: Partial<OutputEvaluation>) {
     .single();
 
   if (error) {
-    return { evaluation, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -228,7 +162,7 @@ export async function listPromptImprovementSuggestions(filters: {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return listPromptImprovementSuggestionsLocal(filters);
+    throw new Error("Supabase is required to list prompt improvement suggestions.");
   }
 
   let query = supabase
@@ -247,37 +181,20 @@ export async function listPromptImprovementSuggestions(filters: {
   const { data, error } = await query;
 
   if (error) {
-    return listPromptImprovementSuggestionsLocal(filters);
+    throw new Error(error.message);
   }
 
   return (data as PromptImprovementSuggestionRow[]).map(suggestionFromRow);
-}
-
-function listPromptImprovementSuggestionsLocal(filters: {
-  sourceEvaluationId?: string;
-  status?: PromptSuggestionStatus;
-}) {
-  return localStore.suggestions
-    .filter((suggestion) =>
-      filters.sourceEvaluationId
-        ? suggestion.sourceEvaluationId === filters.sourceEvaluationId
-        : true,
-    )
-    .filter((suggestion) =>
-      filters.status ? suggestion.status === filters.status : true,
-    )
-    .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
 }
 
 export async function savePromptImprovementSuggestion(
   input: Partial<PromptImprovementSuggestion>,
 ) {
   const suggestion = normalizePromptImprovementSuggestion(input);
-  upsertLocalSuggestion(suggestion);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { suggestion, storage: "local" as const };
+    throw new Error("Supabase is required to save prompt improvement suggestions.");
   }
 
   const { data, error } = await supabase
@@ -287,7 +204,7 @@ export async function savePromptImprovementSuggestion(
     .single();
 
   if (error) {
-    return { suggestion, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -300,19 +217,16 @@ export async function updatePromptImprovementSuggestionStatus(
   id: string,
   status: PromptSuggestionStatus,
 ) {
-  const current =
-    localStore.suggestions.find((suggestion) => suggestion.id === id) ??
-    normalizePromptImprovementSuggestion({ id, status });
+  const current = normalizePromptImprovementSuggestion({ id, status });
   const updated = normalizePromptImprovementSuggestion({
     ...current,
     status,
     updatedAt: new Date().toISOString(),
   });
-  upsertLocalSuggestion(updated);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { suggestion: updated, storage: "local" as const };
+    throw new Error("Supabase is required to update prompt improvement suggestions.");
   }
 
   const { data, error } = await supabase
@@ -323,7 +237,7 @@ export async function updatePromptImprovementSuggestionStatus(
     .single();
 
   if (error) {
-    return { suggestion: updated, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {

@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     pricingInputs: defaultPricingInputs,
     pricingOutputs: calculatePricing(defaultPricingInputs),
     knowledgeUsed: [],
-    generationMode: "mock",
+    generationMode: "openai",
     createdAt: now,
     updatedAt: now,
   };

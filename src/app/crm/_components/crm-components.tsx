@@ -43,101 +43,6 @@ import {
   type OpportunityStatus,
 } from "@/lib/crm";
 import type { TrainingPackage } from "@/lib/training-packages";
-import {
-  getLocalTrainingPackage,
-  getLocalTrainingPackages,
-} from "@/app/packages/_components/training-package-factory";
-
-const clientsStorageKey = "dg-academy-crm-clients-v1";
-const opportunitiesStorageKey = "dg-academy-crm-opportunities-v1";
-
-function readLocalClients() {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const raw = window.localStorage.getItem(clientsStorageKey);
-    return raw ? (JSON.parse(raw) as Client[]).map(normalizeClient) : [];
-  } catch {
-    return [];
-  }
-}
-
-function readLocalOpportunities() {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const raw = window.localStorage.getItem(opportunitiesStorageKey);
-    return raw ? (JSON.parse(raw) as Opportunity[]).map(normalizeOpportunity) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveClientLocally(client: Client) {
-  const clients = readLocalClients();
-  const index = clients.findIndex((item) => item.id === client.id);
-
-  if (index >= 0) {
-    clients[index] = client;
-  } else {
-    clients.unshift(client);
-  }
-
-  window.localStorage.setItem(clientsStorageKey, JSON.stringify(clients));
-}
-
-export function saveOpportunityLocally(opportunity: Opportunity) {
-  const opportunities = readLocalOpportunities();
-  const index = opportunities.findIndex((item) => item.id === opportunity.id);
-
-  if (index >= 0) {
-    opportunities[index] = opportunity;
-  } else {
-    opportunities.unshift(opportunity);
-  }
-
-  window.localStorage.setItem(
-    opportunitiesStorageKey,
-    JSON.stringify(opportunities),
-  );
-}
-
-function deleteClientLocally(id: string) {
-  const clients = readLocalClients().filter((client) => client.id !== id);
-  window.localStorage.setItem(clientsStorageKey, JSON.stringify(clients));
-}
-
-function deleteOpportunityLocally(id: string) {
-  const opportunities = readLocalOpportunities().filter(
-    (opportunity) => opportunity.id !== id,
-  );
-  window.localStorage.setItem(
-    opportunitiesStorageKey,
-    JSON.stringify(opportunities),
-  );
-}
-
-function mergeByUpdatedAt<T extends { id: string; updatedAt: string }>(
-  localItems: T[],
-  remoteItems: T[],
-) {
-  const merged = new Map<string, T>();
-
-  [...remoteItems, ...localItems].forEach((item) => {
-    const existing = merged.get(item.id);
-    if (!existing || item.updatedAt > existing.updatedAt) {
-      merged.set(item.id, item);
-    }
-  });
-
-  return Array.from(merged.values()).sort((a, b) =>
-    b.updatedAt.localeCompare(a.updatedAt),
-  );
-}
 
 function useCrmData() {
   const [clients, setClients] = useState<Client[]>([]);
@@ -147,13 +52,6 @@ function useCrmData() {
   const [notice, setNotice] = useState("Loading CRM records...");
 
   async function refresh() {
-    const localClients = readLocalClients();
-    const localOpportunities = readLocalOpportunities();
-    const localPackages = getLocalTrainingPackages();
-    setClients(localClients);
-    setOpportunities(localOpportunities);
-    setPackages(localPackages);
-
     try {
       const [clientsResponse, opportunitiesResponse, packagesResponse] =
         await Promise.all([
@@ -163,29 +61,33 @@ function useCrmData() {
         ]);
       const clientsPayload = (await clientsResponse.json()) as {
         clients?: Client[];
+        error?: string;
       };
       const opportunitiesPayload = (await opportunitiesResponse.json()) as {
         opportunities?: Opportunity[];
+        error?: string;
       };
       const packagesPayload = (await packagesResponse.json()) as {
         packages?: TrainingPackage[];
+        error?: string;
       };
-      const remoteClients = clientsPayload.clients ?? [];
-      const remoteOpportunities = opportunitiesPayload.opportunities ?? [];
-      const remotePackages = packagesPayload.packages ?? [];
 
-      remoteClients.forEach(saveClientLocally);
-      remoteOpportunities.forEach(saveOpportunityLocally);
-      setClients(mergeByUpdatedAt(localClients, remoteClients));
-      setOpportunities(mergeByUpdatedAt(localOpportunities, remoteOpportunities));
-      setPackages(mergeByUpdatedAt(localPackages, remotePackages));
-      setNotice(
-        remoteClients.length || remoteOpportunities.length
-          ? "Showing local and Supabase-backed CRM records."
-          : "Showing local CRM records. Supabase will appear when configured.",
-      );
-    } catch {
-      setNotice("Showing local CRM records. Database read was unavailable.");
+      if (!clientsResponse.ok) {
+        throw new Error(clientsPayload.error ?? "Client database read failed.");
+      }
+      if (!opportunitiesResponse.ok) {
+        throw new Error(opportunitiesPayload.error ?? "Opportunity database read failed.");
+      }
+      if (!packagesResponse.ok) {
+        throw new Error(packagesPayload.error ?? "Package database read failed.");
+      }
+
+      setClients(clientsPayload.clients ?? []);
+      setOpportunities(opportunitiesPayload.opportunities ?? []);
+      setPackages(packagesPayload.packages ?? []);
+      setNotice("Showing Supabase-backed CRM records.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Database read was unavailable.");
     } finally {
       setIsLoading(false);
     }
@@ -228,7 +130,6 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
     });
 
     try {
-      saveClientLocally(clientToSave);
       const response = await fetch("/api/clients", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -236,7 +137,7 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
       });
       const payload = (await response.json()) as {
         client?: Client;
-        storage?: "local" | "supabase";
+        storage?: "supabase";
         error?: string;
       };
 
@@ -244,10 +145,9 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
         throw new Error(payload.error ?? "Client save failed.");
       }
 
-      saveClientLocally(payload.client);
       router.push(`/clients/${payload.client.id}`);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Client saved locally only.");
+      setNotice(error instanceof Error ? error.message : "Client save failed.");
     } finally {
       setIsSaving(false);
     }
@@ -402,9 +302,10 @@ export function ClientDetailClient({ id }: { id: string }) {
       return;
     }
 
-    deleteClientLocally(client.id);
-    await fetch(`/api/clients/${client.id}`, { method: "DELETE" });
-    router.push("/clients");
+    const response = await fetch(`/api/clients/${client.id}`, { method: "DELETE" });
+    if (response.ok) {
+      router.push("/clients");
+    }
   }
 
   if (isLoading && !client) {
@@ -494,9 +395,7 @@ export function OpportunityForm({
   const { clients, packages } = useCrmData();
   const clientIdFromQuery = searchParams.get("clientId") ?? "";
   const packageIdFromQuery = searchParams.get("packageId") ?? "";
-  const sourcePackage =
-    packages.find((pkg) => pkg.id === packageIdFromQuery) ??
-    getLocalTrainingPackage(packageIdFromQuery);
+  const sourcePackage = packages.find((pkg) => pkg.id === packageIdFromQuery);
   const [opportunity, setOpportunity] = useState<Opportunity>(() =>
     existingOpportunity ??
     createEmptyOpportunity({
@@ -542,7 +441,6 @@ export function OpportunityForm({
     });
 
     try {
-      saveOpportunityLocally(opportunityToSave);
       const response = await fetch("/api/opportunities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -550,7 +448,7 @@ export function OpportunityForm({
       });
       const payload = (await response.json()) as {
         opportunity?: Opportunity;
-        storage?: "local" | "supabase";
+        storage?: "supabase";
         error?: string;
       };
 
@@ -558,10 +456,9 @@ export function OpportunityForm({
         throw new Error(payload.error ?? "Opportunity save failed.");
       }
 
-      saveOpportunityLocally(payload.opportunity);
       router.push(`/opportunities/${payload.opportunity.id}`);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Opportunity saved locally only.");
+      setNotice(error instanceof Error ? error.message : "Opportunity save failed.");
     } finally {
       setIsSaving(false);
     }
@@ -808,9 +705,10 @@ export function OpportunityDetailClient({ id }: { id: string }) {
       return;
     }
 
-    deleteOpportunityLocally(opportunity.id);
-    await fetch(`/api/opportunities/${opportunity.id}`, { method: "DELETE" });
-    router.push("/opportunities");
+    const response = await fetch(`/api/opportunities/${opportunity.id}`, { method: "DELETE" });
+    if (response.ok) {
+      router.push("/opportunities");
+    }
   }
 
   async function generateFollowUp() {
@@ -835,7 +733,7 @@ export function OpportunityDetailClient({ id }: { id: string }) {
       });
       const payload = (await response.json()) as {
         draft?: FollowUpDraft;
-        mode?: "mock" | "openai";
+        mode?: "openai";
         notice?: string;
         error?: string;
       };
@@ -1084,17 +982,15 @@ export function PackageOpportunityPanel({ pkg }: { pkg: TrainingPackage }) {
       linkedPackageId: pkg.id,
       updatedAt: new Date().toISOString(),
     });
-    saveOpportunityLocally(updated);
-
     const response = await fetch("/api/opportunities", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(updated),
     });
-    const payload = (await response.json()) as { opportunity?: Opportunity };
-
-    if (payload.opportunity) {
-      saveOpportunityLocally(payload.opportunity);
+    if (!response.ok) {
+      const payload = (await response.json().catch(() => ({}))) as { error?: string };
+      setNotice(payload.error ?? "Opportunity link save failed.");
+      return;
     }
 
     await refresh();

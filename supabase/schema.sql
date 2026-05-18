@@ -17,7 +17,7 @@ create table if not exists public.training_packages (
   pricing_inputs jsonb not null default '{}'::jsonb,
   pricing_outputs jsonb not null default '{}'::jsonb,
   knowledge_used jsonb not null default '[]'::jsonb,
-  generation_mode text default 'mock' check (generation_mode in ('mock', 'openai')),
+  generation_mode text default 'openai' check (generation_mode in ('openai')),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -450,7 +450,6 @@ create table if not exists public.improvement_opportunities (
     status in (
       'Suggested',
       'Approved',
-      'Converted to PRD',
       'Sent to Codex',
       'Implemented',
       'Rejected'
@@ -561,7 +560,19 @@ create table if not exists public.eval_datasets (
       'follow_up',
       'delivery_report',
       'qa_review',
-      'improvement_suggestion'
+      'improvement_suggestion',
+      'offer_mutation',
+      'offer_replication',
+      'improvement_opportunity',
+      'adaptive_growth_recommendations',
+      'master_workflow',
+      'market_sensing',
+      'experiment_design',
+      'fitness_evaluation',
+      'selection_recommendation',
+      'expansion_strategy',
+      'learning_genome',
+      'extinction_recommendation'
     )
   ),
   status text not null default 'Draft' check (
@@ -599,10 +610,22 @@ create table if not exists public.eval_runs (
       'follow_up',
       'delivery_report',
       'qa_review',
-      'improvement_suggestion'
+      'improvement_suggestion',
+      'offer_mutation',
+      'offer_replication',
+      'improvement_opportunity',
+      'adaptive_growth_recommendations',
+      'master_workflow',
+      'market_sensing',
+      'experiment_design',
+      'fitness_evaluation',
+      'selection_recommendation',
+      'expansion_strategy',
+      'learning_genome',
+      'extinction_recommendation'
     )
   ),
-  model_name text not null default 'mock',
+  model_name text not null default '',
   status text not null default 'Running' check (
     status in ('Running', 'Completed', 'Failed')
   ),
@@ -643,13 +666,25 @@ create table if not exists public.agent_traces (
       'follow_up',
       'delivery_report',
       'qa_review',
-      'improvement_suggestion'
+      'improvement_suggestion',
+      'offer_mutation',
+      'offer_replication',
+      'improvement_opportunity',
+      'adaptive_growth_recommendations',
+      'master_workflow',
+      'market_sensing',
+      'experiment_design',
+      'fitness_evaluation',
+      'selection_recommendation',
+      'expansion_strategy',
+      'learning_genome',
+      'extinction_recommendation'
     )
   ),
   input_summary text not null default '',
   output_summary text not null default '',
   status text not null default 'Completed' check (
-    status in ('Completed', 'Failed', 'Mock')
+    status in ('Completed', 'Failed')
   ),
   duration_ms numeric,
   created_at timestamptz default now()
@@ -1077,4 +1112,3 @@ alter table public.eval_datasets add column if not exists organization_id uuid r
 alter table public.eval_examples add column if not exists organization_id uuid references public.organizations(id);
 alter table public.eval_runs add column if not exists organization_id uuid references public.organizations(id);
 alter table public.eval_results add column if not exists organization_id uuid references public.organizations(id);
-

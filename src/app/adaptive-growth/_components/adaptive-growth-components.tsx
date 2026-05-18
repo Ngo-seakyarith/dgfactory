@@ -107,7 +107,7 @@ function useAdaptiveGrowthData() {
       const response = await fetch("/api/adaptive-growth", { cache: "no-store" });
       const payload = (await response.json()) as { data?: AdaptiveGrowthData };
       setData(payload.data ?? emptyData);
-      setNotice("Growth data loaded. Supabase is used when configured; otherwise server fallback is used.");
+      setNotice("Growth data loaded from configured storage.");
     } catch {
       setNotice("Growth data could not be loaded.");
     } finally {
@@ -269,7 +269,7 @@ export function AdaptiveGrowthDashboard({
 
 function GrowthNavCards() {
   const cards = [
-    ["Dashboard", "/adaptive-growth/dashboard", BarChart3, "See adaptation velocity, fitness, loops, and Ralph status."],
+    ["Dashboard", "/adaptive-growth/dashboard", BarChart3, "See adaptation velocity, fitness, loops, and improvement status."],
     ["Signals", "/adaptive-growth/signals", Sprout, "Capture weak signals from the market."],
     ["Offers", "/adaptive-growth/offers", Layers3, "Generate and manage offer variants."],
     ["Experiments", "/adaptive-growth/experiments", FlaskConical, "Test offers through channels and clients."],
@@ -540,7 +540,7 @@ function MutationFactory({
         variants?: OfferMutationVariant[];
         recommended_top_3?: string[];
         rationale?: string;
-        mode?: "mock" | "openai";
+        mode?: "openai";
         notice?: string;
         error?: string;
       };

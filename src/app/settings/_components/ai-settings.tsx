@@ -15,12 +15,10 @@ import {
 
 type BrainStatus = {
   intendedBrainModel: string;
-  fallbackModel: string;
   actualModelUsed: string;
-  mockMode: boolean;
   apiKeyConfigured: boolean;
   lastSuccessfulModelUsed: string | null;
-  modelStatus: "configured" | "fallback" | "mock" | "error";
+  modelStatus: "configured" | "error";
   lastWarning: string | null;
   lastError: string | null;
 };
@@ -51,8 +49,8 @@ export function AiSettingsPanel() {
           Brain Model Status
         </CardTitle>
         <CardDescription>
-          GPT-5.5 is the intended Brain model. The app falls back safely or uses
-          mock mode when the preferred model or API key is unavailable.
+          GPT-5.5 is the intended Brain model. Missing credentials or model
+          errors now fail generation instead of producing substitute content.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -65,7 +63,6 @@ export function AiSettingsPanel() {
           <>
             <div className="grid gap-3 md:grid-cols-3">
               <StatusTile label="Intended model" value={status.intendedBrainModel} />
-              <StatusTile label="Fallback model" value={status.fallbackModel} />
               <StatusTile label="Actual model" value={status.actualModelUsed} />
               <StatusTile label="API key" value={status.apiKeyConfigured ? "Configured" : "Missing"} />
               <StatusTile label="Last success" value={status.lastSuccessfulModelUsed ?? "None yet"} />

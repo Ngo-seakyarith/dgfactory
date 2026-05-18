@@ -29,7 +29,7 @@ function friendlyError(error: unknown) {
   }
 
   if (message.toLowerCase().includes("schema")) {
-    return "The Brain Layer returned content in an unexpected structure. Mock mode may be used on retry.";
+    return "The Brain Layer returned content in an unexpected structure.";
   }
 
   return message;

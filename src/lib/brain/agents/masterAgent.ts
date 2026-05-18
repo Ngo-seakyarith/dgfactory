@@ -103,7 +103,7 @@ function toolsForWorkflow(workflow: MasterAgentWorkflow) {
     evaluate_offer_fitness: ["calculateOfferFitness", "missingDataWarnings", ...common],
     replicate_winning_offer: ["knowledgeStorage", "clientSafeVisibilityCheck", ...common],
     run_adaptive_loop: ["loopRunner", "riskClassifier", ...common],
-    create_codex_improvement_task: ["ralphPrdStoryBuilder", ...common],
+    create_codex_improvement_task: ["improvementPromptBuilder", ...common],
     run_qa_review: ["qaRubrics", ...common],
     create_follow_up_draft: ["externalSendingBlock", ...common],
     create_delivery_report: ["evaluationSummary", "exportSafety", ...common],
@@ -120,22 +120,6 @@ function riskyWorkflow(workflow: MasterAgentWorkflow) {
   ].includes(workflow);
 }
 
-function mockMasterAgent(input: MasterAgentInput): MasterAgentOutput {
-  const workflow = classifyWorkflow(input);
-  const requiresApproval = riskyWorkflow(workflow);
-
-  return {
-    workflow,
-    specialistAgents: agentsForWorkflow(workflow),
-    deterministicTools: toolsForWorkflow(workflow),
-    requiresApproval,
-    riskLevel: requiresApproval ? "Medium" : "Low",
-    nextStep: requiresApproval
-      ? "Prepare recommendation and create an approval request before any risky state change."
-      : "Route to the selected specialist agents and run QA before returning output.",
-  };
-}
-
 export const masterAgent: BrainAgentDefinition<MasterAgentInput, MasterAgentOutput> = {
   taskType: "master_workflow",
   name: "masterAgent",
@@ -144,5 +128,4 @@ export const masterAgent: BrainAgentDefinition<MasterAgentInput, MasterAgentOutp
     "Classify DG Academy goals into supported workflows, choose specialist agents, choose deterministic tools, require QA, and identify approval needs. Do not perform specialist work yourself. Do not approve risky actions.",
   inputSchema: masterAgentInputSchema,
   outputSchema: masterAgentOutputSchema,
-  mockOutput: mockMasterAgent,
 };

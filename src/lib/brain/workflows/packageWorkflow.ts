@@ -14,7 +14,6 @@ import {
   type PricingInputs,
 } from "@/lib/pricing";
 import {
-  createMockTrainingOutputs,
   fullPackageToMarkdown,
   type TrainingPackage,
   type TrainingPackageInput,
@@ -55,7 +54,7 @@ export type PackageWorkflowInput = TrainingPackageInput & {
 export type AgentOutputRecord = {
   step: PackageWorkflowStep | "Follow-up";
   agent: string;
-  mode: "mock" | "openai";
+  mode: "openai";
   model: string;
   summary: string;
 };
@@ -81,14 +80,6 @@ export type PackageWorkflowResult = {
   traceSummary: AgentOutputRecord[];
   state: PackageWorkflowState;
 };
-
-const globalForWorkflowStore = globalThis as typeof globalThis & {
-  __dgPackageWorkflowStore?: Map<string, PackageWorkflowState>;
-};
-
-const workflowStore =
-  globalForWorkflowStore.__dgPackageWorkflowStore ??
-  (globalForWorkflowStore.__dgPackageWorkflowStore = new Map());
 
 function createWorkflowId() {
   return crypto.randomUUID();
@@ -116,9 +107,7 @@ function updateState(
   state: PackageWorkflowState,
   patch: Partial<PackageWorkflowState>,
 ) {
-  const next = { ...state, ...patch };
-  workflowStore.set(next.workflowId, next);
-  return next;
+  return { ...state, ...patch };
 }
 
 function failIfRequested(input: PackageWorkflowInput, step: PackageWorkflowStep) {
@@ -138,7 +127,7 @@ function recordAgentOutput({
   state: PackageWorkflowState;
   step: PackageWorkflowStep | "Follow-up";
   agent: string;
-  mode: "mock" | "openai";
+  mode: "openai";
   model: string;
   content: string;
 }) {
@@ -149,7 +138,6 @@ function recordAgentOutput({
     model,
     summary: content.replace(/\s+/g, " ").slice(0, 220),
   });
-  workflowStore.set(state.workflowId, state);
 }
 
 function createTemporaryPackage({
@@ -176,19 +164,14 @@ function createTemporaryPackage({
     knowledgeUsed: input.knowledgeUsed ?? [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-    generationMode: "mock",
+    generationMode: "openai",
   };
-}
-
-export function getPackageWorkflowState(workflowId: string) {
-  return workflowStore.get(workflowId) ?? null;
 }
 
 export async function runPackageWorkflow(
   input: PackageWorkflowInput,
 ): Promise<PackageWorkflowResult> {
   let state = createWorkflowState(input.workflowId);
-  workflowStore.set(state.workflowId, state);
 
   try {
     const pricingFacts = buildDeterministicPricingFacts(input.pricingInputs);
@@ -211,8 +194,6 @@ export async function runPackageWorkflow(
       pricingOutputs: pricingFacts.outputs,
       pricingSummary: pricingFacts.summary,
     };
-    const mockPackage = createMockTrainingOutputs(baseInput, pricingFacts.inputs);
-
     state = updateState(state, { currentStep: "Planning" });
     failIfRequested(input, "Planning");
     const plan = await generateStructuredOutput<
@@ -378,9 +359,7 @@ export async function runPackageWorkflow(
       deckOutline: slideResult.output.content,
       workbook: workbookResult.output.content,
       followUpEmail: followUpResult.output.followUpEmail,
-      qualityChecklist: syllabusResult.output.qualityChecklist.length
-        ? syllabusResult.output.qualityChecklist
-        : mockPackage.qualityChecklist,
+      qualityChecklist: syllabusResult.output.qualityChecklist,
     };
 
     state = updateState(state, { currentStep: "QA", finalOutput: outputs });

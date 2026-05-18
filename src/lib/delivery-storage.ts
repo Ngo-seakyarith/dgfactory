@@ -42,22 +42,6 @@ type DeliveryTaskRow = {
   updated_at: string;
 };
 
-type DeliveryStore = {
-  projects: DeliveryProject[];
-  tasks: DeliveryTask[];
-};
-
-const globalForDeliveryStore = globalThis as typeof globalThis & {
-  __dgDeliveryStore?: DeliveryStore;
-};
-
-const localStore =
-  globalForDeliveryStore.__dgDeliveryStore ??
-  (globalForDeliveryStore.__dgDeliveryStore = {
-    projects: [],
-    tasks: [],
-  });
-
 function projectToRow(project: DeliveryProject) {
   return {
     id: project.id,
@@ -128,37 +112,11 @@ function taskFromRow(row: DeliveryTaskRow): DeliveryTask {
   });
 }
 
-function upsertLocalProject(project: DeliveryProject) {
-  const index = localStore.projects.findIndex((item) => item.id === project.id);
-
-  if (index >= 0) {
-    localStore.projects[index] = project;
-  } else {
-    localStore.projects.unshift(project);
-  }
-
-  return project;
-}
-
-function upsertLocalTask(task: DeliveryTask) {
-  const index = localStore.tasks.findIndex((item) => item.id === task.id);
-
-  if (index >= 0) {
-    localStore.tasks[index] = task;
-  } else {
-    localStore.tasks.unshift(task);
-  }
-
-  return task;
-}
-
 export async function listDeliveryProjects() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.projects].sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
+    throw new Error("Supabase is required to list delivery projects.");
   }
 
   const { data, error } = await supabase
@@ -167,9 +125,7 @@ export async function listDeliveryProjects() {
     .order("updated_at", { ascending: false });
 
   if (error) {
-    return [...localStore.projects].sort((a, b) =>
-      b.updatedAt.localeCompare(a.updatedAt),
-    );
+    throw new Error(error.message);
   }
 
   return (data as DeliveryProjectRow[]).map(projectFromRow);
@@ -190,7 +146,7 @@ export async function getDeliveryProject(id: string) {
     }
   }
 
-  return localStore.projects.find((project) => project.id === id) ?? null;
+  throw new Error("Supabase is required to load delivery projects.");
 }
 
 export async function saveDeliveryProject(input: Partial<DeliveryProject>) {
@@ -198,12 +154,10 @@ export async function saveDeliveryProject(input: Partial<DeliveryProject>) {
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  upsertLocalProject(project);
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { project, storage: "local" as const };
+    throw new Error("Supabase is required to save delivery projects.");
   }
 
   const { data, error } = await supabase
@@ -213,7 +167,7 @@ export async function saveDeliveryProject(input: Partial<DeliveryProject>) {
     .single();
 
   if (error) {
-    return { project, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -223,30 +177,24 @@ export async function saveDeliveryProject(input: Partial<DeliveryProject>) {
 }
 
 export async function deleteDeliveryProject(id: string) {
-  localStore.projects = localStore.projects.filter((project) => project.id !== id);
-  localStore.tasks = localStore.tasks.filter(
-    (task) => task.deliveryProjectId !== id,
-  );
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { deleted: true, storage: "local" as const };
+    throw new Error("Supabase is required to delete delivery projects.");
   }
 
   const { error } = await supabase.from("delivery_projects").delete().eq("id", id);
-  return { deleted: true, storage: error ? "local" as const : "supabase" as const };
+  if (error) {
+    throw new Error(error.message);
+  }
+  return { deleted: true, storage: "supabase" as const };
 }
 
 export async function listDeliveryTasks(deliveryProjectId?: string) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.tasks]
-      .filter((task) =>
-        deliveryProjectId ? task.deliveryProjectId === deliveryProjectId : true,
-      )
-      .sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+    throw new Error("Supabase is required to list delivery tasks.");
   }
 
   let query = supabase.from("delivery_tasks").select("*").order("created_at");
@@ -258,9 +206,7 @@ export async function listDeliveryTasks(deliveryProjectId?: string) {
   const { data, error } = await query;
 
   if (error) {
-    return [...localStore.tasks].filter((task) =>
-      deliveryProjectId ? task.deliveryProjectId === deliveryProjectId : true,
-    );
+    throw new Error(error.message);
   }
 
   return (data as DeliveryTaskRow[]).map(taskFromRow);
@@ -271,12 +217,10 @@ export async function saveDeliveryTask(input: Partial<DeliveryTask>) {
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  upsertLocalTask(task);
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { task, storage: "local" as const };
+    throw new Error("Supabase is required to save delivery tasks.");
   }
 
   const { data, error } = await supabase
@@ -286,21 +230,22 @@ export async function saveDeliveryTask(input: Partial<DeliveryTask>) {
     .single();
 
   if (error) {
-    return { task, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { task: taskFromRow(data as DeliveryTaskRow), storage: "supabase" as const };
 }
 
 export async function deleteDeliveryTask(id: string) {
-  localStore.tasks = localStore.tasks.filter((task) => task.id !== id);
-
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { deleted: true, storage: "local" as const };
+    throw new Error("Supabase is required to delete delivery tasks.");
   }
 
   const { error } = await supabase.from("delivery_tasks").delete().eq("id", id);
-  return { deleted: true, storage: error ? "local" as const : "supabase" as const };
+  if (error) {
+    throw new Error(error.message);
+  }
+  return { deleted: true, storage: "supabase" as const };
 }

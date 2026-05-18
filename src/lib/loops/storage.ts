@@ -21,20 +21,6 @@ type LoopRunRow = {
   completed_at: string | null;
 };
 
-type LoopStore = {
-  runs: LoopRun[];
-};
-
-const globalForLoopStore = globalThis as typeof globalThis & {
-  __dgLoopStore?: LoopStore;
-};
-
-const localStore =
-  globalForLoopStore.__dgLoopStore ??
-  (globalForLoopStore.__dgLoopStore = {
-    runs: [],
-  });
-
 function runToRow(run: LoopRun) {
   return {
     id: run.id,
@@ -63,25 +49,11 @@ function runFromRow(row: LoopRunRow) {
   });
 }
 
-function upsertLocalRun(run: LoopRun) {
-  const index = localStore.runs.findIndex((item) => item.id === run.id);
-
-  if (index >= 0) {
-    localStore.runs[index] = run;
-  } else {
-    localStore.runs.unshift(run);
-  }
-
-  return run;
-}
-
 export async function listLoopRuns(filters: { loopType?: LoopType } = {}) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.runs
-      .filter((run) => (filters.loopType ? run.loopType === filters.loopType : true))
-      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    throw new Error("Supabase is required to list loop runs.");
   }
 
   let query = supabase
@@ -96,7 +68,7 @@ export async function listLoopRuns(filters: { loopType?: LoopType } = {}) {
   const { data, error } = await query;
 
   if (error) {
-    return localStore.runs;
+    throw new Error(error.message);
   }
 
   return (data as LoopRunRow[]).map(runFromRow);
@@ -117,16 +89,15 @@ export async function getLoopRun(id: string) {
     }
   }
 
-  return localStore.runs.find((run) => run.id === id) ?? null;
+  throw new Error("Supabase is required to load loop runs.");
 }
 
 export async function saveLoopRun(input: Partial<LoopRun>) {
   const run = normalizeLoopRun(input);
-  upsertLocalRun(run);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { run, storage: "local" as const };
+    throw new Error("Supabase is required to save loop runs.");
   }
 
   const { data, error } = await supabase
@@ -136,7 +107,7 @@ export async function saveLoopRun(input: Partial<LoopRun>) {
     .single();
 
   if (error) {
-    return { run, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {

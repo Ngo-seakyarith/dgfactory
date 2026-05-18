@@ -6,7 +6,7 @@ export type EvalDatasetStatus = (typeof evalDatasetStatuses)[number];
 export const evalRunStatuses = ["Running", "Completed", "Failed"] as const;
 export type EvalRunStatus = (typeof evalRunStatuses)[number];
 
-export const agentTraceStatuses = ["Completed", "Failed", "Mock"] as const;
+export const agentTraceStatuses = ["Completed", "Failed"] as const;
 export type AgentTraceStatus = (typeof agentTraceStatuses)[number];
 
 export type EvalDataset = {
@@ -155,7 +155,7 @@ export function normalizeEvalRun(value: Partial<EvalRun>): EvalRun {
     id: value.id || crypto.randomUUID(),
     datasetId: normalizeString(value.datasetId),
     targetAgent: value.targetAgent ?? "course_package",
-    modelName: normalizeString(value.modelName || "mock"),
+    modelName: normalizeString(value.modelName),
     status: isEvalRunStatus(value.status) ? value.status : "Running",
     averageScore: Math.max(0, Math.min(100, Math.round(normalizeNumber(value.averageScore)))),
     startedAt: value.startedAt || now,

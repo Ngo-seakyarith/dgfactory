@@ -41,9 +41,7 @@ export async function POST(request: Request) {
       input,
       outputs: workflow.output,
       pricingInputs,
-      generationMode: workflow.traceSummary.some((item) => item.mode === "openai")
-        ? "openai"
-        : "mock",
+      generationMode: "openai",
     });
     const saved = await saveTrainingPackage(pkg);
     const approval = await saveApprovalRequest({

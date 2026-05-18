@@ -32,22 +32,6 @@ type OrchestratorLogRow = {
   created_at: string;
 };
 
-type OrchestratorStore = {
-  approvals: ApprovalRequest[];
-  logs: OrchestratorLog[];
-};
-
-const globalForOrchestratorStore = globalThis as typeof globalThis & {
-  __dgOrchestratorStore?: OrchestratorStore;
-};
-
-const localStore =
-  globalForOrchestratorStore.__dgOrchestratorStore ??
-  (globalForOrchestratorStore.__dgOrchestratorStore = {
-    approvals: [],
-    logs: [],
-  });
-
 function approvalToRow(approval: ApprovalRequest) {
   return {
     id: approval.id,
@@ -98,41 +82,13 @@ function logFromRow(row: OrchestratorLogRow) {
   });
 }
 
-function upsertLocalApproval(approval: ApprovalRequest) {
-  const index = localStore.approvals.findIndex((item) => item.id === approval.id);
-
-  if (index >= 0) {
-    localStore.approvals[index] = approval;
-  } else {
-    localStore.approvals.unshift(approval);
-  }
-
-  return approval;
-}
-
-function upsertLocalLog(log: OrchestratorLog) {
-  const index = localStore.logs.findIndex((item) => item.id === log.id);
-
-  if (index >= 0) {
-    localStore.logs[index] = log;
-  } else {
-    localStore.logs.unshift(log);
-  }
-
-  return log;
-}
-
 export async function listApprovalRequests(filters: {
   status?: ApprovalStatus;
 } = {}) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.approvals
-      .filter((approval) =>
-        filters.status ? approval.status === filters.status : true,
-      )
-      .sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+    throw new Error("Supabase is required to list approval requests.");
   }
 
   let query = supabase
@@ -147,7 +103,7 @@ export async function listApprovalRequests(filters: {
   const { data, error } = await query;
 
   if (error) {
-    return localStore.approvals;
+    throw new Error(error.message);
   }
 
   return (data as ApprovalRequestRow[]).map(approvalFromRow);
@@ -168,16 +124,15 @@ export async function getApprovalRequest(id: string) {
     }
   }
 
-  return localStore.approvals.find((approval) => approval.id === id) ?? null;
+  throw new Error("Supabase is required to load approval requests.");
 }
 
 export async function saveApprovalRequest(input: Partial<ApprovalRequest>) {
   const approval = normalizeApprovalRequest(input);
-  upsertLocalApproval(approval);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { approval, storage: "local" as const };
+    throw new Error("Supabase is required to save approval requests.");
   }
 
   const { data, error } = await supabase
@@ -187,7 +142,7 @@ export async function saveApprovalRequest(input: Partial<ApprovalRequest>) {
     .single();
 
   if (error) {
-    return { approval, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -217,11 +172,10 @@ export async function updateApprovalRequest({
     humanNote: humanNote ?? current.humanNote,
     updatedAt: new Date().toISOString(),
   });
-  upsertLocalApproval(updated);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { approval: updated, storage: "local" as const };
+    throw new Error("Supabase is required to update approval requests.");
   }
 
   const { data, error } = await supabase
@@ -236,7 +190,7 @@ export async function updateApprovalRequest({
     .single();
 
   if (error) {
-    return { approval: updated, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -247,7 +201,6 @@ export async function updateApprovalRequest({
 
 export async function saveOrchestratorLog(input: Partial<OrchestratorLog>) {
   const log = normalizeOrchestratorLog(input);
-  upsertLocalLog(log);
   await saveAuditLog({
     actor: "OpenClaw",
     action: "orchestrator_command",
@@ -263,7 +216,7 @@ export async function saveOrchestratorLog(input: Partial<OrchestratorLog>) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { log, storage: "local" as const };
+    throw new Error("Supabase is required to save orchestrator logs.");
   }
 
   const { data, error } = await supabase
@@ -273,7 +226,7 @@ export async function saveOrchestratorLog(input: Partial<OrchestratorLog>) {
     .single();
 
   if (error) {
-    return { log, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {
@@ -286,9 +239,7 @@ export async function listOrchestratorLogs() {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return [...localStore.logs].sort((a, b) =>
-      b.createdAt.localeCompare(a.createdAt),
-    );
+    throw new Error("Supabase is required to list orchestrator logs.");
   }
 
   const { data, error } = await supabase
@@ -297,7 +248,7 @@ export async function listOrchestratorLogs() {
     .order("created_at", { ascending: false });
 
   if (error) {
-    return localStore.logs;
+    throw new Error(error.message);
   }
 
   return (data as OrchestratorLogRow[]).map(logFromRow);

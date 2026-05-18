@@ -46,7 +46,7 @@ export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle"> &
     knowledgeUsed?: KnowledgeSourceNote[];
     createdAt: string;
     updatedAt: string;
-    generationMode?: "mock" | "openai";
+    generationMode?: "openai";
   };
 
 export const packageOutputSections: Array<{
@@ -134,7 +134,7 @@ export function normalizeTrainingInput(
   };
 }
 
-export function createMockTrainingOutputs(
+export function createTrainingOutputTemplate(
   input: TrainingPackageInput,
   pricingInputs: PricingInputs = defaultPricingInputs,
 ): TrainingPackageOutputs {
@@ -392,7 +392,7 @@ export function buildPackageFromParts({
   input,
   outputs,
   id = crypto.randomUUID(),
-  generationMode = "mock",
+  generationMode = "openai",
   createdAt = new Date().toISOString(),
   pricingInputs = defaultPricingInputs,
   knowledgeUsed = [],
@@ -400,7 +400,7 @@ export function buildPackageFromParts({
   input: TrainingPackageInput;
   outputs: TrainingPackageOutputs;
   id?: string;
-  generationMode?: "mock" | "openai";
+  generationMode?: "openai";
   createdAt?: string;
   pricingInputs?: PricingInputs;
   knowledgeUsed?: KnowledgeSourceNote[];

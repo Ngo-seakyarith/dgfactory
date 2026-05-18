@@ -24,20 +24,6 @@ type ImprovementRow = {
   updated_at: string;
 };
 
-type ImprovementStore = {
-  opportunities: ImprovementOpportunity[];
-};
-
-const globalForImprovementStore = globalThis as typeof globalThis & {
-  __dgImprovementStore?: ImprovementStore;
-};
-
-const localStore =
-  globalForImprovementStore.__dgImprovementStore ??
-  (globalForImprovementStore.__dgImprovementStore = {
-    opportunities: [],
-  });
-
 function toRow(opportunity: ImprovementOpportunity) {
   return {
     id: opportunity.id,
@@ -76,18 +62,6 @@ function fromRow(row: ImprovementRow) {
   });
 }
 
-function upsertLocal(opportunity: ImprovementOpportunity) {
-  const index = localStore.opportunities.findIndex((item) => item.id === opportunity.id);
-
-  if (index >= 0) {
-    localStore.opportunities[index] = opportunity;
-  } else {
-    localStore.opportunities.unshift(opportunity);
-  }
-
-  return opportunity;
-}
-
 export async function listImprovementOpportunities(filters: {
   sourceType?: ImprovementSourceType;
   category?: ImprovementCategory;
@@ -96,11 +70,7 @@ export async function listImprovementOpportunities(filters: {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.opportunities
-      .filter((item) => (filters.sourceType ? item.sourceType === filters.sourceType : true))
-      .filter((item) => (filters.category ? item.category === filters.category : true))
-      .filter((item) => (filters.status ? item.status === filters.status : true))
-      .sort((a, b) => a.priority - b.priority || b.updatedAt.localeCompare(a.updatedAt));
+    throw new Error("Supabase is required to list improvement opportunities.");
   }
 
   let query = supabase
@@ -116,7 +86,7 @@ export async function listImprovementOpportunities(filters: {
   const { data, error } = await query;
 
   if (error) {
-    return localStore.opportunities;
+    throw new Error(error.message);
   }
 
   return (data as ImprovementRow[]).map(fromRow);
@@ -137,7 +107,7 @@ export async function getImprovementOpportunity(id: string) {
     }
   }
 
-  return localStore.opportunities.find((item) => item.id === id) ?? null;
+  throw new Error("Supabase is required to load improvement opportunities.");
 }
 
 export async function saveImprovementOpportunity(
@@ -147,11 +117,10 @@ export async function saveImprovementOpportunity(
     ...input,
     updatedAt: new Date().toISOString(),
   });
-  upsertLocal(opportunity);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { opportunity, storage: "local" as const };
+    throw new Error("Supabase is required to save improvement opportunities.");
   }
 
   const { data, error } = await supabase
@@ -161,7 +130,7 @@ export async function saveImprovementOpportunity(
     .single();
 
   if (error) {
-    return { opportunity, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return {

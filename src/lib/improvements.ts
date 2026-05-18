@@ -28,7 +28,6 @@ export const improvementCategories = [
 export const improvementStatuses = [
   "Suggested",
   "Approved",
-  "Converted to PRD",
   "Sent to Codex",
   "Implemented",
   "Rejected",
@@ -55,18 +54,6 @@ export type ImprovementOpportunity = {
   updatedAt: string;
 };
 
-export type RalphStory = {
-  id: string;
-  title: string;
-  priority: number;
-  description: string;
-  acceptanceCriteria: string[];
-  filesLikelyTouched: string[];
-  testCommands: string[];
-  passes: boolean;
-  notes: string;
-};
-
 function isOneOf<T extends readonly string[]>(options: T, value: unknown): value is T[number] {
   return typeof value === "string" && options.includes(value);
 }
@@ -75,9 +62,9 @@ function normalizeText(value: unknown) {
   return String(value ?? "").trim();
 }
 
-function normalizeNumber(value: unknown, fallback = 3) {
+function normalizeNumber(value: unknown, defaultValue = 3) {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.max(1, Math.min(5, Math.round(parsed))) : fallback;
+  return Number.isFinite(parsed) ? Math.max(1, Math.min(5, Math.round(parsed))) : defaultValue;
 }
 
 function normalizeList(value: unknown) {
@@ -149,51 +136,13 @@ export function buildCodexPrompt(opportunity: ImprovementOpportunity) {
     "Acceptance criteria:",
     ...(opportunity.acceptanceCriteria.length
       ? opportunity.acceptanceCriteria.map((item) => `- ${item}`)
-      : ["- The change works locally.", "- Tests, lint, and build pass."]),
+      : ["- The change works locally.", "- Lint, typecheck, and build pass."]),
     "",
     "Safety constraints:",
     "- Do not send external messages.",
     "- Do not deploy.",
     "- Do not delete production data.",
     "- Do not expose internal margin, prompt templates, private knowledge, or client data.",
-    "- Keep mock/local fallback behavior working.",
+    "- Require real configured services for production behavior.",
   ].join("\n");
-}
-
-export function improvementToRalphStory(
-  opportunity: ImprovementOpportunity,
-): RalphStory {
-  const shortId = opportunity.id.replace(/-/g, "").slice(0, 8);
-
-  return {
-    id: `improvement-${shortId}`,
-    title: opportunity.title,
-    priority: opportunity.priority,
-    description: [
-      opportunity.description,
-      "",
-      `Recommended action: ${opportunity.recommendedAction}`,
-      "",
-      "Codex prompt:",
-      buildCodexPrompt(opportunity),
-    ].join("\n").trim(),
-    acceptanceCriteria: opportunity.acceptanceCriteria.length
-      ? opportunity.acceptanceCriteria
-      : [
-          "Improvement is implemented as one small working increment.",
-          "No external side effects happen automatically.",
-          "Relevant checks pass.",
-        ],
-    filesLikelyTouched: opportunity.suggestedFiles.length
-      ? opportunity.suggestedFiles
-      : ["src/lib", "src/components", "src/app/api", "README.md"],
-    testCommands: [
-      "npm run lint",
-      "npm run typecheck",
-      "npm test",
-      "npm run build",
-    ],
-    passes: false,
-    notes: `Created from improvement opportunity ${opportunity.id}. Human approval required before Codex implementation.`,
-  };
 }

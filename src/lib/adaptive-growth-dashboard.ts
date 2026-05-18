@@ -17,7 +17,6 @@ import type { ImprovementOpportunity } from "@/lib/improvements";
 import { listLoopRuns } from "@/lib/loops/storage";
 import type { LoopRun, LoopType } from "@/lib/loops/types";
 import { listApprovalRequests } from "@/lib/orchestrator/storage";
-import { readRalphPrd, readRalphProgress } from "@/lib/ralph";
 
 export const adaptiveDashboardRanges = [
   "this_week",
@@ -116,12 +115,9 @@ export type AdaptiveGrowthExecutiveReport = {
     latestGenomeUpdate: LoopRun | null;
     pendingApprovals: number;
   };
-  ralphImprovementStatus: {
+  improvementStatus: {
     approvedImprovementTasks: ImprovementOpportunity[];
-    prdStories: number;
-    pendingStories: number;
     implementedImprovements: ImprovementOpportunity[];
-    failedBuildOrTestWarnings: string[];
   };
 };
 
@@ -143,10 +139,10 @@ function startOfQuarter(date = new Date()) {
   return new Date(date.getFullYear(), quarterStartMonth, 1);
 }
 
-function parseDate(value: string | undefined, fallback: Date) {
-  if (!value) return fallback;
+function parseDate(value: string | undefined, defaultValue: Date) {
+  if (!value) return defaultValue;
   const parsed = new Date(value);
-  return Number.isNaN(parsed.getTime()) ? fallback : parsed;
+  return Number.isNaN(parsed.getTime()) ? defaultValue : parsed;
 }
 
 export function resolveAdaptiveDashboardFilters(
@@ -363,7 +359,7 @@ function createMarkdownReport(report: AdaptiveGrowthExecutiveReport) {
     "",
     "## Governance Notes",
     `Pending approvals: ${report.openClawLoopStatus.pendingApprovals}`,
-    `Approved Ralph improvement tasks: ${report.ralphImprovementStatus.approvedImprovementTasks.length}`,
+    `Approved improvement tasks: ${report.improvementStatus.approvedImprovementTasks.length}`,
     "AI recommendations should reference only available data and label uncertainty.",
   ].join("\n");
 }
@@ -382,14 +378,12 @@ export async function buildAdaptiveGrowthExecutiveReport(
     pendingApprovals,
     approvedImprovementTasks,
     implementedImprovements,
-    ralphPrd,
   ] = await Promise.all([
     listAdaptiveGrowthData(),
     listLoopRuns(),
     listApprovalRequests({ status: "Pending" }),
     listImprovementOpportunities({ status: "Approved" }),
     listImprovementOpportunities({ status: "Implemented" }),
-    readRalphPrd(),
   ]);
   const { startDate, endDate } = resolved;
   const signalsInRange = data.signals.filter((item) =>
@@ -482,12 +476,6 @@ export async function buildAdaptiveGrowthExecutiveReport(
     const format = topFormats[index]?.name ?? "Workshop";
     return [`${sector.name} ${format} for ${audience}`];
   });
-  const progress = await readRalphProgress();
-  const warningLines = progress.content
-    .split(/\r?\n/)
-    .filter((line) => /failed|warning|error/i.test(line))
-    .slice(-5);
-
   return {
     generatedAt: new Date().toISOString(),
     filters: resolved,
@@ -562,12 +550,9 @@ export async function buildAdaptiveGrowthExecutiveReport(
       latestGenomeUpdate: latestLoop(loopRuns, "monthly_learning_genome_update"),
       pendingApprovals: pendingApprovals.length,
     },
-    ralphImprovementStatus: {
+    improvementStatus: {
       approvedImprovementTasks,
-      prdStories: ralphPrd.prd.stories.length,
-      pendingStories: ralphPrd.prd.stories.filter((story) => !story.passes).length,
       implementedImprovements,
-      failedBuildOrTestWarnings: warningLines,
     },
   };
 }

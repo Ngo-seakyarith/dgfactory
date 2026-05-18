@@ -442,7 +442,7 @@ export default function LoopConsole() {
             Loop History
           </CardTitle>
           <CardDescription>
-            Stored loop runs from Supabase or local fallback storage.
+            Stored loop runs from configured storage.
           </CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">

@@ -12,7 +12,19 @@ create table if not exists public.eval_datasets (
       'follow_up',
       'delivery_report',
       'qa_review',
-      'improvement_suggestion'
+      'improvement_suggestion',
+      'offer_mutation',
+      'offer_replication',
+      'improvement_opportunity',
+      'adaptive_growth_recommendations',
+      'master_workflow',
+      'market_sensing',
+      'experiment_design',
+      'fitness_evaluation',
+      'selection_recommendation',
+      'expansion_strategy',
+      'learning_genome',
+      'extinction_recommendation'
     )
   ),
   status text not null default 'Draft' check (
@@ -50,10 +62,22 @@ create table if not exists public.eval_runs (
       'follow_up',
       'delivery_report',
       'qa_review',
-      'improvement_suggestion'
+      'improvement_suggestion',
+      'offer_mutation',
+      'offer_replication',
+      'improvement_opportunity',
+      'adaptive_growth_recommendations',
+      'master_workflow',
+      'market_sensing',
+      'experiment_design',
+      'fitness_evaluation',
+      'selection_recommendation',
+      'expansion_strategy',
+      'learning_genome',
+      'extinction_recommendation'
     )
   ),
-  model_name text not null default 'mock',
+  model_name text not null default '',
   status text not null default 'Running' check (
     status in ('Running', 'Completed', 'Failed')
   ),
@@ -94,13 +118,25 @@ create table if not exists public.agent_traces (
       'follow_up',
       'delivery_report',
       'qa_review',
-      'improvement_suggestion'
+      'improvement_suggestion',
+      'offer_mutation',
+      'offer_replication',
+      'improvement_opportunity',
+      'adaptive_growth_recommendations',
+      'master_workflow',
+      'market_sensing',
+      'experiment_design',
+      'fitness_evaluation',
+      'selection_recommendation',
+      'expansion_strategy',
+      'learning_genome',
+      'extinction_recommendation'
     )
   ),
   input_summary text not null default '',
   output_summary text not null default '',
   status text not null default 'Completed' check (
-    status in ('Completed', 'Failed', 'Mock')
+    status in ('Completed', 'Failed')
   ),
   duration_ms numeric,
   created_at timestamptz default now()

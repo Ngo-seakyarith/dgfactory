@@ -65,7 +65,7 @@ export async function POST(request: Request) {
       context: body.context ?? "",
       currentAppState:
         body.currentAppState ??
-        "DG Academy Factory includes Adaptive Growth OS, Brain Layer, OpenClaw loops, Learning Genome, Ralph task files, QA/evals, exports, CRM, and delivery workflows.",
+        "DG Academy Factory includes Adaptive Growth OS, Brain Layer, OpenClaw loops, Learning Genome, QA/evals, exports, CRM, and delivery workflows.",
     },
     retries: 1,
   });

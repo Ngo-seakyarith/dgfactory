@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     }
 
     const pricingOutputs = calculatePricing(defaultPricingInputs);
-    const fakePackage: TrainingPackage = {
+    const reportPackage: TrainingPackage = {
       id: project.id,
       title: body.packageTitle || project.title,
       audience: "Training participants",
@@ -65,10 +65,10 @@ export async function POST(request: Request) {
       pricingOutputs,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
-      generationMode: "mock",
+      generationMode: "openai",
     };
-    const result = exportTrainingPackage(fakePackage, body.format, "proposal");
-    const filename = `DGAcademy_${filePart(fakePackage.title)}_${filePart(fakePackage.client)}_PostTrainingReport.${body.format}`;
+    const result = exportTrainingPackage(reportPackage, body.format, "proposal");
+    const filename = `DGAcademy_${filePart(reportPackage.title)}_${filePart(reportPackage.client)}_PostTrainingReport.${body.format}`;
 
     return new NextResponse(new Uint8Array(result.buffer), {
       headers: {

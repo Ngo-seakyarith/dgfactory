@@ -26,13 +26,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  deletePackageLocally,
   CommercialSetup,
   ErrorState,
-  getLocalTrainingPackage,
-  getLocalTrainingPackages,
   LoadingState,
-  savePackageLocally,
   TrainingPackageOutputsView,
 } from "@/app/packages/_components/training-package-factory";
 import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
@@ -46,24 +42,6 @@ import {
 import { PackageOpportunityPanel } from "@/app/crm/_components/crm-components";
 import { AdaptiveGrowthPackageLinkPanel } from "@/app/adaptive-growth/_components/adaptive-growth-components";
 
-function mergePackages(
-  localPackages: TrainingPackage[],
-  remotePackages: TrainingPackage[],
-) {
-  const merged = new Map<string, TrainingPackage>();
-
-  [...remotePackages, ...localPackages].forEach((pkg) => {
-    const existing = merged.get(pkg.id);
-    if (!existing || pkg.updatedAt > existing.updatedAt) {
-      merged.set(pkg.id, pkg);
-    }
-  });
-
-  return Array.from(merged.values()).sort((a, b) =>
-    b.updatedAt.localeCompare(a.updatedAt),
-  );
-}
-
 function usePackages() {
   const [packages, setPackages] = useState<TrainingPackage[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -73,32 +51,30 @@ function usePackages() {
     let active = true;
 
     async function loadPackages() {
-      const localPackages = getLocalTrainingPackages();
-      setPackages(localPackages);
-
       try {
         const response = await fetch("/api/training-packages", {
           cache: "no-store",
         });
         const payload = (await response.json()) as {
           packages?: TrainingPackage[];
+          error?: string;
         };
-        const remotePackages = payload.packages ?? [];
 
         if (!active) {
           return;
         }
 
-        remotePackages.forEach(savePackageLocally);
-        setPackages(mergePackages(localPackages, remotePackages));
-        setStorageNotice(
-          remotePackages.length > 0
-            ? "Showing local and Supabase-backed packages."
-            : "Showing local packages. Supabase will appear here when configured.",
-        );
-      } catch {
+        if (!response.ok) {
+          throw new Error(payload.error ?? "Database read failed.");
+        }
+
+        setPackages(payload.packages ?? []);
+        setStorageNotice("Showing Supabase-backed packages.");
+      } catch (error) {
         if (active) {
-          setStorageNotice("Showing local packages. Database read was unavailable.");
+          setStorageNotice(
+            error instanceof Error ? error.message : "Database read was unavailable.",
+          );
         }
       } finally {
         if (active) {
@@ -131,7 +107,7 @@ export function TrainingDashboardClient() {
           icon={Layers3}
           label="Saved Packages"
           value={isLoading ? "..." : generatedCount.toString()}
-          detail="Local plus Supabase when configured"
+          detail="Stored in Supabase"
         />
         <MetricCard
           icon={Database}
@@ -143,7 +119,7 @@ export function TrainingDashboardClient() {
           icon={Sparkles}
           label="OpenAI Runs"
           value={isLoading ? "..." : openaiCount.toString()}
-          detail="Mock generation fills the gap"
+          detail="Generated with configured AI"
         />
       </section>
 
@@ -167,7 +143,7 @@ export function TrainingDashboardClient() {
           <div className="grid gap-3 md:grid-cols-3">
             <FactoryStep title="1. Brief" detail="Capture the title, audience, client, promise, examples, and tone." />
             <FactoryStep title="2. Generate" detail="Create syllabus, proposal, deck outline, workbook, email, and QA." />
-            <FactoryStep title="3. Package" detail="Copy outputs, save locally or to Supabase, and reopen detail pages." />
+            <FactoryStep title="3. Package" detail="Copy outputs, save to Supabase, and reopen detail pages." />
           </div>
         </CardContent>
       </Card>
@@ -246,11 +222,6 @@ export function PackageDetailClient({ id }: { id: string }) {
     let active = true;
 
     async function loadPackage() {
-      const localPackage = getLocalTrainingPackage(id);
-      if (localPackage) {
-        setPkg(localPackage);
-      }
-
       try {
         const response = await fetch(`/api/training-packages/${id}`, {
           cache: "no-store",
@@ -264,15 +235,14 @@ export function PackageDetailClient({ id }: { id: string }) {
           return;
         }
 
-        if (payload.package) {
-          savePackageLocally(payload.package);
-          setPkg(payload.package);
-        } else if (!localPackage) {
-          setError(payload.error ?? "Training package was not found.");
+        if (!response.ok || !payload.package) {
+          throw new Error(payload.error ?? "Training package was not found.");
         }
-      } catch {
-        if (active && !localPackage) {
-          setError("Training package was not found locally or in the database.");
+
+        setPkg(payload.package);
+      } catch (error) {
+        if (active) {
+          setError(error instanceof Error ? error.message : "Training package was not found.");
         }
       } finally {
         if (active) {
@@ -315,10 +285,17 @@ export function PackageDetailClient({ id }: { id: string }) {
     setIsDeleting(true);
 
     try {
-      deletePackageLocally(pkg.id);
-      await fetch(`/api/training-packages/${pkg.id}`, { method: "DELETE" });
+      const response = await fetch(`/api/training-packages/${pkg.id}`, { method: "DELETE" });
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(payload.error ?? "Delete failed.");
+      }
+
       router.push("/packages");
       router.refresh();
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "Delete failed.");
     } finally {
       setIsDeleting(false);
     }
@@ -357,7 +334,6 @@ export function PackageDetailClient({ id }: { id: string }) {
     setNotice("");
 
     try {
-      savePackageLocally(pkg);
       const response = await fetch("/api/training-packages", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -365,7 +341,7 @@ export function PackageDetailClient({ id }: { id: string }) {
       });
       const payload = (await response.json()) as {
         package?: TrainingPackage;
-        storage?: "local" | "supabase";
+        storage?: "supabase";
         error?: string;
       };
 
@@ -373,18 +349,13 @@ export function PackageDetailClient({ id }: { id: string }) {
         throw new Error(payload.error ?? "Commercial setup save failed.");
       }
 
-      savePackageLocally(payload.package);
       setPkg(payload.package);
-      setNotice(
-        payload.storage === "supabase"
-          ? "Commercial setup saved locally and in Supabase."
-          : "Commercial setup saved locally. Supabase was unavailable.",
-      );
+      setNotice("Commercial setup saved in Supabase.");
     } catch (saveError) {
       setNotice(
         saveError instanceof Error
           ? saveError.message
-          : "Commercial setup saved locally only.",
+          : "Commercial setup save failed.",
       );
     } finally {
       setIsSavingCommercial(false);
@@ -397,9 +368,7 @@ export function PackageDetailClient({ id }: { id: string }) {
         <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
           <div>
             <div className="mb-3 flex flex-wrap gap-2">
-              <Badge variant={pkg.generationMode === "openai" ? "teal" : "gold"}>
-                {pkg.generationMode === "openai" ? "OpenAI generated" : "Mock generated"}
-              </Badge>
+              <Badge variant="teal">OpenAI generated</Badge>
               <Badge variant="outline">{pkg.duration}</Badge>
             </div>
             <CardTitle className="text-xl leading-tight">{pkg.title}</CardTitle>
@@ -479,13 +448,18 @@ export function PackageDetailClient({ id }: { id: string }) {
           <TrainingPackageOutputsView
             pkg={pkg}
             onPackageUpdate={async (updatedPackage) => {
-              savePackageLocally(updatedPackage);
-              setPkg(updatedPackage);
-              await fetch("/api/training-packages", {
+              const response = await fetch("/api/training-packages", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(updatedPackage),
               });
+
+              if (!response.ok) {
+                const payload = (await response.json().catch(() => ({}))) as { error?: string };
+                throw new Error(payload.error ?? "Package update failed.");
+              }
+
+              setPkg(updatedPackage);
             }}
           />
         </CardContent>
@@ -537,9 +511,7 @@ function SavedPackageGrid({
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Badge variant="outline">{pkg.client}</Badge>
                   <Badge variant="outline">{pkg.duration}</Badge>
-                  <Badge variant={pkg.generationMode === "openai" ? "teal" : "gold"}>
-                    {pkg.generationMode === "openai" ? "OpenAI" : "Mock"}
-                  </Badge>
+                  <Badge variant="teal">OpenAI</Badge>
                 </div>
                 <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock3 className="h-3.5 w-3.5" />

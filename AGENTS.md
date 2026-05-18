@@ -22,10 +22,10 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 - Avoid unrelated DG Command OS imports or pages.
 - Keep deterministic business logic separate from AI narrative.
 - Use the Brain Layer in `src/lib/brain` for new AI tasks instead of adding direct OpenAI calls to route handlers.
-- Do not hardcode model names in feature code. Use `src/lib/brain/modelConfig.ts` and `AI_BRAIN_MODEL` for Brain Layer tasks. The intended default Brain model is `gpt-5.5`, with graceful fallback and mock mode.
+- Do not hardcode model names in feature code. Use `src/lib/brain/modelConfig.ts` and `AI_BRAIN_MODEL` for Brain Layer tasks. The intended default Brain model is `gpt-5.5`.
 - Keep `masterAgent` as the coordinator for multi-step enterprise workflows. It should route to specialist agents and deterministic tools; it should not replace deterministic pricing, fitness, safety, export, or approval logic.
 - For package generation, prefer the V1.7 workflow in `src/lib/brain/workflows/packageWorkflow.ts` when coordinating multiple agents.
-- Keep one-shot generation available as a fallback for speed, debugging, and reliability.
+- Keep one-shot generation available for speed, debugging, and reliability.
 - Workflow state may stay in memory for small MVP increments, but document that it resets on server restart.
 - Use `src/lib/knowledge/retrieve.ts` for DG Academy-specific context before generation.
 - Treat `Internal` knowledge as internal reasoning context only. Do not include internal source notes in client exports by default.
@@ -80,10 +80,9 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 - Adaptive Growth loops must never automatically set offers to `Killed`, `Scaling`, `Productized`, or `Client Visible`.
 - OpenClaw-triggered Adaptive Growth loops must use `/api/loops/run` with API-key auth and must report approval request ids for risky recommendations.
 - The Adaptive Growth Dashboard score must remain deterministic; AI may recommend next actions only from available dashboard evidence and must label uncertainty.
-- Do not let AI invent adaptation velocity, fitness, funnel, loop, approval, Ralph, revenue, margin, or experiment metrics.
-- Improvement opportunities bridge business learning to Ralph/Codex tasks, but production UI must never run Codex directly.
-- Convert only human-approved improvements to `tasks/prd.json` stories.
-- OpenClaw may summarize improvements or request conversion of approved items, but must not approve, merge, deploy, or mark implementation complete.
+- Do not let AI invent adaptation velocity, fitness, funnel, loop, approval, revenue, margin, or experiment metrics.
+- Improvement opportunities bridge business learning to Codex-ready prompts, but production UI must never run Codex directly.
+- OpenClaw may summarize improvements, but must not approve, merge, deploy, or mark implementation complete.
 - Do not let AI automatically kill, scale, or productize an offer without human selection rationale.
 - Learning genome items should capture reusable patterns, but confidential client details must be anonymized unless explicitly approved.
 - V3.0 role gates must remain server-side for sensitive actions.
@@ -92,7 +91,7 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 - Never expose `SUPABASE_SERVICE_ROLE_KEY`, `ORCHESTRATOR_API_KEY`, or `LOOP_API_KEY` to browser code.
 - RLS migrations must be concrete SQL policies, not only documentation.
 - Cross-organization data isolation must be enforced with `organization_id` and server/database checks, not frontend filters.
-- Admin-only surfaces include prompt templates, prompt approval, internal notes, audit logs, and demo seed.
+- Admin-only surfaces include prompt templates, prompt approval, internal notes, and audit logs.
 - Sales may export client-facing materials but must not see internal margin notes.
 - Trainer may manage delivery, course materials, feedback, and post-training reports but not prompt templates or internal pricing.
 - Viewer is read-only.
@@ -126,25 +125,12 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 
 ## Testing Rules
 
-- Prefer tests for pricing, export, agent routing, evaluation logic, rubrics, prompt template versioning, and approval workflows.
-- Brain Layer changes should include tests for router mappings, mock mode, schema validation, and task output shape.
+- Prefer verification for pricing, export, agent routing, evaluation logic, rubrics, prompt template versioning, and approval workflows.
+- Brain Layer changes should include verification for router mappings, configured mode, schema validation, and task output shape.
 - Agent reliability changes should include or update eval datasets, benchmark checks, or `eval:smoke`.
 - Security-sensitive changes should include or update red-team scenarios and export/orchestrator validator tests.
-- Workflow changes should include tests for successful mock completion, useful failed-step errors, section regeneration, and QA score attachment.
-- Run `npm run lint`, `npm run typecheck`, `npm test`, `npm run eval:smoke`, and `npm run build` before production handoff when relevant.
-
-## Ralph Loop Rules
-
-- Ralph-style development loops are developer workflows only; they must not run automatically in production.
-- Use one story per iteration from `tasks/prd.json`.
-- Pick the highest-priority story where `passes` is `false` unless the human explicitly chooses another story.
-- Run tests before any commit and never bypass failing checks.
-- Never mark `passes=true` without validation.
-- Append learnings, gotchas, and completed work to `tasks/progress.txt`.
-- Update docs if behavior changes.
-- Suggest AGENTS.md updates when a repeated rule or safety lesson appears.
-- Human review is required before merge.
-- Ralph must not deploy, run production database migrations, delete important files, send external messages, commit secrets, or bypass tests.
+- Workflow changes should include verification for useful failed-step errors, section regeneration, and QA score attachment.
+- Run `npm run lint`, `npm run typecheck`, `npm run eval:smoke`, and `npm run build` before production handoff when relevant.
 
 ## Documentation
 

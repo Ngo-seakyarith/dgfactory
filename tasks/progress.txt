@@ -1,5 +1,0 @@
-This file stores learnings from each agentic build iteration.
-
-Codex or Ralph-style loops should append discoveries, gotchas, completed work, failed assumptions, and follow-up checks here after each meaningful build or evaluation cycle.
-
-Keep entries concise, dated when useful, and connected to concrete product or engineering decisions.

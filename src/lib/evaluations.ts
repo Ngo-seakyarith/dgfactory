@@ -202,7 +202,7 @@ function agentForOutputType(outputType: OutputEvaluationType) {
   return map[outputType];
 }
 
-export function createMockEvaluation(input: EvaluateOutputInput): EvaluateOutputResult {
+export function createDeterministicEvaluation(input: EvaluateOutputInput): EvaluateOutputResult {
   const output = input.output.trim();
   const text = output.toLowerCase();
   const rubric =
@@ -270,7 +270,7 @@ export function createMockEvaluation(input: EvaluateOutputInput): EvaluateOutput
     weaknesses: weaknesses.length
       ? weaknesses
       : ["Final human review should still check relevance, examples, and claims."],
-    risks: risks.length ? risks : ["No major mock-mode risks detected."],
+    risks: risks.length ? risks : ["No major deterministic review risks detected."],
     improvementSuggestions: improvementSuggestions.length
       ? improvementSuggestions
       : ["Add one more client-specific example and one clearer next-step action."],

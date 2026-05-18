@@ -1,7 +1,7 @@
 import { saveAuditLog } from "@/lib/audit";
 
-export function friendlyError(error: unknown, fallback: string) {
-  return error instanceof Error ? error.message : fallback;
+export function friendlyError(error: unknown, defaultMessage: string) {
+  return error instanceof Error ? error.message : defaultMessage;
 }
 
 export async function logServerError({

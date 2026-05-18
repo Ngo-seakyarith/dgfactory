@@ -40,8 +40,8 @@ export default function SettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-white">Settings</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Missing keys do not crash the app. OpenAI falls back to mock generation,
-          and Supabase falls back to local storage/server memory.
+          Missing production credentials are shown here so broken wiring is visible
+          and can be fixed before handoff.
         </p>
       </div>
       <AiSettingsPanel />

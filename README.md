@@ -6,8 +6,8 @@ This app is separate from DG Command OS.
 
 ## Features
 
-- Generate full training packages with OpenAI or mock fallback
-- Save and reopen packages locally or in Supabase
+- Generate full training packages with configured OpenAI credentials
+- Save and reopen packages in Supabase
 - Copy each section
 - Commercial Setup with deterministic pricing calculations
 - Client-facing commercial proposal
@@ -16,28 +16,27 @@ This app is separate from DG Command OS.
 - Email handoff and Telegram handoff to `@sopheaphin`
 - Client CRM with clients, opportunities, proposal pipeline, follow-up reminders, and package-to-opportunity linking
 - Training Delivery OS for won opportunities, preparation checklists, evaluation capture, certificates placeholder, post-training report drafts, and report export
-- GPT-5.5 Brain Layer with specialist agent routing, structured outputs, schema checks, mock fallback, and package QA review
+- GPT-5.5 Brain Layer with specialist agent routing, structured outputs, schema checks, and package QA review
 - Multi-agent package workflow with Chief Brain planning, specialist section generation, automatic QA, trace summary, retry support, and section regeneration
 - DG Academy Knowledge Base with frameworks, proposal language, Cambodia context, exercises, pricing notes, client notes, keyword retrieval, and internal source notes
 - V2.0 Evaluation + Feedback Loop with output scoring, AI rubric evaluation, improvement suggestions, human approval, and a Quality Dashboard
-- V2.1 Ralph-style Codex Self-Improvement Loop for safe one-story developer iterations from `tasks/prd.json`
-- V2.2 Prompt and Template Optimization System with versioned prompts, human approval, rollback, and Brain Layer fallback
+- V2.2 Prompt and Template Optimization System with versioned prompts, human approval, rollback, and code-defined Brain Layer instructions
 - V2.3 OpenClaw Orchestrator Integration with protected webhook endpoints, logs, and human approval gates
 - V2.4 Scheduled Business Loops for pipeline, content, revenue, quality, delivery readiness, stale follow-up, and prompt reviews
-- V3.0 Production Hardening with internal roles, permission gates, audit logs, launch dashboard, error boundaries, and optional demo data
+- V3.0 Production Hardening with internal roles, permission gates, audit logs, launch dashboard, and error boundaries
 - V3.1 Internal Pilot Launch System with 30-day pilot dashboard, goals, issues, feedback capture, pilot reports, and pilot weekly loop
 - V3.2 Agent Reliability and Evaluation Benchmarks with eval datasets, runs, results, regression risks, trace summaries, and smoke checks
 - V3.3 Security Red Team and Governance Audit with export safety blocking, orchestrator validation, RLS guidance, and security reports
 - V3.4 Client Portal with hashed token access, published client-safe documents, feedback capture, revocation, expiry, and audit logging
-- V3.5 Productization Package with `/product`, demo workspace seeding, sales/implementation docs, commercial package placeholders, ROI calculator, and product brief export
+- V3.5 Productization Package with `/product`, sales/implementation docs, commercial package placeholders, ROI calculator, and product brief export
 - V3.6 Enterprise Agentic Hardening with GPT-5.5 default model config, Brain status, Master Agent routing, adaptive specialist agents, concrete RLS migration, Supabase Auth migration path, approval rules, and autonomy settings
 - Adaptive Growth OS Foundation with market signals, offer variants, experiments, metrics, selection decisions, learning genome, and offer-to-package handoff
 - Micro-Offer Mutation Factory for generating, comparing, editing, and saving multiple testable offer variants from one market signal or business idea
 - Fitness Score and Selection Engine for deterministic offer ranking, scale/iterate/park/kill recommendations, and human selection decisions
 - Replication Engine and Learning Genome for turning winning offers into reusable templates, sales language, delivery assets, internal knowledge, and expansion paths
 - Adaptive Growth Loops with OpenClaw-ready market sensing, mutation, experiment review, selection review, replication review, genome update, and expansion strategy
-- Adaptive Growth Dashboard Final with executive adaptation velocity, offer fitness, experiment funnel, learning genome, expansion map, OpenClaw loop status, Ralph status, deterministic Adaptive Growth Score, Brain Layer recommendations, and PDF report export
-- RALPH Business + Software Self-Improvement Integration for converting growth, QA, security, eval, and user learnings into approved Codex-ready PRD stories
+- Adaptive Growth Dashboard Final with executive adaptation velocity, offer fitness, experiment funnel, learning genome, expansion map, OpenClaw loop status, improvement status, deterministic Adaptive Growth Score, Brain Layer recommendations, and PDF report export
+- Business + Software Improvement Integration for converting growth, QA, security, eval, and user learnings into approved Codex-ready prompts
 
 ## Product and Architecture Docs
 
@@ -57,13 +56,13 @@ DG Academy AI Training Production Factory is designed to evolve into DG Academy 
 - Deterministic tools for pricing, storage, export, and leak checks.
 - OpenClaw orchestration for approved multi-step workflows.
 - Codex builder workflow for human-approved product and engineering increments.
-- Ralph-style self-improvement loop using `/tasks/prd.json`, `/tasks/progress.txt`, and `/tasks/backlog.md`.
+- Codex builder workflow for human-approved product and engineering increments.
 
 ## Local Setup
 
 ```bash
-npm install
-npm run dev
+bun install
+bun run dev
 ```
 
 Open `http://localhost:3000/dashboard`.
@@ -78,7 +77,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 OPENAI_API_KEY=
 AI_BRAIN_MODEL=gpt-5.5
-OPENAI_MODEL=gpt-4o-mini
 ORCHESTRATOR_API_KEY=
 LOOP_API_KEY=
 DG_REQUIRE_AUTH=false
@@ -88,11 +86,11 @@ DG_DEFAULT_ACTOR=DG Academy Operator
 ADMIN_ACCESS_PIN=
 ```
 
-Missing keys do not crash the app:
+Required production keys:
 
-- Missing or invalid OpenAI key uses mock generation.
-- `AI_BRAIN_MODEL` controls the intended Brain Layer model. V3.6 defaults to `gpt-5.5`. If it is unavailable, the server logs a warning and falls back to `OPENAI_MODEL` or `gpt-4o-mini`.
-- Missing Supabase config uses local storage and server memory fallback.
+- Missing or invalid OpenAI credentials cause AI generation routes to fail explicitly.
+- `AI_BRAIN_MODEL` controls the intended Brain Layer model and all OpenAI-backed generation. V3.6 defaults to `gpt-5.5`.
+- Missing Supabase configuration causes persistence routes to fail explicitly.
 - `ORCHESTRATOR_API_KEY` is required for every `/api/orchestrator/*` endpoint.
 - `LOOP_API_KEY` or `ORCHESTRATOR_API_KEY` is required for every `/api/loops/*` endpoint.
 - `DG_REQUIRE_AUTH=true` makes missing sessions default to `Viewer`; local development defaults to `Admin` when false.
@@ -106,7 +104,7 @@ V3.0 prepares the app for real internal DG Academy operation.
 
 Roles:
 
-- `Admin`: full access, prompt approval, pricing visibility, internal notes, demo seed, approval decisions.
+- `Admin`: full access, prompt approval, pricing visibility, internal notes, and approval decisions.
 - `Trainer`: delivery projects, course materials, feedback, and post-training reports.
 - `Sales`: clients, opportunities, proposals, follow-up drafts, and client-facing exports.
 - `Viewer`: read-only access.
@@ -125,16 +123,11 @@ Protection:
 - Client-facing exports exclude internal notes by default.
 - Internal knowledge citations stay as internal source notes and are not included in client exports by default.
 - Orchestrator and loop endpoints remain API-key protected.
-- Approval decisions, exports, prompt approvals, package saves, CRM saves, orchestrator commands, role changes, and demo seeding write audit logs.
+- Approval decisions, exports, prompt approvals, package saves, CRM saves, orchestrator commands, and role changes write audit logs.
 
 Launch dashboard:
 
 - `/dashboard` shows active opportunities, pipeline value, packages created this month, upcoming deliveries, average QA score, pending approvals, follow-ups, and latest loop recommendations.
-
-Demo data:
-
-- `/settings` includes a `Seed Demo Data` button for Admin only.
-- Demo data is never loaded automatically in production.
 
 ## V3.6 Enterprise Agentic Hardening
 
@@ -144,8 +137,7 @@ Brain model:
 
 - `src/lib/brain/modelConfig.ts` centralizes model configuration.
 - `AI_BRAIN_MODEL` now defaults to `gpt-5.5`.
-- `OPENAI_MODEL` remains the fallback model, defaulting to `gpt-4o-mini`.
-- `/api/brain/status` reports intended model, fallback model, actual model, mock mode, API key status, last successful model, and runtime status.
+- `/api/brain/status` reports intended model, actual model, API key status, last successful model, and runtime status.
 - `/settings/ai` and `/settings` show Brain Model Status.
 
 Master Agent:
@@ -226,14 +218,14 @@ Data model:
 Smoke check:
 
 ```bash
-npm run eval:smoke
+bun run eval:smoke
 ```
 
-By default, the smoke check runs a local mock-mode benchmark. Set `EVAL_BASE_URL=http://localhost:3000` to run it through the app API.
+Set `EVAL_BASE_URL=http://localhost:3000` to run the smoke check through the app API.
 
-Ralph/Codex rule:
+Codex release rule:
 
-- When changing Brain Layer prompts, prompt templates, agent routing, or eval logic, run `npm run eval:smoke`.
+- When changing Brain Layer prompts, prompt templates, agent routing, or eval logic, run `bun run eval:smoke`.
 - Do not approve prompt/template changes for release if smoke evals fail.
 
 ## V3.3 Security Red Team and Governance Audit
@@ -312,15 +304,9 @@ V3.5 packages DG Capability Factory as a DG Academy offer that can be demonstrat
 
 Product routes:
 
-- `/product` presents the offer, problem, solution, features, use cases, implementation process, commercial package placeholders, demo mode, and product brief export.
+- `/product` presents the offer, problem, solution, features, use cases, implementation process, commercial package placeholders, and product brief export.
 - `/roi-calculator` estimates proposal production time saved, staff cost saved, revenue supported, and a copyable ROI summary.
 - `POST /api/product-brief/export` exports the DG Capability Factory product brief as DOCX, PDF, or TXT.
-
-Demo mode:
-
-- Use the `Create Demo Workspace` button on `/product` or call `POST /api/demo/seed` as an Admin.
-- Demo records are clearly prefixed with `[DEMO]` and include sample client, AI Skills for Managers package, pricing plan, proposal, delivery project, pipeline opportunity, knowledge note, and quality report.
-- Demo data is never loaded automatically and should not be mixed with real client records.
 
 Productization docs:
 
@@ -395,7 +381,7 @@ Dashboard sections:
 - Learning Genome: winning patterns, failed patterns, reusable genome items, and prompt improvement suggestions.
 - Expansion Map: strongest sectors, audiences, formats, and recommended next niches.
 - OpenClaw Loop Status: latest adaptive loops and pending approvals.
-- RALPH Improvement Status: approved improvement tasks, PRD stories, pending stories, implemented improvements, and progress warnings.
+- Improvement Status: approved improvement tasks and implemented improvements.
 
 Adaptive Growth Score:
 
@@ -473,7 +459,7 @@ Workflow:
 6. Discard weak variants.
 7. Convert promising variants into experiments or training packages.
 
-The mutation agent uses DG Academy knowledge retrieval when available. Missing or invalid OpenAI keys use sensible mock variants, so local development remains usable. Generated variants are hypotheses only; human selection, experiments, and feedback decide what moves to testing, scaling, or the learning genome.
+The mutation agent uses DG Academy knowledge retrieval when available. Missing or invalid OpenAI keys now stop generation with a configuration error. Generated variants are hypotheses only; human selection, experiments, and feedback decide what moves to testing, scaling, or the learning genome.
 
 ## Fitness Score and Selection Engine
 
@@ -610,22 +596,19 @@ Business adaptation loop:
 
 Software improvement loop:
 
-`user feedback -> issue/task -> prd.json story -> Codex implementation -> tests -> progress log`
+`user feedback -> improvement opportunity -> approved Codex prompt -> implementation -> verification`
 
 Routes:
 
-- `/improvements`: create, generate, approve/reject, edit, export, and convert improvement opportunities.
-- `/improvements/ralph`: view current `tasks/prd.json`, pending stories, completed stories, progress notes, and suggested next story.
-- `POST /api/improvements/generate`: uses `improvementOpportunityAgent` with mock fallback.
-- `POST /api/improvements/[id]/convert-to-prd`: appends an approved improvement to `tasks/prd.json` locally, or returns PRD story content if the filesystem is not writable.
-- `/api/orchestrator/improvements`: lets OpenClaw summarize top tasks and request conversion for already approved improvements.
+- `/improvements`: create, generate, approve/reject, edit, and export improvement opportunities.
+- `POST /api/improvements/generate`: uses `improvementOpportunityAgent` through the Brain Layer.
+- `/api/orchestrator/improvements`: lets OpenClaw summarize top improvement tasks.
 
 Safety:
 
 - Production UI never runs Codex directly.
 - OpenClaw cannot approve, merge, deploy, or execute improvements.
-- Converting to a PRD story requires human-approved improvement status.
-- Ralph should process one story per iteration, run checks, update progress, and wait for human review before merge/deploy.
+- Approved improvements can be copied as Codex prompts, but implementation and release still require human review.
 
 ## V1.6 GPT-5.4 Brain Layer
 
@@ -633,7 +616,7 @@ V1.6 refactors AI generation into `src/lib/brain`.
 
 Brain Layer folders:
 
-- `src/lib/brain/client.ts` - OpenAI client wrapper, model config, retries, schema validation, and mock fallback
+- `src/lib/brain/client.ts` - OpenAI client wrapper, model config, retries, and schema validation
 - `src/lib/brain/router.ts` - routes task types to specialist agents
 - `src/lib/brain/agents` - chief brain, course architect, proposal, pricing narrative, slide, workbook, QA, sales follow-up, delivery, and improvement agents
 - `src/lib/brain/tools` - deterministic helper tools, currently pricing facts
@@ -661,7 +644,7 @@ QA Review:
 - Package detail output tabs include a `QA Review` tab.
 - `Run QA Review` calls `POST /api/qa-review`.
 - The QA agent returns score, strengths, weaknesses, missing sections, risks, recommended improvements, and client readiness.
-- Missing API keys use mock QA review, so local testing still works.
+- Missing API keys stop QA review with a configuration error.
 
 ## V1.7 Multi-Agent Package Workflow
 
@@ -777,74 +760,6 @@ Quality Dashboard:
 - Most common weaknesses
 - Pending improvement suggestions
 - Approved improvements
-
-## V2.1 Ralph-Style Codex Self-Improvement Loop
-
-V2.1 adds a safe developer workflow for using structured PRD stories with Codex.
-It is not a production automation and does not deploy, migrate production data,
-send external messages, delete important files, bypass tests, or commit secrets.
-
-Files:
-
-- `scripts/ralph/README.md`
-- `scripts/ralph/ralph-codex.sh`
-- `scripts/ralph/prompt.md`
-- `scripts/ralph/ralph-plan.mjs`
-- `scripts/ralph/ralph-next.mjs`
-- `scripts/ralph/ralph-check.mjs`
-- `scripts/create-github-issues-from-prd.ts`
-- `tasks/prd.json`
-- `tasks/progress.txt`
-- `tasks/archive`
-- `tasks/examples/v2-2-template-optimization.prd.json`
-
-PRD structure:
-
-```json
-{
-  "project": "DG Academy Capability Factory",
-  "branchName": "feature-name",
-  "stories": [
-    {
-      "id": "story-001",
-      "title": "Story title",
-      "priority": 1,
-      "description": "What to build",
-      "acceptanceCriteria": [],
-      "filesLikelyTouched": [],
-      "testCommands": [],
-      "passes": false,
-      "notes": ""
-    }
-  ]
-}
-```
-
-Commands:
-
-```bash
-npm run ralph:plan
-npm run ralph:next
-npm run ralph:check
-npm run github:issues
-```
-
-Workflow:
-
-1. Write or copy stories into `tasks/prd.json`.
-2. Run `npm run ralph:plan` to validate the PRD and see the next pending story.
-3. Run `npm run ralph:next` to print the branch command and exact Codex prompt.
-4. Implement one story only.
-5. Run the story's `testCommands`, or the default quality gate: lint, typecheck, test, build.
-6. Mark `passes=true` only after checks pass.
-7. Append learnings to `tasks/progress.txt`.
-8. Commit after human review.
-
-GitHub issue generation:
-
-- `npm run github:issues` reads `tasks/prd.json`.
-- It generates markdown issue drafts in `tasks/generated-issues`.
-- It does not call the GitHub API.
 
 ## V2.2 Prompt and Template Optimization
 
@@ -1102,7 +1017,7 @@ AI follow-up support:
 - Opportunity detail pages include `Generate Follow-Up Message`.
 - The app generates draft email text, a Telegram/WhatsApp-style short message, and a suggested next step.
 - No email or message is sent automatically.
-- Missing or invalid OpenAI configuration falls back to mock draft generation.
+- Missing or invalid OpenAI configuration returns an explicit generation error.
 
 ## Pricing Formula
 
@@ -1193,7 +1108,6 @@ If participant count is zero, price per participant is shown as `0`.
 - `POST /api/auth/session`
 - `DELETE /api/auth/session`
 - `GET /api/audit-logs`
-- `POST /api/demo/seed`
 - `GET /api/approvals`
 - `GET/PATCH /api/approvals/[id]`
 - `POST /api/workflows/generate-package`
@@ -1218,7 +1132,6 @@ If participant count is zero, price per participant is shown as `0`.
 ```bash
 npm run lint
 npm run typecheck
-npm test
 npm run eval:smoke
 npm run build
 ```
@@ -1229,7 +1142,7 @@ npm run build
 2. Import the repo into Vercel as a new project.
 3. Add environment variables:
    - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-   - AI: `OPENAI_API_KEY`, `AI_BRAIN_MODEL`, `OPENAI_MODEL`
+   - AI: `OPENAI_API_KEY`, `AI_BRAIN_MODEL`
    - Automation: `ORCHESTRATOR_API_KEY`, `LOOP_API_KEY`
    - Internal auth: `DG_REQUIRE_AUTH=true`, `DG_TRUST_ROLE_HEADERS=false`, `DG_DEV_ROLE_SESSION=false`, `DG_DEFAULT_ACTOR`, `ADMIN_ACCESS_PIN`
    - Public URL: `NEXT_PUBLIC_APP_URL` for generated portal links when request origin is unavailable
@@ -1252,8 +1165,8 @@ npm run build
 
 ## Troubleshooting
 
-- If generation fails, the app should fall back to mock mode when `OPENAI_API_KEY` is missing or invalid.
-- If Supabase is missing, the app uses local/server-memory fallback; data will not persist across server restarts.
+- If generation fails, check `OPENAI_API_KEY`, `AI_BRAIN_MODEL`, and the route error message.
+- If Supabase is missing, persistence routes fail until Supabase credentials are configured.
 - If `/api/loops/*` returns 401, check `LOOP_API_KEY` or `ORCHESTRATOR_API_KEY`.
 - If `/admin/prompts` returns 403, set an Admin role in `/settings`.
 - If `next build` fails with a stale `.next` cache error, remove this app's `.next` folder and rebuild.

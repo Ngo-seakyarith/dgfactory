@@ -20,20 +20,6 @@ type AuditLogRow = {
   created_at: string;
 };
 
-type AuditStore = {
-  logs: AuditLog[];
-};
-
-const globalForAuditStore = globalThis as typeof globalThis & {
-  __dgAuditStore?: AuditStore;
-};
-
-const localStore =
-  globalForAuditStore.__dgAuditStore ??
-  (globalForAuditStore.__dgAuditStore = {
-    logs: [],
-  });
-
 function redactValue(key: string, value: unknown): unknown {
   if (/key|token|secret|password|authorization/i.test(key)) {
     return "[redacted]";
@@ -96,11 +82,10 @@ function fromRow(row: AuditLogRow): AuditLog {
 
 export async function saveAuditLog(input: Partial<AuditLog>) {
   const log = normalizeAuditLog(input);
-  localStore.logs.unshift(log);
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return { log, storage: "local" as const };
+    throw new Error("Supabase is required to save audit logs.");
   }
 
   const { data, error } = await supabase
@@ -110,7 +95,7 @@ export async function saveAuditLog(input: Partial<AuditLog>) {
     .single();
 
   if (error) {
-    return { log, storage: "local" as const };
+    throw new Error(error.message);
   }
 
   return { log: fromRow(data as AuditLogRow), storage: "supabase" as const };
@@ -120,7 +105,7 @@ export async function listAuditLogs(limit = 50) {
   const supabase = getSupabaseServerClient();
 
   if (!supabase) {
-    return localStore.logs.slice(0, limit);
+    throw new Error("Supabase is required to list audit logs.");
   }
 
   const { data, error } = await supabase
@@ -130,7 +115,7 @@ export async function listAuditLogs(limit = 50) {
     .limit(limit);
 
   if (error) {
-    return localStore.logs.slice(0, limit);
+    throw new Error(error.message);
   }
 
   return (data as AuditLogRow[]).map(fromRow);

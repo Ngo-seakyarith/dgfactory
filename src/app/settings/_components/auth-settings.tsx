@@ -27,7 +27,6 @@ export function AuthSettings() {
   const [adminPin, setAdminPin] = useState("");
   const [notice, setNotice] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [isSeeding, setIsSeeding] = useState(false);
 
   async function loadSession() {
     const response = await fetch("/api/auth/session");
@@ -60,29 +59,6 @@ export function AuthSettings() {
       setNotice(error instanceof Error ? error.message : "Role update failed.");
     } finally {
       setIsSaving(false);
-    }
-  }
-
-  async function seedDemoData() {
-    setIsSeeding(true);
-    setNotice("");
-
-    try {
-      const response = await fetch("/api/demo/seed", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-      });
-      const payload = (await response.json()) as { error?: string; note?: string };
-
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Demo seed failed.");
-      }
-
-      setNotice(payload.note ?? "Demo data created.");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Demo seed failed.");
-    } finally {
-      setIsSeeding(false);
     }
   }
 
@@ -132,10 +108,6 @@ export function AuthSettings() {
           <Button type="button" variant="gold" onClick={saveSession} disabled={isSaving}>
             {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
             Save Role
-          </Button>
-          <Button type="button" variant="outline" onClick={seedDemoData} disabled={isSeeding || role !== "Admin"}>
-            {isSeeding ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-            Seed Demo Data
           </Button>
         </div>
         {notice ? (

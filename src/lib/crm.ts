@@ -64,9 +64,9 @@ export function isOpportunityStatus(value: unknown): value is OpportunityStatus 
   );
 }
 
-export function normalizeNumber(value: unknown, fallback = 0) {
+export function normalizeNumber(value: unknown, defaultValue = 0) {
   const parsed = Number(value);
-  return Number.isFinite(parsed) ? parsed : fallback;
+  return Number.isFinite(parsed) ? parsed : defaultValue;
 }
 
 export function createEmptyClient(): Client {
@@ -191,7 +191,7 @@ export function formatCrmMoney(value: number) {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
-export function createMockFollowUpDraft({
+export function createFollowUpDraftTemplate({
   clientName,
   status,
   trainingNeed,

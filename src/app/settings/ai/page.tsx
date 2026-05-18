@@ -6,7 +6,7 @@ export default function AiSettingsPage() {
       <div>
         <h1 className="text-2xl font-semibold text-white">AI Settings</h1>
         <p className="mt-2 text-sm leading-6 text-muted-foreground">
-          Verify the Brain Layer model, fallback behavior, and mock-mode status.
+          Verify the Brain Layer model, credential status, and generation errors.
         </p>
       </div>
       <AiSettingsPanel />

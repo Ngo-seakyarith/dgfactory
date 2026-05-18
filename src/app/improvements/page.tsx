@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Clipboard, FileJson, Loader2, RefreshCw, Send, X } from "lucide-react";
+import { Check, Clipboard, Loader2, RefreshCw, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +24,6 @@ import {
   type ImprovementOpportunity,
   type ImprovementSourceType,
   type ImprovementStatus,
-  type RalphStory,
 } from "@/lib/improvements";
 
 type ImprovementPayload = {
@@ -33,9 +31,6 @@ type ImprovementPayload = {
   opportunity?: ImprovementOpportunity;
   error?: string;
   codexPrompt?: string;
-  story?: RalphStory;
-  storyContent?: string;
-  written?: boolean;
   message?: string;
 };
 
@@ -157,7 +152,7 @@ export default function ImprovementsPage() {
 
       setSourceSummary("");
       setSelected(payload.opportunity);
-      setNotice(`Improvement generated in ${payload.mode ?? "mock"} mode.`);
+      setNotice(`Improvement generated in ${payload.mode ?? "openai"} mode.`);
       await refresh();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Improvement generation failed.");
@@ -187,48 +182,20 @@ export default function ImprovementsPage() {
     await refresh();
   }
 
-  async function convertToPrd(id: string) {
-    const response = await fetch(`/api/improvements/${id}/convert-to-prd`, {
-      method: "POST",
-    });
-    const payload = (await response.json()) as ImprovementPayload;
-
-    if (!response.ok) {
-      setNotice(payload.error ?? "PRD conversion failed.");
-      return;
-    }
-
-    setNotice(
-      payload.written
-        ? `Converted to Ralph story ${payload.story?.id}.`
-        : `PRD story generated but not written. ${payload.message ?? ""}`,
-    );
-    if (payload.opportunity) setSelected(payload.opportunity);
-    await refresh();
-  }
-
   return (
     <div className="space-y-5">
       <section className="rounded-xl border border-teal-300/20 bg-teal-300/10 p-6 shadow-executive">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="max-w-3xl">
-            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-100">
-              RALPH Business + Software Self-Improvement
-            </div>
+            <div className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-100">Business + Software Improvement</div>
             <h1 className="mt-3 text-3xl font-semibold tracking-normal text-white">
               Improvement Opportunities
             </h1>
             <p className="mt-3 text-sm leading-7 text-teal-50/80">
               Convert user feedback, QA results, growth loops, eval failures, and
-              learning genome insights into Codex-ready one-story improvements.
+              learning genome insights into Codex-ready improvements.
             </p>
           </div>
-          <Button asChild variant="outline">
-            <Link href="/improvements/ralph">
-              <FileJson className="h-4 w-4" />
-              Ralph Dashboard
-            </Link>
-          </Button>
         </div>
       </section>
 
@@ -397,7 +364,6 @@ export default function ImprovementsPage() {
             <ImprovementDetail
               opportunity={selected}
               onUpdate={updateOpportunity}
-              onConvert={convertToPrd}
               onNotice={setNotice}
             />
           ) : null}
@@ -410,12 +376,10 @@ export default function ImprovementsPage() {
 function ImprovementDetail({
   opportunity,
   onUpdate,
-  onConvert,
   onNotice,
 }: {
   opportunity: ImprovementOpportunity;
   onUpdate: (id: string, patch: Partial<ImprovementOpportunity>) => Promise<void>;
-  onConvert: (id: string) => Promise<void>;
   onNotice: (notice: string) => void;
 }) {
   const [prompt, setPrompt] = useState(buildCodexPrompt(opportunity));
@@ -469,15 +433,6 @@ function ImprovementDetail({
           <Button type="button" variant="outline" onClick={copyPrompt}>
             <Clipboard className="h-4 w-4" />
             Export Codex Prompt
-          </Button>
-          <Button
-            type="button"
-            variant="gold"
-            onClick={() => onConvert(opportunity.id)}
-            disabled={opportunity.status !== "Approved" && opportunity.status !== "Converted to PRD"}
-          >
-            <Send className="h-4 w-4" />
-            Convert to Ralph Story
           </Button>
         </div>
         <div className="rounded-lg border border-white/10 bg-[#07111f]/55 p-4">

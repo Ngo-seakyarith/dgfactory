@@ -36,88 +36,29 @@ import {
   type KnowledgeVisibility,
 } from "@/lib/knowledge";
 
-const knowledgeStorageKey = "dg-academy-knowledge-documents-v1";
-
-function readLocalKnowledgeDocuments() {
-  if (typeof window === "undefined") {
-    return [];
-  }
-
-  try {
-    const raw = window.localStorage.getItem(knowledgeStorageKey);
-    return raw
-      ? (JSON.parse(raw) as KnowledgeDocument[]).map(normalizeKnowledgeDocument)
-      : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveKnowledgeDocumentLocally(document: KnowledgeDocument) {
-  const documents = readLocalKnowledgeDocuments();
-  const index = documents.findIndex((item) => item.id === document.id);
-
-  if (index >= 0) {
-    documents[index] = document;
-  } else {
-    documents.unshift(document);
-  }
-
-  window.localStorage.setItem(knowledgeStorageKey, JSON.stringify(documents));
-}
-
-function deleteKnowledgeDocumentLocally(id: string) {
-  window.localStorage.setItem(
-    knowledgeStorageKey,
-    JSON.stringify(readLocalKnowledgeDocuments().filter((item) => item.id !== id)),
-  );
-}
-
-function mergeByUpdatedAt<T extends { id: string; updatedAt: string }>(
-  localItems: T[],
-  remoteItems: T[],
-) {
-  const merged = new Map<string, T>();
-
-  [...remoteItems, ...localItems].forEach((item) => {
-    const existing = merged.get(item.id);
-    if (!existing || item.updatedAt > existing.updatedAt) {
-      merged.set(item.id, item);
-    }
-  });
-
-  return Array.from(merged.values()).sort((a, b) =>
-    b.updatedAt.localeCompare(a.updatedAt),
-  );
-}
-
 function useKnowledgeData() {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notice, setNotice] = useState("Loading DG Academy knowledge...");
 
   async function refresh() {
-    const localDocuments = readLocalKnowledgeDocuments();
-    setDocuments(localDocuments);
-
     try {
       const response = await fetch("/api/knowledge-documents", {
         cache: "no-store",
       });
       const payload = (await response.json()) as {
         documents?: KnowledgeDocument[];
+        error?: string;
       };
-      const remoteDocuments = payload.documents ?? [];
 
-      remoteDocuments.forEach(saveKnowledgeDocumentLocally);
-      setDocuments(mergeByUpdatedAt(localDocuments, remoteDocuments));
-      setNotice(
-        remoteDocuments.length
-          ? "Showing seed, local, and Supabase-backed knowledge documents."
-          : "Showing local knowledge. Supabase will appear when configured.",
-      );
-    } catch {
-      setNotice("Showing local knowledge. Database read was unavailable.");
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Knowledge database read failed.");
+      }
+
+      setDocuments(payload.documents ?? []);
+      setNotice("Showing Supabase-backed knowledge documents.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Knowledge database read failed.");
     } finally {
       setIsLoading(false);
     }
@@ -181,7 +122,6 @@ export function KnowledgeDocumentForm({
     });
 
     try {
-      saveKnowledgeDocumentLocally(documentToSave);
       const response = await fetch("/api/knowledge-documents", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -196,13 +136,12 @@ export function KnowledgeDocumentForm({
         throw new Error(payload.error ?? "Knowledge save failed.");
       }
 
-      saveKnowledgeDocumentLocally(payload.document);
       router.push(`/knowledge/${payload.document.id}`);
     } catch (error) {
       setNotice(
         error instanceof Error
           ? error.message
-          : "Knowledge document saved locally only.",
+          : "Knowledge save failed.",
       );
     } finally {
       setIsSaving(false);
@@ -435,9 +374,10 @@ export function KnowledgeDocumentDetail({ id }: { id: string }) {
       return;
     }
 
-    deleteKnowledgeDocumentLocally(document.id);
-    await fetch(`/api/knowledge-documents/${document.id}`, { method: "DELETE" });
-    router.push("/knowledge");
+    const response = await fetch(`/api/knowledge-documents/${document.id}`, { method: "DELETE" });
+    if (response.ok) {
+      router.push("/knowledge");
+    }
   }
 
   if (isLoading && !document) {

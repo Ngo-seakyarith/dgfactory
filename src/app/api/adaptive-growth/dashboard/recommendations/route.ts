@@ -56,7 +56,7 @@ export async function POST(request: Request) {
       recommendedNextNiches: report.expansionMap.recommendedNextNiches,
       pendingApprovals: report.openClawLoopStatus.pendingApprovals,
       approvedImprovementTasks:
-        report.ralphImprovementStatus.approvedImprovementTasks.length,
+        report.improvementStatus.approvedImprovementTasks.length,
     },
   };
   const result = await routeBrainTask<
