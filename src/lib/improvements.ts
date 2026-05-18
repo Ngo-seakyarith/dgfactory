@@ -6,7 +6,7 @@ export const improvementSourceTypes = [
   "Failed Export",
   "Failed Offer",
   "Winning Offer",
-  "OpenClaw Loop",
+  "Business Loop",
   "Learning Genome",
   "Eval Failure",
   "Other",

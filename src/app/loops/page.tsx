@@ -105,7 +105,7 @@ export default function LoopConsole() {
 
   async function loadHistory() {
     if (!apiKey.trim()) {
-      setNotice("Enter LOOP_API_KEY or ORCHESTRATOR_API_KEY to load loop history.");
+      setNotice("Enter LOOP_API_KEY to load loop history.");
       return;
     }
 
@@ -134,7 +134,7 @@ export default function LoopConsole() {
 
   async function runLoop() {
     if (!apiKey.trim()) {
-      setNotice("Enter LOOP_API_KEY or ORCHESTRATOR_API_KEY before running a loop.");
+      setNotice("Enter LOOP_API_KEY before running a loop.");
       return;
     }
 
@@ -231,7 +231,7 @@ export default function LoopConsole() {
         <CardHeader>
           <CardTitle>Adaptive Growth Loops</CardTitle>
           <CardDescription>
-            Safe OpenClaw-ready loops for market sensing, mutation, experiment review,
+            Internal loops for market sensing, mutation, experiment review,
             selection, replication, genome updates, and expansion strategy.
           </CardDescription>
         </CardHeader>
@@ -278,7 +278,7 @@ export default function LoopConsole() {
                 type="password"
                 value={apiKey}
                 onChange={(event) => setApiKey(event.target.value)}
-                placeholder="LOOP_API_KEY or ORCHESTRATOR_API_KEY"
+                placeholder="LOOP_API_KEY"
               />
             </div>
             <div className="space-y-2">

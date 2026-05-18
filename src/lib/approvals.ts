@@ -1,15 +1,29 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { saveAuditLog } from "@/lib/audit";
-import {
-  isApprovalRiskLevel,
-  isApprovalStatus,
-  normalizeApprovalRequest,
-  normalizeOrchestratorLog,
-  type ApprovalRequest,
-  type ApprovalRiskLevel,
-  type ApprovalStatus,
-  type OrchestratorLog,
-} from "@/lib/orchestrator/commands";
+
+export const approvalStatuses = [
+  "Pending",
+  "Approved",
+  "Rejected",
+  "Expired",
+] as const;
+
+export type ApprovalStatus = (typeof approvalStatuses)[number];
+
+export const approvalRiskLevels = ["Low", "Medium", "High"] as const;
+
+export type ApprovalRiskLevel = (typeof approvalRiskLevels)[number];
+
+export type ApprovalRequest = {
+  id: string;
+  requestedBy: string;
+  actionType: string;
+  payload: Record<string, unknown>;
+  status: ApprovalStatus;
+  riskLevel: ApprovalRiskLevel;
+  humanNote: string;
+  createdAt: string;
+  updatedAt: string;
+};
 
 type ApprovalRequestRow = {
   id: string;
@@ -23,14 +37,45 @@ type ApprovalRequestRow = {
   updated_at: string;
 };
 
-type OrchestratorLogRow = {
-  id: string;
-  command: string;
-  payload: Record<string, unknown> | null;
-  result_summary: string | null;
-  status: OrchestratorLog["status"] | null;
-  created_at: string;
-};
+export function isApprovalStatus(value: unknown): value is ApprovalStatus {
+  return (
+    typeof value === "string" &&
+    approvalStatuses.includes(value as ApprovalStatus)
+  );
+}
+
+export function isApprovalRiskLevel(value: unknown): value is ApprovalRiskLevel {
+  return (
+    typeof value === "string" &&
+    approvalRiskLevels.includes(value as ApprovalRiskLevel)
+  );
+}
+
+export function normalizePayload(value: unknown): Record<string, unknown> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) {
+    return {};
+  }
+
+  return value as Record<string, unknown>;
+}
+
+export function normalizeApprovalRequest(
+  value: Partial<ApprovalRequest>,
+): ApprovalRequest {
+  const now = new Date().toISOString();
+
+  return {
+    id: value.id || crypto.randomUUID(),
+    requestedBy: String(value.requestedBy ?? "System").trim(),
+    actionType: String(value.actionType ?? "REQUEST_APPROVAL").trim(),
+    payload: normalizePayload(value.payload),
+    status: isApprovalStatus(value.status) ? value.status : "Pending",
+    riskLevel: isApprovalRiskLevel(value.riskLevel) ? value.riskLevel : "Medium",
+    humanNote: String(value.humanNote ?? "").trim(),
+    createdAt: value.createdAt || now,
+    updatedAt: value.updatedAt || now,
+  };
+}
 
 function approvalToRow(approval: ApprovalRequest) {
   return {
@@ -57,28 +102,6 @@ function approvalFromRow(row: ApprovalRequestRow) {
     humanNote: row.human_note ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
-  });
-}
-
-function logToRow(log: OrchestratorLog) {
-  return {
-    id: log.id,
-    command: log.command,
-    payload: log.payload,
-    result_summary: log.resultSummary,
-    status: log.status,
-    created_at: log.createdAt,
-  };
-}
-
-function logFromRow(row: OrchestratorLogRow) {
-  return normalizeOrchestratorLog({
-    id: row.id,
-    command: row.command,
-    payload: row.payload ?? {},
-    resultSummary: row.result_summary ?? "",
-    status: row.status ?? "Completed",
-    createdAt: row.created_at,
   });
 }
 
@@ -161,11 +184,6 @@ export async function updateApprovalRequest({
   humanNote?: string;
 }) {
   const current = await getApprovalRequest(id);
-
-  if (!current) {
-    throw new Error("Approval request not found.");
-  }
-
   const updated = normalizeApprovalRequest({
     ...current,
     status,
@@ -197,59 +215,4 @@ export async function updateApprovalRequest({
     approval: approvalFromRow(data as ApprovalRequestRow),
     storage: "supabase" as const,
   };
-}
-
-export async function saveOrchestratorLog(input: Partial<OrchestratorLog>) {
-  const log = normalizeOrchestratorLog(input);
-  await saveAuditLog({
-    actor: "OpenClaw",
-    action: "orchestrator_command",
-    entityType: "orchestrator_log",
-    entityId: log.id,
-    metadata: {
-      command: log.command,
-      status: log.status,
-      resultSummary: log.resultSummary,
-      payload: log.payload,
-    },
-  });
-  const supabase = getSupabaseServerClient();
-
-  if (!supabase) {
-    throw new Error("Supabase is required to save orchestrator logs.");
-  }
-
-  const { data, error } = await supabase
-    .from("orchestrator_logs")
-    .insert(logToRow(log))
-    .select("*")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return {
-    log: logFromRow(data as OrchestratorLogRow),
-    storage: "supabase" as const,
-  };
-}
-
-export async function listOrchestratorLogs() {
-  const supabase = getSupabaseServerClient();
-
-  if (!supabase) {
-    throw new Error("Supabase is required to list orchestrator logs.");
-  }
-
-  const { data, error } = await supabase
-    .from("orchestrator_logs")
-    .select("*")
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data as OrchestratorLogRow[]).map(logFromRow);
 }

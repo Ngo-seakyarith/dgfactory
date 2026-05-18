@@ -24,11 +24,6 @@ const checks = [
     "SUPABASE_SERVICE_ROLE_KEY",
     Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
   ],
-  [
-    "Orchestrator API key",
-    "ORCHESTRATOR_API_KEY",
-    Boolean(process.env.ORCHESTRATOR_API_KEY),
-  ],
   ["Loop API key", "LOOP_API_KEY", Boolean(process.env.LOOP_API_KEY)],
   ["Auth enforcement", "DG_REQUIRE_AUTH", process.env.DG_REQUIRE_AUTH === "true"],
   ["Admin PIN", "ADMIN_ACCESS_PIN", Boolean(process.env.ADMIN_ACCESS_PIN)],

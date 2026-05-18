@@ -15,37 +15,27 @@ This app is separate from DG Command OS.
 - Export Proposal/Syllabus/Workbook DOCX, Slide Deck PPTX, Summary PDF, Pricing DOCX/PDF, and TXT
 - Email handoff and Telegram handoff to `@sopheaphin`
 - Client CRM with clients, opportunities, proposal pipeline, follow-up reminders, and package-to-opportunity linking
-- Training Delivery OS for won opportunities, preparation checklists, evaluation capture, certificates placeholder, post-training report drafts, and report export
+- Training Delivery OS for won opportunities, preparation checklists, evaluation capture, post-training report drafts, and report export
 - GPT-5.5 Brain Layer with specialist agent routing, structured outputs, schema checks, and package QA review
 - Multi-agent package workflow with Chief Brain planning, specialist section generation, automatic QA, trace summary, retry support, and section regeneration
 - DG Academy Knowledge Base with frameworks, proposal language, Cambodia context, exercises, pricing notes, client notes, keyword retrieval, and internal source notes
 - V2.0 Evaluation + Feedback Loop with output scoring, AI rubric evaluation, improvement suggestions, human approval, and a Quality Dashboard
 - V2.2 Prompt and Template Optimization System with versioned prompts, human approval, rollback, and code-defined Brain Layer instructions
-- V2.3 OpenClaw Orchestrator Integration with protected webhook endpoints, logs, and human approval gates
 - V2.4 Scheduled Business Loops for pipeline, content, revenue, quality, delivery readiness, stale follow-up, and prompt reviews
 - V3.0 Production Hardening with internal roles, permission gates, audit logs, launch dashboard, and error boundaries
 - V3.1 Internal Pilot Launch System with 30-day pilot dashboard, goals, issues, feedback capture, pilot reports, and pilot weekly loop
 - V3.2 Agent Reliability and Evaluation Benchmarks with eval datasets, runs, results, regression risks, trace summaries, and smoke checks
-- V3.3 Security Red Team and Governance Audit with export safety blocking, orchestrator validation, RLS guidance, and security reports
+- V3.3 Security Red Team and Governance Audit with export safety blocking, approval validation, RLS guidance, and security reports
 - V3.4 Client Portal with hashed token access, published client-safe documents, feedback capture, revocation, expiry, and audit logging
-- V3.5 Productization Package with `/product`, sales/implementation docs, commercial package placeholders, ROI calculator, and product brief export
+- V3.5 Productization Package with `/product`, offer positioning, ROI calculator, and product brief export
 - V3.6 Enterprise Agentic Hardening with GPT-5.5 default model config, Brain status, Master Agent routing, adaptive specialist agents, concrete RLS migration, Supabase Auth migration path, approval rules, and autonomy settings
 - Adaptive Growth OS Foundation with market signals, offer variants, experiments, metrics, selection decisions, learning genome, and offer-to-package handoff
 - Micro-Offer Mutation Factory for generating, comparing, editing, and saving multiple testable offer variants from one market signal or business idea
 - Fitness Score and Selection Engine for deterministic offer ranking, scale/iterate/park/kill recommendations, and human selection decisions
 - Replication Engine and Learning Genome for turning winning offers into reusable templates, sales language, delivery assets, internal knowledge, and expansion paths
-- Adaptive Growth Loops with OpenClaw-ready market sensing, mutation, experiment review, selection review, replication review, genome update, and expansion strategy
-- Adaptive Growth Dashboard Final with executive adaptation velocity, offer fitness, experiment funnel, learning genome, expansion map, OpenClaw loop status, improvement status, deterministic Adaptive Growth Score, Brain Layer recommendations, and PDF report export
+- Adaptive Growth Loops with internal market sensing, mutation, experiment review, selection review, replication review, genome update, and expansion strategy
+- Adaptive Growth Dashboard Final with executive adaptation velocity, offer fitness, experiment funnel, learning genome, expansion map, business loop status, improvement status, deterministic Adaptive Growth Score, Brain Layer recommendations, and PDF report export
 - Business + Software Improvement Integration for converting growth, QA, security, eval, and user learnings into approved Codex-ready prompts
-
-## Product and Architecture Docs
-
-- [Product Roadmap](docs/product-roadmap.md)
-- [Agentic Architecture](docs/agentic-architecture.md)
-- [Security and Approval Model](docs/security-and-approval-model.md)
-- [Supabase RLS Policies](docs/supabase-rls-policies.md)
-- [Supabase RLS Verification](docs/supabase-rls-verification.md)
-- [Enterprise Agentic Hardening Report](docs/enterprise-agentic-hardening-report.md)
 
 ## Future Agentic Roadmap
 
@@ -54,8 +44,6 @@ DG Academy AI Training Production Factory is designed to evolve into DG Academy 
 - GPT-5.5 Brain Layer for planning, drafting, routing, and evaluation.
 - Specialist agents for learning design, commercial review, governance, delivery readiness, export QA, and evaluation.
 - Deterministic tools for pricing, storage, export, and leak checks.
-- OpenClaw orchestration for approved multi-step workflows.
-- Codex builder workflow for human-approved product and engineering increments.
 - Codex builder workflow for human-approved product and engineering increments.
 
 ## Local Setup
@@ -77,7 +65,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 SUPABASE_SERVICE_ROLE_KEY=
 OPENAI_API_KEY=
 AI_BRAIN_MODEL=gpt-5.5
-ORCHESTRATOR_API_KEY=
 LOOP_API_KEY=
 DG_REQUIRE_AUTH=false
 DG_TRUST_ROLE_HEADERS=false
@@ -91,8 +78,7 @@ Required production keys:
 - Missing or invalid OpenAI credentials cause AI generation routes to fail explicitly.
 - `AI_BRAIN_MODEL` controls the intended Brain Layer model and all OpenAI-backed generation. V3.6 defaults to `gpt-5.5`.
 - Missing Supabase configuration causes persistence routes to fail explicitly.
-- `ORCHESTRATOR_API_KEY` is required for every `/api/orchestrator/*` endpoint.
-- `LOOP_API_KEY` or `ORCHESTRATOR_API_KEY` is required for every `/api/loops/*` endpoint.
+- `LOOP_API_KEY` is required for every `/api/loops/*` endpoint.
 - `DG_REQUIRE_AUTH=true` makes missing sessions default to `Viewer`; local development defaults to `Admin` when false.
 - `DG_TRUST_ROLE_HEADERS=true` allows trusted infrastructure to pass `x-dg-role` and `x-dg-actor`. Keep it `false` unless a server-side gateway is enforcing identity.
 - `DG_DEV_ROLE_SESSION=true` keeps local role switching available while `DG_REQUIRE_AUTH=false`. Production should use Supabase Auth and database roles.
@@ -122,8 +108,8 @@ Protection:
 - Internal profitability notes and internal export options require admin permissions.
 - Client-facing exports exclude internal notes by default.
 - Internal knowledge citations stay as internal source notes and are not included in client exports by default.
-- Orchestrator and loop endpoints remain API-key protected.
-- Approval decisions, exports, prompt approvals, package saves, CRM saves, orchestrator commands, and role changes write audit logs.
+- Loop endpoints remain API-key protected.
+- Approval decisions, exports, prompt approvals, package saves, CRM saves, approval requests, and role changes write audit logs.
 
 Launch dashboard:
 
@@ -215,17 +201,9 @@ Data model:
 - `eval_results`: example score, pass/fail, strengths, weaknesses, regression risk, and output summary.
 - `agent_traces`: sanitized input/output summaries, agent name, task type, status, and duration.
 
-Smoke check:
-
-```bash
-bun run eval:smoke
-```
-
-Set `EVAL_BASE_URL=http://localhost:3000` to run the smoke check through the app API.
-
 Codex release rule:
 
-- When changing Brain Layer prompts, prompt templates, agent routing, or eval logic, run `bun run eval:smoke`.
+- When changing Brain Layer prompts, prompt templates, agent routing, or eval logic, run manual Brain Layer smoke checks.
 - Do not approve prompt/template changes for release if smoke evals fail.
 
 ## V3.3 Security Red Team and Governance Audit
@@ -234,7 +212,7 @@ V3.3 adds internal security checks for wider deployment readiness.
 
 Security workspace:
 
-- `/security` shows authentication, role permissions, Supabase RLS, export safety, margin protection, prompt injection, orchestrator, approval, audit logging, environment, secret, file export, and knowledge visibility checks.
+- `/security` shows authentication, role permissions, Supabase RLS, export safety, margin protection, prompt injection, automation, approval, audit logging, environment, secret, file export, and knowledge visibility checks.
 - `POST /api/security/run-red-team` runs deterministic red-team scenarios and records audit results.
 - `GET /api/security` loads the latest security audit and report.
 - Security reports include executive summary, passed checks, failed checks, critical risks, recommended fixes, and go/no-go recommendation.
@@ -242,23 +220,18 @@ Security workspace:
 Validators:
 
 - Export safety validator scans client-facing exports for internal margin, direct cost, internal notes, and internal knowledge markers.
-- Orchestrator safety validator checks authentication, command type, risk level, external-action language, and approval requirements.
+- approval safety validator checks authentication, command type, risk level, external-action language, and approval requirements.
 
 Red-team scenarios cover:
 
 - Internal margin exposure.
 - Internal notes in client proposals.
 - Malicious knowledge prompt injection.
-- Unauthenticated orchestrator commands.
+- Unauthenticated approval requests.
 - Sales prompt approval attempt.
 - Trainer internal margin access attempt.
 - Internal-only knowledge in client-safe export.
 - Confidential notes in follow-up email.
-- OpenClaw external sending without approval.
-
-RLS documentation:
-
-- `docs/supabase-rls-policies.md` lists required policy direction, table groups, role access rules, internal/client-safe data rules, and migration checklist.
 
 ## V3.4 Client Portal
 
@@ -304,22 +277,16 @@ V3.5 packages DG Capability Factory as a DG Academy offer that can be demonstrat
 
 Product routes:
 
-- `/product` presents the offer, problem, solution, features, use cases, implementation process, commercial package placeholders, and product brief export.
+- `/product` presents the offer, problem, solution, features, use cases, implementation process, and product brief export.
 - `/roi-calculator` estimates proposal production time saved, staff cost saved, revenue supported, and a copyable ROI summary.
 - `POST /api/product-brief/export` exports the DG Capability Factory product brief as DOCX, PDF, or TXT.
-
-Productization docs:
-
-- [Demo Script](docs/demo-script.md)
-- [Client Implementation Package](docs/client-implementation-package.md)
-- [Commercial Packages](docs/commercial-packages.md)
 
 Commercial packaging:
 
 - Starter: internal training package generator.
 - Professional: CRM, delivery, knowledge base, exports, quality, and client portal.
-- Enterprise: agentic workflows, OpenClaw orchestration, evals, security governance, and custom knowledge base.
-- Pricing remains placeholder-only until DG Academy confirms the commercial model.
+- Enterprise: agentic workflows, approval-gated automation, evals, security governance, and custom knowledge base.
+- Final pricing remains subject to DG Academy commercial approval.
 
 ## Adaptive Growth OS Foundation
 
@@ -380,7 +347,7 @@ Dashboard sections:
 - Experiment Funnel: signals to offers to experiments to proposals to deals won to replicated templates.
 - Learning Genome: winning patterns, failed patterns, reusable genome items, and prompt improvement suggestions.
 - Expansion Map: strongest sectors, audiences, formats, and recommended next niches.
-- OpenClaw Loop Status: latest adaptive loops and pending approvals.
+- business loop Status: latest adaptive loops and pending approvals.
 - Improvement Status: approved improvement tasks and implemented improvements.
 
 Adaptive Growth Score:
@@ -575,7 +542,6 @@ Loop types:
 Behavior:
 
 - Loops can be run manually from `/loops`.
-- OpenClaw can trigger them through `POST /api/loops/run` using `ORCHESTRATOR_API_KEY` or `LOOP_API_KEY`.
 - Loop history is stored in `loop_runs`.
 - Loops generate recommendations, draft tasks, and approval requests only.
 - Loops never send messages, delete records, deploy code, export client data, or expose internal knowledge.
@@ -602,12 +568,10 @@ Routes:
 
 - `/improvements`: create, generate, approve/reject, edit, and export improvement opportunities.
 - `POST /api/improvements/generate`: uses `improvementOpportunityAgent` through the Brain Layer.
-- `/api/orchestrator/improvements`: lets OpenClaw summarize top improvement tasks.
 
 Safety:
 
 - Production UI never runs Codex directly.
-- OpenClaw cannot approve, merge, deploy, or execute improvements.
 - Approved improvements can be copied as Codex prompts, but implementation and release still require human review.
 
 ## V1.6 GPT-5.4 Brain Layer
@@ -677,9 +641,8 @@ UI behavior:
 
 State:
 
-- Workflow state is kept in memory for V1.7.
-- The workflow records `workflowId`, status, current step, timestamps, errors, agent trace summaries, final output, and QA score.
-- Supabase workflow persistence is a future improvement.
+- The workflow response records `workflowId`, status, current step, timestamps, errors, agent trace summaries, final output, and QA score.
+- Package persistence happens through the package save APIs after generation.
 
 ## V1.8 DG Academy Knowledge Base
 
@@ -712,7 +675,7 @@ Visibility:
 Retrieval:
 
 - `src/lib/knowledge/retrieve.ts` implements keyword search across title, tags, document content, and chunks.
-- Vector search is intentionally left as a V1.9 TODO so the app works without pgvector.
+- Retrieval currently uses keyword matching; pgvector search is not part of the active implementation.
 - Package generation retrieves relevant knowledge from title, audience, client, promise, and context.
 - Generated package detail shows `Knowledge used` with document titles and relevance scores.
 - Client exports do not include internal citations by default.
@@ -797,57 +760,11 @@ Improvement suggestions:
 - Drafts must still be approved on `/admin/prompts` before activation.
 - Every activation or rollback creates an audit record.
 
-## V2.3 OpenClaw Orchestrator Integration
-
-V2.3 lets OpenClaw trigger safe Factory workflows through authenticated API
-endpoints. OpenClaw is treated as an orchestrator, not an unrestricted actor.
-
-Authentication:
-
-- Set `ORCHESTRATOR_API_KEY`.
-- Send it as `Authorization: Bearer <key>` or `x-orchestrator-api-key`.
-- If the key is missing or invalid, orchestrator endpoints return an error.
-
-Endpoints:
-
-- `GET /api/orchestrator/health`
-- `POST /api/orchestrator/create-package`
-- `POST /api/orchestrator/create-follow-up`
-- `GET /api/orchestrator/pipeline-summary`
-- `GET /api/orchestrator/delivery-summary`
-- `GET /api/orchestrator/quality-summary`
-- `POST /api/orchestrator/request-approval`
-- `GET /api/orchestrator/approval-status`
-
-Supported commands:
-
-- `CREATE_PACKAGE`
-- `GENERATE_FOLLOW_UP`
-- `GET_PIPELINE_SUMMARY`
-- `GET_DELIVERY_SUMMARY`
-- `GET_QUALITY_SUMMARY`
-- `REQUEST_EXPORT`
-- `REQUEST_APPROVAL`
-
-Approval model:
-
-- `/approvals` lists approval requests.
-- Humans can approve or reject and add notes.
-- Approval records a decision; it does not execute external actions automatically.
-- External sending, deletion, deployment, payment, and client data export must
-  become approval requests first.
-
-OpenClaw docs:
-
-- `integrations/openclaw/README.md`
-- `integrations/openclaw/openclaw-skill.md`
-
 ## V2.4 Scheduled Business Loops
 
-V2.4 adds internal loops that OpenClaw, cron, or a DG Academy operator can
-trigger to keep the business moving. Loops create summaries, draft text, and
-recommendations only; they do not send messages, deploy code, delete data, or
-modify external systems.
+V2.4 adds internal loops that a DG Academy operator can trigger to keep the
+business moving. Loops create summaries, draft text, and recommendations only;
+they do not send messages, deploy code, delete data, or modify external systems.
 
 Loop types:
 
@@ -876,9 +793,8 @@ Endpoints:
 
 Authentication:
 
-- Set `LOOP_API_KEY` or reuse `ORCHESTRATOR_API_KEY`.
-- Send the key as `Authorization: Bearer <key>`, `x-loop-api-key`, or
-  `x-orchestrator-api-key`.
+- Set `LOOP_API_KEY`.
+- Send the key as `Authorization: Bearer <key>` or `x-loop-api-key`.
 - The `/loops` page lets an internal operator enter the key manually for local
   testing and controlled internal use.
 
@@ -899,7 +815,6 @@ Run `supabase/schema.sql` or the migrations in order:
 - `supabase/migrations/004_knowledge_base_v1_8.sql`
 - `supabase/migrations/005_evaluation_feedback_v2_0.sql`
 - `supabase/migrations/006_prompt_templates_v2_2.sql`
-- `supabase/migrations/007_openclaw_orchestrator_v2_3.sql`
 - `supabase/migrations/008_scheduled_business_loops_v2_4.sql`
 - `supabase/migrations/009_production_hardening_v3_0.sql`
 - `supabase/migrations/010_internal_pilot_launch_v3_1.sql`
@@ -926,7 +841,7 @@ The app stores:
 - Prompt improvement suggestions and approval status
 - Prompt templates and prompt template change audit records
 - Approval requests
-- Orchestrator logs
+- approval logs
 - Loop run history and recommendations
 - Audit logs
 - Pilot goals
@@ -1084,14 +999,6 @@ If participant count is zero, price per participant is shown as `0`.
 - `GET/POST /api/prompt-templates`
 - `PATCH /api/prompt-templates/[id]`
 - `POST /api/prompt-templates/draft-from-suggestion`
-- `GET /api/orchestrator/health`
-- `POST /api/orchestrator/create-package`
-- `POST /api/orchestrator/create-follow-up`
-- `GET /api/orchestrator/pipeline-summary`
-- `GET /api/orchestrator/delivery-summary`
-- `GET /api/orchestrator/quality-summary`
-- `POST /api/orchestrator/request-approval`
-- `GET /api/orchestrator/approval-status`
 - `POST /api/loops/run`
 - `GET /api/loops/history`
 - `GET /api/loops/[id]`
@@ -1132,7 +1039,6 @@ If participant count is zero, price per participant is shown as `0`.
 ```bash
 npm run lint
 npm run typecheck
-npm run eval:smoke
 npm run build
 ```
 
@@ -1143,7 +1049,7 @@ npm run build
 3. Add environment variables:
    - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
    - AI: `OPENAI_API_KEY`, `AI_BRAIN_MODEL`
-   - Automation: `ORCHESTRATOR_API_KEY`, `LOOP_API_KEY`
+   - Loops: `LOOP_API_KEY`
    - Internal auth: `DG_REQUIRE_AUTH=true`, `DG_TRUST_ROLE_HEADERS=false`, `DG_DEV_ROLE_SESSION=false`, `DG_DEFAULT_ACTOR`, `ADMIN_ACCESS_PIN`
    - Public URL: `NEXT_PUBLIC_APP_URL` for generated portal links when request origin is unavailable
 4. Apply Supabase migrations in order, ending with `016_enterprise_auth_rls_hardening_v3_6.sql`.
@@ -1156,7 +1062,7 @@ npm run build
 - Keep `DG_TRUST_ROLE_HEADERS=false` unless a trusted identity gateway is installed.
 - Keep `DG_DEV_ROLE_SESSION=false` in production once Supabase Auth is active.
 - Set a strong `ADMIN_ACCESS_PIN`.
-- Keep `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, `ORCHESTRATOR_API_KEY`, and `LOOP_API_KEY` server-only.
+- Keep `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, and `LOOP_API_KEY` server-only.
 - Confirm prompt template routes are admin-only.
 - Confirm client exports do not include internal notes unless Admin explicitly selects them.
 - Review `/approvals` before any external sending, export handoff, deployment, deletion, payment, or production migration.
@@ -1167,26 +1073,25 @@ npm run build
 
 - If generation fails, check `OPENAI_API_KEY`, `AI_BRAIN_MODEL`, and the route error message.
 - If Supabase is missing, persistence routes fail until Supabase credentials are configured.
-- If `/api/loops/*` returns 401, check `LOOP_API_KEY` or `ORCHESTRATOR_API_KEY`.
+- If `/api/loops/*` returns 401, check `LOOP_API_KEY`.
 - If `/admin/prompts` returns 403, set an Admin role in `/settings`.
 - If `next build` fails with a stale `.next` cache error, remove this app's `.next` folder and rebuild.
 
 ## Known Limitations
 
 - DOCX/PPTX/PDF exporters are dependency-free and clean, but simple.
-- Supabase is optional and must be configured separately for persistent database storage.
+- Supabase must be configured for persistent database storage.
 - Email and Telegram handoff open customer channels but do not attach generated files automatically yet.
-- Certificate automation is a placeholder in V1.5.
+- Certificate generation is not implemented yet.
 - Delivery AI drafts use provided project and evaluation data, but still require human review before client delivery.
-- Workflow state is in memory in V1.7 and resets when the server restarts.
-- Knowledge vector embeddings are not enabled yet; V1.8 uses keyword retrieval and stores embedding as JSON/TODO-safe placeholder.
+- Workflow state is returned with generation responses; saved packages persist through Supabase.
+- Knowledge vector embeddings are not enabled yet; retrieval uses keyword search.
 - V2.0 improvement suggestions are advisory records. A human must approve and Codex must implement prompt/template changes separately.
 - V2.2 prompt template activation changes model behavior at runtime, but only after a human approves a draft. Production teams should review active prompts before client-critical generation.
 - V2.3 approval records do not execute external actions; they are a control surface for human review before a separate approved operation.
-- V2.4 loops are recommendation engines, not automations with external side effects. Cron/OpenClaw can trigger them, but sending and client data export still require approval.
 - V3.0 auth is an internal MVP role layer, not a full identity provider. Use it with private Vercel access or replace with Supabase Auth before broad external access.
 - V3.1 pilot report DOCX/PDF exports are internal and simple; review them before sharing outside DG Academy.
 - V3.2 eval scoring is lightweight and deterministic-first. Treat it as regression signal, not a substitute for Sopheap or trainer review.
 - V3.3 red-team checks are deterministic internal guardrails. They help find obvious risks but do not replace a full external security review.
 - V3.4 client portal token links are suitable for the internal MVP, but broad external rollout should add full Supabase Auth/RLS policies, rate limiting, and production monitoring.
-- V3.5 commercial package pricing is placeholder-only. Final client pricing must be reviewed and approved by DG Academy.
+- V3.5 client pricing must be reviewed and approved by DG Academy before use.

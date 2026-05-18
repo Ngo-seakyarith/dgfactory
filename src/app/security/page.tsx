@@ -110,7 +110,7 @@ export default function SecurityDashboard() {
             </h1>
             <p className="mt-3 text-sm leading-7 text-teal-50/80">
               Check prompt injection, data leakage, margin exposure, unsafe tools,
-              orchestrator overreach, role permissions, exports, and Supabase RLS readiness.
+              role permissions, exports, and Supabase RLS readiness.
             </p>
           </div>
           <div className="flex flex-wrap gap-2">

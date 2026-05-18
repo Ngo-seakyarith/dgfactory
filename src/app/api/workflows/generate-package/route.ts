@@ -78,7 +78,6 @@ export async function POST(request: Request) {
       knowledgeContext,
       knowledgeUsed,
       workflowId: (body as { workflowId?: string }).workflowId,
-      forceFailStep: (body as PackageWorkflowInput).forceFailStep,
     };
     const result = await runPackageWorkflow(workflowInput);
 

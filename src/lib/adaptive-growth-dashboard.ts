@@ -16,7 +16,7 @@ import { listImprovementOpportunities } from "@/lib/improvement-storage";
 import type { ImprovementOpportunity } from "@/lib/improvements";
 import { listLoopRuns } from "@/lib/loops/storage";
 import type { LoopRun, LoopType } from "@/lib/loops/types";
-import { listApprovalRequests } from "@/lib/orchestrator/storage";
+import { listApprovalRequests } from "@/lib/approvals";
 
 export const adaptiveDashboardRanges = [
   "this_week",

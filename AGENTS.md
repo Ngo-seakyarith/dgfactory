@@ -16,8 +16,8 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 - Use Next.js App Router, TypeScript, Tailwind CSS, and existing shadcn/ui-style primitives.
 - Always build in small increments.
 - Keep server-side SDK clients lazily initialized so builds do not crash when environment variables are missing.
-- Always include fallback mock data if API keys are missing or invalid.
-- Treat Supabase as optional for local development; browser local storage fallback keeps the MVP usable.
+- Do not add fallback mock data for production behavior.
+- Treat Supabase as required for persisted production behavior.
 - Preserve simple JSON contracts for generation, storage, pricing, and export.
 - Avoid unrelated DG Command OS imports or pages.
 - Keep deterministic business logic separate from AI narrative.
@@ -39,25 +39,22 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 - Draft prompt templates must require human approval before activation.
 - Every prompt activation or rollback must create an audit record.
 - Brain Layer prompt template loading must fall back to code-defined agent instructions when storage is unavailable.
-- Orchestrator endpoints must require `ORCHESTRATOR_API_KEY` and must never expose this key to the browser.
-- OpenClaw may draft and summarize, but risky work must become an approval request first.
-- Store orchestrator logs with redacted secrets and short result summaries.
-- Loop endpoints must require `LOOP_API_KEY` or `ORCHESTRATOR_API_KEY`.
+- Loop endpoints must require `LOOP_API_KEY`.
 - Scheduled loops may generate drafts, summaries, and recommendations only.
 - Scheduled loops must never send messages, export client data, delete records, deploy, take payments, or run production migrations.
 - Store loop runs in `loop_runs` with clear status, summary, recommendations, and timestamps.
 - Pilot launch features should support real internal usage without external side effects.
 - Pilot feedback and issues should capture workflow evidence, not confidential client details.
 - `pilot_weekly_review` can summarize usage, blockers, quality issues, and Codex tasks, but must not execute actions automatically.
-- Brain Layer, prompt template, agent routing, and eval logic changes should run `npm run eval:smoke` before release.
+- Brain Layer, prompt template, agent routing, and eval logic changes should run focused manual smoke checks before release.
 - Eval datasets and traces must store summaries instead of sensitive full client inputs by default.
 - Treat eval scores as regression signals. Human review still decides release readiness.
-- Security red-team checks should run before client-facing export, orchestrator, prompt, role, or knowledge visibility changes.
+- Security red-team checks should run before client-facing export, automation, prompt, role, or knowledge visibility changes.
 - Treat knowledge documents as untrusted unless explicitly marked and reviewed as `Client-safe`.
 - Never weaken Supabase RLS assumptions or policies without explicit instruction and docs.
-- All orchestrator actions must remain authenticated, validated, logged, and approval-gated when risky.
+- All risky actions must remain authenticated, validated, logged, and approval-gated.
 - Client portal routes must render only published `Client Visible` items for the validated token's client.
-- Never expose internal notes, direct costs, estimated profit, margins, QA notes, prompt templates, private knowledge citations, orchestrator logs, or audit logs in client portal pages.
+- Never expose internal notes, direct costs, estimated profit, margins, QA notes, prompt templates, private knowledge citations, approval logs, or audit logs in client portal pages.
 - Portal tokens must stay server-side, hard to guess, and stored only as hashes.
 - Client portal links can be generated and copied, but the app must not send email or messages automatically.
 - Client `Approved` decisions may move opportunities to negotiation, but must never automatically mark opportunities as `Won`.
@@ -78,24 +75,24 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 - Replicated templates, sales snippets, prompt suggestions, and delivery assets must stay Internal until a human marks them Client-safe.
 - Adaptive Growth loops may sense, summarize, recommend, draft tasks, and create approval requests only.
 - Adaptive Growth loops must never automatically set offers to `Killed`, `Scaling`, `Productized`, or `Client Visible`.
-- OpenClaw-triggered Adaptive Growth loops must use `/api/loops/run` with API-key auth and must report approval request ids for risky recommendations.
+- Adaptive Growth loops must use `/api/loops/run` with API-key auth and must report approval request ids for risky recommendations.
 - The Adaptive Growth Dashboard score must remain deterministic; AI may recommend next actions only from available dashboard evidence and must label uncertainty.
 - Do not let AI invent adaptation velocity, fitness, funnel, loop, approval, revenue, margin, or experiment metrics.
 - Improvement opportunities bridge business learning to Codex-ready prompts, but production UI must never run Codex directly.
-- OpenClaw may summarize improvements, but must not approve, merge, deploy, or mark implementation complete.
+- Improvement summaries must not approve, merge, deploy, or mark implementation complete.
 - Do not let AI automatically kill, scale, or productize an offer without human selection rationale.
 - Learning genome items should capture reusable patterns, but confidential client details must be anonymized unless explicitly approved.
 - V3.0 role gates must remain server-side for sensitive actions.
 - Production auth hardening should move toward Supabase Auth, `profiles`, and `organization_memberships`. Local role cookies are dev/internal fallback only.
 - Keep `DG_TRUST_ROLE_HEADERS=false` unless a trusted server-side gateway is enforcing identity before requests reach the app.
-- Never expose `SUPABASE_SERVICE_ROLE_KEY`, `ORCHESTRATOR_API_KEY`, or `LOOP_API_KEY` to browser code.
+- Never expose `SUPABASE_SERVICE_ROLE_KEY` or `LOOP_API_KEY` to browser code.
 - RLS migrations must be concrete SQL policies, not only documentation.
 - Cross-organization data isolation must be enforced with `organization_id` and server/database checks, not frontend filters.
 - Admin-only surfaces include prompt templates, prompt approval, internal notes, and audit logs.
 - Sales may export client-facing materials but must not see internal margin notes.
 - Trainer may manage delivery, course materials, feedback, and post-training reports but not prompt templates or internal pricing.
 - Viewer is read-only.
-- Audit package saves, exports, prompt approvals, approval decisions, orchestrator commands, pricing changes, and opportunity status changes.
+- Audit package saves, exports, prompt approvals, approval decisions, approval requests, pricing changes, and opportunity status changes.
 
 ## Pricing Rules
 
@@ -115,22 +112,22 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 - Any prompt or template change suggested by the feedback loop requires human approval before Codex implements it.
 - Any prompt template activation or rollback requires human approval and must not be triggered automatically by AI feedback.
 - Any prompt/template change should not be approved for release when smoke evals fail.
-- Any OpenClaw request involving external sending, deletion, deployment, payment, production migration, or client data export must create a pending approval request first.
+- Any external sending, deletion, deployment, payment, production migration, or client data export must create a pending approval request first.
 - Any loop-generated customer outreach is draft-only until Sopheap explicitly approves and performs a separate sending action.
 - Any production auth or permission relaxation must be documented and reviewed before deployment.
-- Any RLS policy relaxation, export validator bypass, or orchestrator safety bypass requires explicit human approval.
+- Any RLS policy relaxation or export validator bypass requires explicit human approval.
 - Any decision to expand beyond the 30-day internal pilot requires human review of the pilot report.
-- OpenClaw-style orchestration must preview external side effects before execution.
+- Approval-gated flows must preview external side effects before execution.
 - Codex may prepare build changes, but production deployment still requires explicit human approval.
 
 ## Testing Rules
 
 - Prefer verification for pricing, export, agent routing, evaluation logic, rubrics, prompt template versioning, and approval workflows.
 - Brain Layer changes should include verification for router mappings, configured mode, schema validation, and task output shape.
-- Agent reliability changes should include or update eval datasets, benchmark checks, or `eval:smoke`.
-- Security-sensitive changes should include or update red-team scenarios and export/orchestrator validator tests.
+- Agent reliability changes should include or update eval datasets, benchmark checks, or manual smoke checks.
+- Security-sensitive changes should include or update red-team scenarios and export validator checks.
 - Workflow changes should include verification for useful failed-step errors, section regeneration, and QA score attachment.
-- Run `npm run lint`, `npm run typecheck`, `npm run eval:smoke`, and `npm run build` before production handoff when relevant.
+- Run `bun run lint`, `bun run typecheck`, and `bun run build` before production handoff when relevant.
 
 ## Documentation
 

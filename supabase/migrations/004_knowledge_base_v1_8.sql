@@ -33,7 +33,7 @@ create table if not exists public.knowledge_chunks (
   document_id uuid not null references public.knowledge_documents(id) on delete cascade,
   chunk_index numeric not null default 0,
   content text not null,
-  -- TODO V1.9: change to pgvector `vector` after enabling the vector extension.
+  -- Stored as JSON until pgvector is enabled in the target Supabase project.
   embedding jsonb,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz default now()

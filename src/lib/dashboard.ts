@@ -3,7 +3,7 @@ import { listOpportunities } from "@/lib/crm-storage";
 import { listDeliveryProjects } from "@/lib/delivery-storage";
 import { getQualityDashboardMetrics } from "@/lib/evaluation-storage";
 import { listLoopRuns } from "@/lib/loops/storage";
-import { listApprovalRequests } from "@/lib/orchestrator/storage";
+import { listApprovalRequests } from "@/lib/approvals";
 import { listTrainingPackages } from "@/lib/training-storage";
 
 function startOfMonth() {

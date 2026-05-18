@@ -1,33 +1,27 @@
 import { NextResponse } from "next/server";
 
-import { getProvidedOrchestratorKey } from "@/lib/orchestrator/auth";
-
 export function getProvidedLoopKey(request: Request) {
-  return (
-    request.headers.get("x-loop-api-key")?.trim() ||
-    getProvidedOrchestratorKey(request)
-  );
+  const authorization = request.headers.get("authorization") ?? "";
+  const bearer = authorization.match(/^Bearer\s+(.+)$/i)?.[1]?.trim();
+
+  return request.headers.get("x-loop-api-key")?.trim() || bearer || "";
 }
 
 export function validateLoopRequest(request: Request) {
   const expectedLoopKey = process.env.LOOP_API_KEY;
-  const expectedOrchestratorKey = process.env.ORCHESTRATOR_API_KEY;
   const provided = getProvidedLoopKey(request);
 
-  if (!expectedLoopKey && !expectedOrchestratorKey) {
+  if (!expectedLoopKey) {
     return {
       ok: false as const,
       response: NextResponse.json(
-        { error: "LOOP_API_KEY or ORCHESTRATOR_API_KEY is not configured." },
+        { error: "LOOP_API_KEY is not configured." },
         { status: 503 },
       ),
     };
   }
 
-  if (
-    !provided ||
-    (provided !== expectedLoopKey && provided !== expectedOrchestratorKey)
-  ) {
+  if (!provided || provided !== expectedLoopKey) {
     return {
       ok: false as const,
       response: NextResponse.json(

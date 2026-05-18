@@ -48,7 +48,6 @@ export type PackageWorkflowInput = TrainingPackageInput & {
   knowledgeContext?: string;
   knowledgeUsed?: KnowledgeSourceNote[];
   workflowId?: string;
-  forceFailStep?: PackageWorkflowStep;
 };
 
 export type AgentOutputRecord = {
@@ -108,12 +107,6 @@ function updateState(
   patch: Partial<PackageWorkflowState>,
 ) {
   return { ...state, ...patch };
-}
-
-function failIfRequested(input: PackageWorkflowInput, step: PackageWorkflowStep) {
-  if (input.forceFailStep === step) {
-    throw new Error(`Forced failure for workflow step: ${step}`);
-  }
 }
 
 function recordAgentOutput({
@@ -195,7 +188,6 @@ export async function runPackageWorkflow(
       pricingSummary: pricingFacts.summary,
     };
     state = updateState(state, { currentStep: "Planning" });
-    failIfRequested(input, "Planning");
     const plan = await generateStructuredOutput<
       Record<string, unknown>,
       TextAgentOutput
@@ -219,7 +211,6 @@ export async function runPackageWorkflow(
     });
 
     state = updateState(state, { currentStep: "Syllabus" });
-    failIfRequested(input, "Syllabus");
     const syllabusResult = await routeBrainTask<
       CoursePackageBrainInput,
       TrainingPackageOutputs
@@ -240,7 +231,6 @@ export async function runPackageWorkflow(
     });
 
     state = updateState(state, { currentStep: "Proposal" });
-    failIfRequested(input, "Proposal");
     const proposalResult = await routeBrainTask<
       Record<string, unknown>,
       TextAgentOutput
@@ -262,7 +252,6 @@ export async function runPackageWorkflow(
     });
 
     state = updateState(state, { currentStep: "Slides" });
-    failIfRequested(input, "Slides");
     const slideResult = await routeBrainTask<Record<string, unknown>, TextAgentOutput>({
       taskType: "slide_outline",
       input: {
@@ -282,7 +271,6 @@ export async function runPackageWorkflow(
     });
 
     state = updateState(state, { currentStep: "Workbook" });
-    failIfRequested(input, "Workbook");
     const workbookResult = await routeBrainTask<
       Record<string, unknown>,
       TextAgentOutput
@@ -304,7 +292,6 @@ export async function runPackageWorkflow(
     });
 
     state = updateState(state, { currentStep: "Commercial" });
-    failIfRequested(input, "Commercial");
     const commercialResult = await routeBrainTask<
       Record<string, unknown>,
       TextAgentOutput
@@ -363,7 +350,6 @@ export async function runPackageWorkflow(
     };
 
     state = updateState(state, { currentStep: "QA", finalOutput: outputs });
-    failIfRequested(input, "QA");
     const packageContent = fullPackageToMarkdown(
       createTemporaryPackage({ input, outputs }),
     );
@@ -390,7 +376,6 @@ export async function runPackageWorkflow(
       qaReview: qaResult.output,
       qaScore: qaResult.output.score,
     });
-    failIfRequested(input, "Final Review");
     const improvementResult = await routeBrainTask<
       Record<string, unknown>,
       TextAgentOutput

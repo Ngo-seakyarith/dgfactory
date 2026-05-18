@@ -55,14 +55,6 @@ export const securityChecklistSections = [
     ],
   },
   {
-    category: "Orchestrator endpoint security",
-    checks: [
-      "Every `/api/orchestrator/*` route requires `ORCHESTRATOR_API_KEY`.",
-      "Commands are validated against the allowed command list.",
-      "Risky commands become approval requests.",
-    ],
-  },
-  {
     category: "Approval workflow",
     checks: [
       "External sending, deletion, deployment, payment, and client data export require human approval.",
@@ -72,7 +64,7 @@ export const securityChecklistSections = [
   {
     category: "Audit logging",
     checks: [
-      "Exports, approvals, orchestrator commands, prompt changes, and security audits are logged.",
+      "Exports, approvals, prompt changes, and security audits are logged.",
       "Logs redact keys, tokens, secrets, passwords, and authorization headers.",
     ],
   },
@@ -86,7 +78,7 @@ export const securityChecklistSections = [
   {
     category: "Secret handling",
     checks: [
-      "OpenAI, Supabase service role, orchestrator, and loop keys are never committed.",
+      "OpenAI, Supabase service role, and loop keys are never committed.",
       "Pasted or exposed secrets are rotated before production use.",
     ],
   },
@@ -116,8 +108,7 @@ export function createSecurityChecklistItems(auditId: string): SecurityAuditItem
       description: check,
       status: "Not Checked" as const,
       severity: section.category.includes("Secret") ||
-        section.category.includes("margin") ||
-        section.category.includes("Orchestrator")
+        section.category.includes("margin")
           ? "High" as const
           : "Medium" as const,
       evidence: "",

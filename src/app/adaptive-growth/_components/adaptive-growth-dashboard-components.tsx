@@ -390,7 +390,7 @@ function LoopAndImprovementSection({ report }: { report: AdaptiveGrowthExecutive
     <section className="grid gap-5 lg:grid-cols-2">
       <Card className="border-white/10 bg-white/[0.04] shadow-executive">
         <CardHeader>
-          <CardTitle>OpenClaw Loop Status</CardTitle>
+          <CardTitle>Business Loop Status</CardTitle>
           <CardDescription>Scheduled loops generate recommendations only; risky actions require approval.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">

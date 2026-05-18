@@ -68,7 +68,7 @@ export const defaultPilotGoalInputs: Array<Pick<PilotGoal, "title" | "targetNumb
   { title: "Create 1 delivery project", targetNumber: 1, notes: "Use a won or pilot opportunity." },
   { title: "Run 5 QA reviews", targetNumber: 5, notes: "Count AI QA or saved output evaluations." },
   { title: "Collect 5 user feedback records", targetNumber: 5, notes: "Use Give Feedback across real pages." },
-  { title: "Run 2 OpenClaw business loops", targetNumber: 2, notes: "Count loop runs including pilot weekly review." },
+  { title: "Run 2 business loops", targetNumber: 2, notes: "Count loop runs including pilot weekly review." },
   { title: "Identify 10 improvement opportunities", targetNumber: 10, notes: "Count issues plus prompt/product suggestions." },
 ];
 
@@ -194,7 +194,7 @@ export async function calculatePilotMetrics({
     ["Create 1 delivery project", deliveryProjects.length],
     ["Run 5 QA reviews", qaReviews.length],
     ["Collect 5 user feedback records", feedback.length],
-    ["Run 2 OpenClaw business loops", loopRuns],
+    ["Run 2 business loops", loopRuns],
     ["Identify 10 improvement opportunities", improvementCount],
   ]);
 

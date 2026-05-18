@@ -87,7 +87,7 @@ const packages = [
   },
   {
     name: "Enterprise",
-    scope: "Agentic workflows, OpenClaw, evals, and governance",
+    scope: "Agentic workflows, evals, and governance",
     price: "Pricing placeholder",
     includes: ["Multi-agent workflow", "Orchestrator", "Evals", "Red-team checks"],
   },

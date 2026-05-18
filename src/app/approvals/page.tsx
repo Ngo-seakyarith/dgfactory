@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import type {
   ApprovalRequest,
   ApprovalStatus,
-} from "@/lib/orchestrator/commands";
+} from "@/lib/approvals";
 
 type ApprovalPayload = {
   approvals?: ApprovalRequest[];
@@ -101,15 +101,15 @@ export default function ApprovalCenter() {
       <section className="rounded-xl border border-teal-300/20 bg-teal-300/10 p-6 shadow-executive">
         <div className="max-w-3xl">
           <div className="text-xs font-semibold uppercase tracking-[0.22em] text-teal-100">
-            V2.3 Approval Gate
+            Approval Gate
           </div>
           <h1 className="mt-3 text-3xl font-semibold tracking-normal text-white">
             Human Approval Center
           </h1>
           <p className="mt-3 text-sm leading-7 text-teal-50/80">
-            Review OpenClaw requests before any external sending, deletion,
-            deployment, payment, or client data export. Approving records a human
-            decision; it does not execute external actions automatically.
+            Review risky requests before any external sending, deletion,
+            deployment, payment, or client data export. Approving records a
+            human decision; it does not execute external actions automatically.
           </p>
         </div>
       </section>

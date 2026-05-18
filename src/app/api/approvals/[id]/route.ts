@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
-import { isApprovalStatus } from "@/lib/orchestrator/commands";
 import {
   getApprovalRequest,
+  isApprovalStatus,
   updateApprovalRequest,
-} from "@/lib/orchestrator/storage";
+} from "@/lib/approvals";
 import { requirePermission } from "@/lib/route-guards";
 
 type Context = {

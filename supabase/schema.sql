@@ -195,7 +195,7 @@ create table if not exists public.knowledge_chunks (
   document_id uuid not null references public.knowledge_documents(id) on delete cascade,
   chunk_index numeric not null default 0,
   content text not null,
-  -- TODO V1.9: change to pgvector `vector` after enabling the vector extension.
+  -- Stored as JSON until pgvector is enabled in the target Supabase project.
   embedding jsonb,
   metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz default now()
@@ -351,23 +351,6 @@ create index if not exists idx_approval_requests_status
 create index if not exists idx_approval_requests_created_at
   on public.approval_requests(created_at desc);
 
-create table if not exists public.orchestrator_logs (
-  id uuid primary key default gen_random_uuid(),
-  command text not null,
-  payload jsonb not null default '{}'::jsonb,
-  result_summary text not null default '',
-  status text not null default 'Completed',
-  created_at timestamptz default now()
-);
-
-alter table public.orchestrator_logs enable row level security;
-
-create index if not exists idx_orchestrator_logs_command
-  on public.orchestrator_logs(command);
-
-create index if not exists idx_orchestrator_logs_created_at
-  on public.orchestrator_logs(created_at desc);
-
 create table if not exists public.loop_runs (
   id uuid primary key default gen_random_uuid(),
   loop_type text not null check (
@@ -422,7 +405,7 @@ create table if not exists public.improvement_opportunities (
       'Failed Export',
       'Failed Offer',
       'Winning Offer',
-      'OpenClaw Loop',
+      'Business Loop',
       'Learning Genome',
       'Eval Failure',
       'Other'

@@ -126,7 +126,7 @@ DG Capability Factory packages DG Academy's training production workflow into a 
 ## Commercial Packages
 - Starter: internal training package generator.
 - Professional: CRM, delivery OS, knowledge base, exports, and quality dashboard.
-- Enterprise: agentic workflows, orchestrator integration, custom knowledge base, evaluations, and governance controls.
+- Enterprise: agentic workflows, custom knowledge base, evaluations, and governance controls.
 
 ## Call to Action
 Book a DG Academy demonstration to see how DG Capability Factory can support your organization's training operations, AI capability rollout, and proposal-to-delivery workflow.`;

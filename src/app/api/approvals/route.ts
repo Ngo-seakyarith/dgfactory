@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { isApprovalStatus } from "@/lib/orchestrator/commands";
-import { listApprovalRequests } from "@/lib/orchestrator/storage";
+import { isApprovalStatus, listApprovalRequests } from "@/lib/approvals";
 import { requirePermission } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
