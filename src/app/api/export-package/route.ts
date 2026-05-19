@@ -24,7 +24,7 @@ const targets: ExportTarget[] = [
 ];
 
 export async function POST(request: Request) {
-  const exportAuth = requirePermission(request, "client_exports");
+  const exportAuth = await requirePermission(request, "client_exports");
 
   if (!exportAuth.ok) {
     return exportAuth.response;
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     if (body.includeInternalNotes) {
-      const internalAuth = requirePermission(request, "view_internal_notes");
+      const internalAuth = await requirePermission(request, "view_internal_notes");
 
       if (!internalAuth.ok) {
         return internalAuth.response;

@@ -8,7 +8,7 @@ export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const guard = requirePermission(request, "manage_clients");
+  const guard = await requirePermission(request, "manage_clients");
   if (!guard.ok) {
     return guard.response;
   }

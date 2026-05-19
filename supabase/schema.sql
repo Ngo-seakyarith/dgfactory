@@ -1038,7 +1038,7 @@ create index if not exists idx_learning_genome_items_type on public.learning_gen
 create index if not exists idx_learning_genome_items_tags on public.learning_genome_items using gin(tags);
 
 -- V3.6 Enterprise Auth and RLS hardening.
--- Full concrete policies live in supabase/migrations/016_enterprise_auth_rls_hardening_v3_6.sql.
+-- Concrete policies live in this schema file.
 
 create table if not exists public.organizations (
   id uuid primary key default gen_random_uuid(),

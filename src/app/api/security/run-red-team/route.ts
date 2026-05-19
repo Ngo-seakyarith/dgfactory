@@ -7,7 +7,7 @@ import { saveSecurityAudit, saveSecurityAuditItems } from "@/lib/security/storag
 import { requirePermission } from "@/lib/route-guards";
 
 export async function POST(request: Request) {
-  const auth = requirePermission(request, "admin");
+  const auth = await requirePermission(request, "admin");
 
   if (!auth.ok) {
     return auth.response;

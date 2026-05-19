@@ -8,7 +8,7 @@ function friendlyError(error: unknown) {
 }
 
 export async function GET(request: Request) {
-  const auth = requirePermission(request, "approve_requests");
+  const auth = await requirePermission(request, "approve_requests");
 
   if (!auth.ok) {
     return auth.response;

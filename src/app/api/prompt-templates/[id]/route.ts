@@ -17,7 +17,7 @@ function friendlyError(error: unknown) {
 }
 
 export async function PATCH(request: Request, context: Context) {
-  const auth = requirePermission(request, "approve_prompts");
+  const auth = await requirePermission(request, "approve_prompts");
 
   if (!auth.ok) {
     return auth.response;

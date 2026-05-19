@@ -1,13 +1,10 @@
 import { NextResponse } from "next/server";
 
-import {
-  getRequestUser,
-  roleHasPermission,
-  type Permission,
-} from "@/lib/auth";
+import { roleHasPermission, type Permission } from "@/lib/auth";
+import { getAuthenticatedRequestUser } from "@/lib/auth-production";
 
-export function requirePermission(request: Request, permission: Permission) {
-  const user = getRequestUser(request);
+export async function requirePermission(request: Request, permission: Permission) {
+  const user = await getAuthenticatedRequestUser(request);
 
   if (!roleHasPermission(user.role, permission)) {
     return {

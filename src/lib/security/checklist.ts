@@ -5,7 +5,8 @@ export const securityChecklistSections = [
     category: "Authentication",
     checks: [
       "Production requires `DG_REQUIRE_AUTH=true`.",
-      "Admin role selection is protected by `ADMIN_ACCESS_PIN`.",
+      "Production roles come from active Supabase organization memberships.",
+      "Local role selection is disabled when production auth is required.",
       "Server routes re-check permissions instead of trusting hidden UI.",
     ],
   },

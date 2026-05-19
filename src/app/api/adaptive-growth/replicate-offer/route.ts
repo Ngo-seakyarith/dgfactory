@@ -15,7 +15,7 @@ type ReplicateOfferBody = {
 };
 
 export async function POST(request: Request) {
-  const auth = requirePermission(request, "manage_proposals");
+  const auth = await requirePermission(request, "manage_proposals");
 
   if (!auth.ok) {
     return auth.response;

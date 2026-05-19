@@ -23,7 +23,9 @@ export function middleware(request: NextRequest) {
       .getAll()
       .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
   const hasDevRole =
-    process.env.DG_DEV_ROLE_SESSION === "true" && request.cookies.has("dg_role");
+    !authRequired &&
+    process.env.DG_DEV_ROLE_SESSION === "true" &&
+    request.cookies.has("dg_role");
 
   if (authRequired && !isPublic && !hasSupabaseToken && !hasDevRole) {
     const loginUrl = request.nextUrl.clone();

@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
-import { getRequestUser } from "@/lib/auth";
+import { getAuthenticatedRequestUser } from "@/lib/auth-production";
 import { listPilotIssues, savePilotIssue } from "@/lib/pilot-storage";
 
 export async function GET() {
@@ -10,7 +10,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const user = getRequestUser(request);
+  const user = await getAuthenticatedRequestUser(request);
   const body = await request.json().catch(() => ({}));
 
   if (!String(body.title ?? "").trim()) {

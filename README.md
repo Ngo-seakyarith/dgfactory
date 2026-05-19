@@ -28,7 +28,7 @@ This app is separate from DG Command OS.
 - V3.3 Security Red Team and Governance Audit with export safety blocking, approval validation, RLS guidance, and security reports
 - V3.4 Client Portal with hashed token access, published client-safe documents, feedback capture, revocation, expiry, and audit logging
 - V3.5 Productization Package with `/product`, offer positioning, ROI calculator, and product brief export
-- V3.6 Enterprise Agentic Hardening with GPT-5.5 default model config, Brain status, Master Agent routing, adaptive specialist agents, concrete RLS migration, Supabase Auth migration path, approval rules, and autonomy settings
+- V3.6 Enterprise Agentic Hardening with GPT-5.5 default model config, Brain status, Master Agent routing, adaptive specialist agents, concrete RLS policies, Supabase Auth path, approval rules, and autonomy settings
 - Adaptive Growth OS Foundation with market signals, offer variants, experiments, metrics, selection decisions, learning genome, and offer-to-package handoff
 - Micro-Offer Mutation Factory for generating, comparing, editing, and saving multiple testable offer variants from one market signal or business idea
 - Fitness Score and Selection Engine for deterministic offer ranking, scale/iterate/park/kill recommendations, and human selection decisions
@@ -79,9 +79,9 @@ Required production keys:
 - `AI_BRAIN_MODEL` controls the intended Brain Layer model and all OpenAI-backed generation. V3.6 defaults to `gpt-5.5`.
 - Missing Supabase configuration causes persistence routes to fail explicitly.
 - `LOOP_API_KEY` is required for every `/api/loops/*` endpoint.
-- `DG_REQUIRE_AUTH=true` makes missing sessions default to `Viewer`; local development defaults to `Admin` when false.
+- `DG_REQUIRE_AUTH=true` requires a Supabase Auth session for protected app routes; local development defaults to `Admin` when false.
 - `DG_TRUST_ROLE_HEADERS=true` allows trusted infrastructure to pass `x-dg-role` and `x-dg-actor`. Keep it `false` unless a server-side gateway is enforcing identity.
-- `DG_DEV_ROLE_SESSION=true` keeps local role switching available while `DG_REQUIRE_AUTH=false`. Production should use Supabase Auth and database roles.
+- `DG_DEV_ROLE_SESSION=true` keeps local role switching available while `DG_REQUIRE_AUTH=false`. Production roles come from active `organization_memberships` rows.
 - `ADMIN_ACCESS_PIN` is optional. If configured, selecting the `Admin` role from `/settings` requires that PIN.
 
 ## V3.0 Production Hardening
@@ -99,8 +99,8 @@ Auth model:
 
 - Internal role session lives in secure-by-default route cookies set from `/settings`.
 - Server routes can also accept `x-dg-role` and `x-dg-actor` for controlled internal automation.
-- For production, set `DG_REQUIRE_AUTH=true` and configure `ADMIN_ACCESS_PIN`.
-- This is an internal MVP auth layer. A later version can replace it with Supabase Auth while keeping the same role and permission model.
+- For production, set `DG_REQUIRE_AUTH=true`, `DG_DEV_ROLE_SESSION=false`, and configure Supabase Auth users with active organization memberships.
+- The local role selector is only for development when production auth is disabled.
 
 Protection:
 
@@ -139,15 +139,15 @@ Adaptive Growth hardening:
 
 Security foundation:
 
-- `supabase/migrations/016_enterprise_auth_rls_hardening_v3_6.sql` adds organizations, profiles, organization memberships, helper role functions, `organization_id` columns, and concrete RLS policies for core business, agentic, eval, approval, and growth tables.
-- `src/lib/auth-production.ts` adds the Supabase Auth profile and membership lookup foundation.
+- `supabase/schema.sql` includes organizations, profiles, organization memberships, helper role functions, `organization_id` columns, and concrete RLS policies for core business, agentic, eval, approval, and growth tables.
+- `src/lib/auth-production.ts` resolves Supabase Auth users through active organization memberships.
 - `src/middleware.ts` protects app routes when `DG_REQUIRE_AUTH=true`.
 - `/login` and `/unauthorized` support the production auth transition.
 
 Approval and autonomy:
 
 - `src/lib/safety/approvalRules.ts` and `src/lib/safety/riskClassifier.ts` classify risky actions.
-- External sending, publishing client portal items, internal-note exports, lifecycle changes to Scaling/Productized/Killed, prompt approval, production deployment, production migrations, deletion, and internal margin/knowledge exposure require approval.
+- External sending, publishing client portal items, internal-note exports, lifecycle changes to Scaling/Productized/Killed, prompt approval, production deployment, production database schema changes, deletion, and internal margin/knowledge exposure require approval.
 - `/settings/autonomy` configures `manual`, `assisted`, `supervised`, and `bounded_auto` modes. Risky actions still require approval at every level.
 
 ## V3.1 Internal Pilot Launch System
@@ -165,7 +165,7 @@ Pilot workspace:
 
 30-day pilot process:
 
-1. Start with `DG_REQUIRE_AUTH=true`, an Admin session, and Supabase migrations applied.
+1. Start with `DG_REQUIRE_AUTH=true`, an Admin session, and `supabase/schema.sql` applied.
 2. Use real DG Academy opportunities and packages, but keep confidential client data minimized.
 3. Review `/pilot` weekly with the team and run `pilot_weekly_review` from `/loops`.
 4. Log confusing screens, export problems, pricing concerns, and missing workflow steps as pilot issues.
@@ -269,7 +269,7 @@ Supabase tables:
 - `client_portal_items`
 - `client_feedback`
 
-Run migration `supabase/migrations/013_client_portal_v3_4.sql` or apply the matching SQL in `supabase/schema.sql`.
+Apply the matching SQL in `supabase/schema.sql`.
 
 ## V3.5 Productization Package
 
@@ -333,7 +333,7 @@ Workflow:
 6. Store reusable learning as a genome item.
 7. Create a training package from a winning offer variant.
 
-Run migration `supabase/migrations/014_adaptive_growth_os_foundation.sql` or apply the matching SQL in `supabase/schema.sql`.
+Apply the matching SQL in `supabase/schema.sql`.
 
 ## Adaptive Growth Dashboard Final
 
@@ -802,24 +802,12 @@ Safety:
 
 - Weekly content and stale follow-up loops generate drafts only.
 - No generated outreach is sent automatically.
-- Exports, external sends, deployments, production migrations, payments, and
+- Exports, external sends, deployments, production database schema changes, payments, and
   client data actions still require human approval.
 
 ## Supabase
 
-Run `supabase/schema.sql` or the migrations in order:
-
-- `supabase/migrations/001_training_packages.sql`
-- `supabase/migrations/002_crm_pipeline_v1_4.sql`
-- `supabase/migrations/003_delivery_os_v1_5.sql`
-- `supabase/migrations/004_knowledge_base_v1_8.sql`
-- `supabase/migrations/005_evaluation_feedback_v2_0.sql`
-- `supabase/migrations/006_prompt_templates_v2_2.sql`
-- `supabase/migrations/008_scheduled_business_loops_v2_4.sql`
-- `supabase/migrations/009_production_hardening_v3_0.sql`
-- `supabase/migrations/010_internal_pilot_launch_v3_1.sql`
-- `supabase/migrations/011_agent_reliability_evals_v3_2.sql`
-- `supabase/migrations/012_security_red_team_governance_v3_3.sql`
+Apply `supabase/schema.sql` as the single database setup file.
 
 The app stores:
 
@@ -1052,7 +1040,7 @@ npm run build
    - Loops: `LOOP_API_KEY`
    - Internal auth: `DG_REQUIRE_AUTH=true`, `DG_TRUST_ROLE_HEADERS=false`, `DG_DEV_ROLE_SESSION=false`, `DG_DEFAULT_ACTOR`, `ADMIN_ACCESS_PIN`
    - Public URL: `NEXT_PUBLIC_APP_URL` for generated portal links when request origin is unavailable
-4. Apply Supabase migrations in order, ending with `016_enterprise_auth_rls_hardening_v3_6.sql`.
+4. Apply `supabase/schema.sql` to the target Supabase project.
 5. Deploy.
 6. Open `/settings`, verify Brain Model Status and autonomy settings, then verify `/dashboard`, `/pilot`, `/evals`, `/security`, `/packages/new`, `/clients`, `/pipeline`, `/delivery`, `/quality`, `/approvals`, `/loops`, and `/admin/prompts`.
 
@@ -1065,7 +1053,7 @@ npm run build
 - Keep `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, and `LOOP_API_KEY` server-only.
 - Confirm prompt template routes are admin-only.
 - Confirm client exports do not include internal notes unless Admin explicitly selects them.
-- Review `/approvals` before any external sending, export handoff, deployment, deletion, payment, or production migration.
+- Review `/approvals` before any external sending, export handoff, deployment, deletion, payment, or production database schema change.
 - Review `/api/audit-logs` as Admin after launch testing.
 - Run `/security` red-team checks before wider team rollout or client-facing export changes.
 
@@ -1089,7 +1077,7 @@ npm run build
 - V2.0 improvement suggestions are advisory records. A human must approve and Codex must implement prompt/template changes separately.
 - V2.2 prompt template activation changes model behavior at runtime, but only after a human approves a draft. Production teams should review active prompts before client-critical generation.
 - V2.3 approval records do not execute external actions; they are a control surface for human review before a separate approved operation.
-- V3.0 auth is an internal MVP role layer, not a full identity provider. Use it with private Vercel access or replace with Supabase Auth before broad external access.
+- V3.0 auth uses Supabase Auth memberships when `DG_REQUIRE_AUTH=true`; local role cookies are development-only.
 - V3.1 pilot report DOCX/PDF exports are internal and simple; review them before sharing outside DG Academy.
 - V3.2 eval scoring is lightweight and deterministic-first. Treat it as regression signal, not a substitute for Sopheap or trainer review.
 - V3.3 red-team checks are deterministic internal guardrails. They help find obvious risks but do not replace a full external security review.

@@ -16,7 +16,7 @@ function friendlyError(error: unknown) {
 }
 
 export async function GET(request: Request) {
-  const auth = requirePermission(request, "manage_prompts");
+  const auth = await requirePermission(request, "manage_prompts");
 
   if (!auth.ok) {
     return auth.response;
@@ -39,7 +39,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = requirePermission(request, "manage_prompts");
+  const auth = await requirePermission(request, "manage_prompts");
 
   if (!auth.ok) {
     return auth.response;

@@ -28,7 +28,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = requirePermission(request, "manage_proposals");
+  const auth = await requirePermission(request, "manage_proposals");
 
   if (!auth.ok) {
     return auth.response;
@@ -60,7 +60,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = requirePermission(request, "manage_proposals");
+  const auth = await requirePermission(request, "manage_proposals");
 
   if (!auth.ok) {
     return auth.response;

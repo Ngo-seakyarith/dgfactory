@@ -35,7 +35,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = requirePermission(request, "manage_proposals");
+  const auth = await requirePermission(request, "manage_proposals");
 
   if (!auth.ok) {
     return auth.response;

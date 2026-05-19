@@ -19,7 +19,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = requirePermission(request, "manage_clients");
+  const auth = await requirePermission(request, "manage_clients");
 
   if (!auth.ok) {
     return auth.response;

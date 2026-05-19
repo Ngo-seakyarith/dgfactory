@@ -35,7 +35,7 @@ export async function GET(_request: Request, context: Context) {
 }
 
 export async function PATCH(request: Request, context: Context) {
-  const auth = requirePermission(request, "approve_requests");
+  const auth = await requirePermission(request, "approve_requests");
 
   if (!auth.ok) {
     return auth.response;

@@ -41,7 +41,7 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 - Brain Layer prompt template loading must fall back to code-defined agent instructions when storage is unavailable.
 - Loop endpoints must require `LOOP_API_KEY`.
 - Scheduled loops may generate drafts, summaries, and recommendations only.
-- Scheduled loops must never send messages, export client data, delete records, deploy, take payments, or run production migrations.
+- Scheduled loops must never send messages, export client data, delete records, deploy, take payments, or change production database schema.
 - Store loop runs in `loop_runs` with clear status, summary, recommendations, and timestamps.
 - Pilot launch features should support real internal usage without external side effects.
 - Pilot feedback and issues should capture workflow evidence, not confidential client details.
@@ -86,7 +86,7 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 - Production auth hardening should move toward Supabase Auth, `profiles`, and `organization_memberships`. Local role cookies are dev/internal fallback only.
 - Keep `DG_TRUST_ROLE_HEADERS=false` unless a trusted server-side gateway is enforcing identity before requests reach the app.
 - Never expose `SUPABASE_SERVICE_ROLE_KEY` or `LOOP_API_KEY` to browser code.
-- RLS migrations must be concrete SQL policies, not only documentation.
+- RLS policies must be concrete SQL in `supabase/schema.sql`, not only documentation.
 - Cross-organization data isolation must be enforced with `organization_id` and server/database checks, not frontend filters.
 - Admin-only surfaces include prompt templates, prompt approval, internal notes, and audit logs.
 - Sales may export client-facing materials but must not see internal margin notes.
@@ -112,7 +112,7 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 - Any prompt or template change suggested by the feedback loop requires human approval before Codex implements it.
 - Any prompt template activation or rollback requires human approval and must not be triggered automatically by AI feedback.
 - Any prompt/template change should not be approved for release when smoke evals fail.
-- Any external sending, deletion, deployment, payment, production migration, or client data export must create a pending approval request first.
+- Any external sending, deletion, deployment, payment, production database schema change, or client data export must create a pending approval request first.
 - Any loop-generated customer outreach is draft-only until Sopheap explicitly approves and performs a separate sending action.
 - Any production auth or permission relaxation must be documented and reviewed before deployment.
 - Any RLS policy relaxation or export validator bypass requires explicit human approval.
@@ -133,5 +133,5 @@ This is a standalone DG Academy Factory app. Do not merge it into DG Command OS 
 
 - Always update `README.md` after major changes.
 - Update README and docs after major changes.
-- Keep Supabase schema changes in `supabase/schema.sql` and a migration file.
+- Keep Supabase schema changes in `supabase/schema.sql`.
 - Mention new environment variables and routes in README.

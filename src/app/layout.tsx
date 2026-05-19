@@ -4,7 +4,8 @@ import { headers } from "next/headers";
 import Link from "next/link";
 
 import "./globals.css";
-import { getClientSessionFromCookies, roleHasPermission } from "@/lib/auth";
+import { roleHasPermission } from "@/lib/auth";
+import { getAuthenticatedCookieUser } from "@/lib/auth-production";
 
 export const metadata: Metadata = {
   title: "DG Academy AI Training Production Factory",
@@ -36,7 +37,7 @@ const navItems = [
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const cookieStore = await cookies();
   const headerStore = await headers();
-  const user = getClientSessionFromCookies(cookieStore.toString());
+  const user = await getAuthenticatedCookieUser(cookieStore.toString());
   const pathname = headerStore.get("x-dg-pathname") ?? "";
   const isClientPortal = pathname.startsWith("/client-portal");
   const resolvedNavItems = roleHasPermission(user.role, "manage_prompts")

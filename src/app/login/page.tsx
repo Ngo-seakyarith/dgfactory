@@ -15,14 +15,15 @@ export default function LoginPage() {
           <CardTitle>DG Academy Factory Access</CardTitle>
           <CardDescription>
             Production identity is designed for Supabase Auth and
-            organization memberships. The role selector below is a local
-            internal development tool and should be disabled in production
-            unless explicitly allowed with `DG_DEV_ROLE_SESSION=true`.
+            organization memberships. When production auth is enabled, the
+            form below signs in with Supabase and derives the app role from
+            `organization_memberships`.
           </CardDescription>
         </CardHeader>
         <CardContent className="text-sm leading-6 text-muted-foreground">
           If `DG_REQUIRE_AUTH=true`, authenticated routes require a Supabase
-          session cookie or an explicitly enabled dev role session.
+          session cookie. Local role selection is only available while
+          production auth is disabled.
         </CardContent>
       </Card>
       <AuthSettings />

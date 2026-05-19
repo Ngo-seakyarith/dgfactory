@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { getRequestUser, isAuthRequired, isDevRoleSessionEnabled, isUserRole } from "@/lib/auth";
+import { isAuthRequired, isDevRoleSessionEnabled, isUserRole } from "@/lib/auth";
+import { getAuthenticatedRequestUser } from "@/lib/auth-production";
 import { saveAuditLog } from "@/lib/audit";
 
 function cookieValue(value: string) {
@@ -13,7 +14,7 @@ function sessionCookie(name: string, value: string) {
 
 export async function GET(request: Request) {
   return NextResponse.json({
-    user: getRequestUser(request),
+    user: await getAuthenticatedRequestUser(request),
     authRequired: process.env.DG_REQUIRE_AUTH === "true",
   });
 }
