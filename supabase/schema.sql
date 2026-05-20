@@ -1095,3 +1095,16 @@ alter table public.eval_datasets add column if not exists organization_id uuid r
 alter table public.eval_examples add column if not exists organization_id uuid references public.organizations(id);
 alter table public.eval_runs add column if not exists organization_id uuid references public.organizations(id);
 alter table public.eval_results add column if not exists organization_id uuid references public.organizations(id);
+alter table public.delivery_tasks add column if not exists organization_id uuid references public.organizations(id);
+alter table public.output_evaluations add column if not exists organization_id uuid references public.organizations(id);
+alter table public.prompt_improvement_suggestions add column if not exists organization_id uuid references public.organizations(id);
+alter table public.prompt_template_changes add column if not exists organization_id uuid references public.organizations(id);
+alter table public.pilot_goals add column if not exists organization_id uuid references public.organizations(id);
+alter table public.pilot_issues add column if not exists organization_id uuid references public.organizations(id);
+alter table public.pilot_feedback add column if not exists organization_id uuid references public.organizations(id);
+alter table public.security_audits add column if not exists organization_id uuid references public.organizations(id);
+alter table public.security_audit_items add column if not exists organization_id uuid references public.organizations(id);
+alter table public.client_portal_access add column if not exists organization_id uuid references public.organizations(id);
+alter table public.client_portal_items add column if not exists organization_id uuid references public.organizations(id);
+alter table public.client_feedback add column if not exists organization_id uuid references public.organizations(id);
+alter table public.agent_traces add column if not exists organization_id uuid references public.organizations(id);

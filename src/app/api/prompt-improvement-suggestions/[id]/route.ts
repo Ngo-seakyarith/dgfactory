@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { updatePromptImprovementSuggestionStatus } from "@/lib/evaluation-storage";
 import { isPromptSuggestionStatus } from "@/lib/evaluations";
+import { requirePermission } from "@/lib/route-guards";
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -12,6 +13,9 @@ function friendlyError(error: unknown) {
 }
 
 export async function PATCH(request: Request, context: Context) {
+  const auth = await requirePermission(request, "manage_prompts");
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await context.params;
     const body = (await request.json()) as { status?: unknown };

@@ -22,7 +22,10 @@ function isKind(value: unknown): value is AdaptiveGrowthKind {
   return typeof value === "string" && kinds.includes(value as AdaptiveGrowthKind);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requirePermission(request, "read");
+  if (!auth.ok) return auth.response;
+
   const data = await listAdaptiveGrowthData();
   return NextResponse.json({ data });
 }

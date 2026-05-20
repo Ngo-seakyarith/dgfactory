@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
 import {
   createKnowledgeChunks,
   normalizeKnowledgeChunk,
@@ -89,10 +90,11 @@ export async function listKnowledgeDocuments() {
     throw new Error("Supabase is required to list knowledge documents.");
   }
 
-  const { data, error } = await supabase
+  const query = supabase
     .from("knowledge_documents")
     .select("*")
     .order("updated_at", { ascending: false });
+  const { data, error } = await scopeByOrganization(query);
 
   if (error) {
     throw new Error(error.message);
@@ -107,11 +109,9 @@ export async function getKnowledgeDocument(id: string) {
   const supabase = getSupabaseServerClient();
 
   if (supabase) {
-    const { data, error } = await supabase
-      .from("knowledge_documents")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+    const { data, error } = await scopeByOrganization(
+      supabase.from("knowledge_documents").select("*").eq("id", id),
+    ).maybeSingle();
 
     if (!error && data) {
       return documentFromRow(data as KnowledgeDocumentRow);
@@ -136,7 +136,7 @@ export async function saveKnowledgeDocument(input: Partial<KnowledgeDocument>) {
 
   const { data, error } = await supabase
     .from("knowledge_documents")
-    .upsert(documentToRow(document), { onConflict: "id" })
+    .upsert(withOrganizationId(documentToRow(document)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -144,8 +144,10 @@ export async function saveKnowledgeDocument(input: Partial<KnowledgeDocument>) {
     throw new Error(error.message);
   }
 
-  await supabase.from("knowledge_chunks").delete().eq("document_id", document.id);
-  await supabase.from("knowledge_chunks").upsert(chunks.map(chunkToRow), {
+  await scopeByOrganization(
+    supabase.from("knowledge_chunks").delete().eq("document_id", document.id),
+  );
+  await supabase.from("knowledge_chunks").upsert(chunks.map((chunk) => withOrganizationId(chunkToRow(chunk))), {
     onConflict: "id",
   });
 
@@ -163,7 +165,9 @@ export async function deleteKnowledgeDocument(id: string) {
     throw new Error("Supabase is required to delete knowledge documents.");
   }
 
-  const { error } = await supabase.from("knowledge_documents").delete().eq("id", id);
+  const { error } = await scopeByOrganization(
+    supabase.from("knowledge_documents").delete().eq("id", id),
+  );
   if (error) {
     throw new Error(error.message);
   }
@@ -177,7 +181,7 @@ export async function listKnowledgeChunks(documentId?: string) {
     throw new Error("Supabase is required to list knowledge chunks.");
   }
 
-  let query = supabase.from("knowledge_chunks").select("*").order("chunk_index");
+  let query = scopeByOrganization(supabase.from("knowledge_chunks").select("*").order("chunk_index"));
 
   if (documentId) {
     query = query.eq("document_id", documentId);

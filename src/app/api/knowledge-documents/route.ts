@@ -5,12 +5,16 @@ import {
   saveKnowledgeDocument,
 } from "@/lib/knowledge-storage";
 import type { KnowledgeDocument } from "@/lib/knowledge";
+import { requirePermission } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Knowledge request failed.";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requirePermission(request, "read");
+  if (!auth.ok) return auth.response;
+
   try {
     const documents = await listKnowledgeDocuments();
     return NextResponse.json({ documents });
@@ -20,6 +24,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requirePermission(request, "manage_course_materials");
+  if (!auth.ok) return auth.response;
+
   try {
     const body = (await request.json()) as Partial<KnowledgeDocument>;
 

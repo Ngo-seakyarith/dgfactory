@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server";
 
 import { deleteTrainingPackage, getTrainingPackage } from "@/lib/training-storage";
+import { requirePermission } from "@/lib/route-guards";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requirePermission(request, "read");
+  if (!auth.ok) return auth.response;
+
   const { id } = await params;
   const pkg = await getTrainingPackage(id);
 
@@ -20,9 +24,12 @@ export async function GET(
 }
 
 export async function DELETE(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
+  const auth = await requirePermission(request, "manage_proposals");
+  if (!auth.ok) return auth.response;
+
   const { id } = await params;
   const result = await deleteTrainingPackage(id);
 

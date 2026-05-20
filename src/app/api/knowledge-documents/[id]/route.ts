@@ -4,6 +4,7 @@ import {
   deleteKnowledgeDocument,
   getKnowledgeDocument,
 } from "@/lib/knowledge-storage";
+import { requirePermission } from "@/lib/route-guards";
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -13,7 +14,10 @@ function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Knowledge request failed.";
 }
 
-export async function GET(_request: Request, context: Context) {
+export async function GET(request: Request, context: Context) {
+  const auth = await requirePermission(request, "read");
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await context.params;
     const document = await getKnowledgeDocument(id);
@@ -31,7 +35,10 @@ export async function GET(_request: Request, context: Context) {
   }
 }
 
-export async function DELETE(_request: Request, context: Context) {
+export async function DELETE(request: Request, context: Context) {
+  const auth = await requirePermission(request, "manage_course_materials");
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await context.params;
     const result = await deleteKnowledgeDocument(id);

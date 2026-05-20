@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { deleteOpportunity, getOpportunity } from "@/lib/crm-storage";
+import { requirePermission } from "@/lib/route-guards";
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -10,7 +11,10 @@ function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Opportunity request failed.";
 }
 
-export async function GET(_request: Request, context: Context) {
+export async function GET(request: Request, context: Context) {
+  const auth = await requirePermission(request, "read");
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await context.params;
     const opportunity = await getOpportunity(id);
@@ -25,7 +29,10 @@ export async function GET(_request: Request, context: Context) {
   }
 }
 
-export async function DELETE(_request: Request, context: Context) {
+export async function DELETE(request: Request, context: Context) {
+  const auth = await requirePermission(request, "manage_opportunities");
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await context.params;
     const result = await deleteOpportunity(id);

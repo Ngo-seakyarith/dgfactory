@@ -9,12 +9,16 @@ import {
   saveEvalDataset,
   saveEvalExample,
 } from "@/lib/brain/evals/storage";
+import { requirePermission } from "@/lib/route-guards";
 
 function isBrainTaskType(value: unknown): value is BrainTaskType {
   return typeof value === "string" && brainTaskTypes.includes(value as BrainTaskType);
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requirePermission(request, "manage_prompts");
+  if (!auth.ok) return auth.response;
+
   const [datasets, runs, results, examples] = await Promise.all([
     listEvalDatasets(),
     listEvalRuns(),
@@ -55,6 +59,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const auth = await requirePermission(request, "manage_prompts");
+  if (!auth.ok) return auth.response;
+
   const body = await request.json().catch(() => ({}));
 
   if (!String(body.name ?? "").trim()) {

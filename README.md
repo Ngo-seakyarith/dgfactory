@@ -66,6 +66,7 @@ SUPABASE_SERVICE_ROLE_KEY=
 OPENAI_API_KEY=
 AI_BRAIN_MODEL=gpt-5.5
 LOOP_API_KEY=
+DG_SYSTEM_ORGANIZATION_ID=
 DG_REQUIRE_AUTH=false
 DG_TRUST_ROLE_HEADERS=false
 DG_DEV_ROLE_SESSION=true
@@ -77,8 +78,9 @@ Required production keys:
 
 - Missing or invalid OpenAI credentials cause AI generation routes to fail explicitly.
 - `AI_BRAIN_MODEL` controls the intended Brain Layer model and all OpenAI-backed generation. V3.6 defaults to `gpt-5.5`.
-- Missing Supabase configuration causes persistence routes to fail explicitly.
+- Missing Supabase server configuration causes persistence routes to fail explicitly. Server persistence requires `SUPABASE_SERVICE_ROLE_KEY`; it no longer falls back to the anon key.
 - `LOOP_API_KEY` is required for every `/api/loops/*` endpoint.
+- `DG_SYSTEM_ORGANIZATION_ID` is optional for internal scheduled/API-key workflows that do not have an interactive Supabase Auth user.
 - `DG_REQUIRE_AUTH=true` requires a Supabase Auth session for protected app routes; local development defaults to `Admin` when false.
 - `DG_TRUST_ROLE_HEADERS=true` allows trusted infrastructure to pass `x-dg-role` and `x-dg-actor`. Keep it `false` unless a server-side gateway is enforcing identity.
 - `DG_DEV_ROLE_SESSION=true` keeps local role switching available while `DG_REQUIRE_AUTH=false`. Production roles come from active `organization_memberships` rows.
@@ -99,7 +101,7 @@ Auth model:
 
 - Internal role session lives in secure-by-default route cookies set from `/settings`.
 - Server routes can also accept `x-dg-role` and `x-dg-actor` for controlled internal automation.
-- For production, set `DG_REQUIRE_AUTH=true`, `DG_DEV_ROLE_SESSION=false`, and configure Supabase Auth users with active organization memberships.
+- For production, set `DG_REQUIRE_AUTH=true`, `DG_DEV_ROLE_SESSION=false`, and configure Supabase Auth users with active organization memberships. Server storage stamps and filters persisted records by that active organization.
 - The local role selector is only for development when production auth is disabled.
 
 Protection:
@@ -139,7 +141,7 @@ Adaptive Growth hardening:
 
 Security foundation:
 
-- `supabase/schema.sql` includes organizations, profiles, organization memberships, helper role functions, `organization_id` columns, and concrete RLS policies for core business, agentic, eval, approval, and growth tables.
+- `supabase/schema.sql` includes organizations, profiles, organization memberships, and `organization_id` columns for every table used by app storage. Server storage uses the service role and applies organization scoping in application code.
 - `src/lib/auth-production.ts` resolves Supabase Auth users through active organization memberships.
 - `src/middleware.ts` protects app routes when `DG_REQUIRE_AUTH=true`.
 - `/login` and `/unauthorized` support the production auth transition.

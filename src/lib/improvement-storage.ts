@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
 import {
   normalizeImprovementOpportunity,
   type ImprovementCategory,
@@ -73,11 +74,11 @@ export async function listImprovementOpportunities(filters: {
     throw new Error("Supabase is required to list improvement opportunities.");
   }
 
-  let query = supabase
+  let query = scopeByOrganization(supabase
     .from("improvement_opportunities")
     .select("*")
     .order("priority", { ascending: true })
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false }));
 
   if (filters.sourceType) query = query.eq("source_type", filters.sourceType);
   if (filters.category) query = query.eq("category", filters.category);
@@ -96,11 +97,9 @@ export async function getImprovementOpportunity(id: string) {
   const supabase = getSupabaseServerClient();
 
   if (supabase) {
-    const { data, error } = await supabase
-      .from("improvement_opportunities")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+    const { data, error } = await scopeByOrganization(
+      supabase.from("improvement_opportunities").select("*").eq("id", id),
+    ).maybeSingle();
 
     if (!error && data) {
       return fromRow(data as ImprovementRow);
@@ -125,7 +124,7 @@ export async function saveImprovementOpportunity(
 
   const { data, error } = await supabase
     .from("improvement_opportunities")
-    .upsert(toRow(opportunity), { onConflict: "id" })
+    .upsert(withOrganizationId(toRow(opportunity)), { onConflict: "id" })
     .select("*")
     .single();
 

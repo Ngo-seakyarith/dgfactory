@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
 import {
   normalizeDeliveryProject,
   normalizeDeliveryTask,
@@ -119,10 +120,11 @@ export async function listDeliveryProjects() {
     throw new Error("Supabase is required to list delivery projects.");
   }
 
-  const { data, error } = await supabase
+  const query = supabase
     .from("delivery_projects")
     .select("*")
     .order("updated_at", { ascending: false });
+  const { data, error } = await scopeByOrganization(query);
 
   if (error) {
     throw new Error(error.message);
@@ -135,11 +137,9 @@ export async function getDeliveryProject(id: string) {
   const supabase = getSupabaseServerClient();
 
   if (supabase) {
-    const { data, error } = await supabase
-      .from("delivery_projects")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+    const { data, error } = await scopeByOrganization(
+      supabase.from("delivery_projects").select("*").eq("id", id),
+    ).maybeSingle();
 
     if (!error && data) {
       return projectFromRow(data as DeliveryProjectRow);
@@ -162,7 +162,7 @@ export async function saveDeliveryProject(input: Partial<DeliveryProject>) {
 
   const { data, error } = await supabase
     .from("delivery_projects")
-    .upsert(projectToRow(project), { onConflict: "id" })
+    .upsert(withOrganizationId(projectToRow(project)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -183,7 +183,9 @@ export async function deleteDeliveryProject(id: string) {
     throw new Error("Supabase is required to delete delivery projects.");
   }
 
-  const { error } = await supabase.from("delivery_projects").delete().eq("id", id);
+  const { error } = await scopeByOrganization(
+    supabase.from("delivery_projects").delete().eq("id", id),
+  );
   if (error) {
     throw new Error(error.message);
   }
@@ -197,7 +199,7 @@ export async function listDeliveryTasks(deliveryProjectId?: string) {
     throw new Error("Supabase is required to list delivery tasks.");
   }
 
-  let query = supabase.from("delivery_tasks").select("*").order("created_at");
+  let query = scopeByOrganization(supabase.from("delivery_tasks").select("*").order("created_at"));
 
   if (deliveryProjectId) {
     query = query.eq("delivery_project_id", deliveryProjectId);
@@ -225,7 +227,7 @@ export async function saveDeliveryTask(input: Partial<DeliveryTask>) {
 
   const { data, error } = await supabase
     .from("delivery_tasks")
-    .upsert(taskToRow(task), { onConflict: "id" })
+    .upsert(withOrganizationId(taskToRow(task)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -243,7 +245,9 @@ export async function deleteDeliveryTask(id: string) {
     throw new Error("Supabase is required to delete delivery tasks.");
   }
 
-  const { error } = await supabase.from("delivery_tasks").delete().eq("id", id);
+  const { error } = await scopeByOrganization(
+    supabase.from("delivery_tasks").delete().eq("id", id),
+  );
   if (error) {
     throw new Error(error.message);
   }

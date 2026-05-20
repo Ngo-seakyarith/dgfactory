@@ -2,9 +2,11 @@ import { NextResponse } from "next/server";
 
 import { roleHasPermission, type Permission } from "@/lib/auth";
 import { getAuthenticatedRequestUser } from "@/lib/auth-production";
+import { setRequestAuthUser } from "@/lib/organization-scope";
 
 export async function requirePermission(request: Request, permission: Permission) {
   const user = await getAuthenticatedRequestUser(request);
+  setRequestAuthUser(user);
 
   if (!roleHasPermission(user.role, permission)) {
     return {

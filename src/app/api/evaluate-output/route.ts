@@ -17,6 +17,7 @@ import {
   savePromptImprovementSuggestion,
 } from "@/lib/evaluation-storage";
 import type { BrainAgentDefinition } from "@/lib/brain/agents";
+import { requirePermission } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Output evaluation failed.";
@@ -45,6 +46,9 @@ const evaluationAgent: BrainAgentDefinition<
 };
 
 export async function POST(request: Request) {
+  const auth = await requirePermission(request, "manage_feedback");
+  if (!auth.ok) return auth.response;
+
   try {
     const body = (await request.json()) as {
       output?: unknown;

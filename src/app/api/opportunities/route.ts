@@ -9,7 +9,10 @@ function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Opportunity request failed.";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requirePermission(request, "read");
+  if (!auth.ok) return auth.response;
+
   try {
     const opportunities = await listOpportunities();
     return NextResponse.json({ opportunities });

@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
 
 export type AuditLog = {
   id: string;
@@ -90,7 +91,7 @@ export async function saveAuditLog(input: Partial<AuditLog>) {
 
   const { data, error } = await supabase
     .from("audit_logs")
-    .insert(toRow(log))
+    .insert(withOrganizationId(toRow(log)))
     .select("*")
     .single();
 
@@ -108,11 +109,12 @@ export async function listAuditLogs(limit = 50) {
     throw new Error("Supabase is required to list audit logs.");
   }
 
-  const { data, error } = await supabase
+  const query = supabase
     .from("audit_logs")
     .select("*")
     .order("created_at", { ascending: false })
     .limit(limit);
+  const { data, error } = await scopeByOrganization(query);
 
   if (error) {
     throw new Error(error.message);

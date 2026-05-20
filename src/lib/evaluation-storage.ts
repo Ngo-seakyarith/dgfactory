@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
 import {
   calculateQualityMetrics,
   normalizeOutputEvaluation,
@@ -109,10 +110,10 @@ export async function listOutputEvaluations(filters: {
     throw new Error("Supabase is required to list output evaluations.");
   }
 
-  let query = supabase
+  let query = scopeByOrganization(supabase
     .from("output_evaluations")
     .select("*")
-    .order("created_at", { ascending: false });
+    .order("created_at", { ascending: false }));
 
   if (filters.packageId) {
     query = query.eq("package_id", filters.packageId);
@@ -141,7 +142,7 @@ export async function saveOutputEvaluation(input: Partial<OutputEvaluation>) {
 
   const { data, error } = await supabase
     .from("output_evaluations")
-    .upsert(evaluationToRow(evaluation), { onConflict: "id" })
+    .upsert(withOrganizationId(evaluationToRow(evaluation)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -165,10 +166,10 @@ export async function listPromptImprovementSuggestions(filters: {
     throw new Error("Supabase is required to list prompt improvement suggestions.");
   }
 
-  let query = supabase
+  let query = scopeByOrganization(supabase
     .from("prompt_improvement_suggestions")
     .select("*")
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false }));
 
   if (filters.sourceEvaluationId) {
     query = query.eq("source_evaluation_id", filters.sourceEvaluationId);
@@ -199,7 +200,7 @@ export async function savePromptImprovementSuggestion(
 
   const { data, error } = await supabase
     .from("prompt_improvement_suggestions")
-    .upsert(suggestionToRow(suggestion), { onConflict: "id" })
+    .upsert(withOrganizationId(suggestionToRow(suggestion)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -229,10 +230,12 @@ export async function updatePromptImprovementSuggestionStatus(
     throw new Error("Supabase is required to update prompt improvement suggestions.");
   }
 
-  const { data, error } = await supabase
-    .from("prompt_improvement_suggestions")
-    .update({ status, updated_at: updated.updatedAt })
-    .eq("id", id)
+  const { data, error } = await scopeByOrganization(
+    supabase
+      .from("prompt_improvement_suggestions")
+      .update({ status, updated_at: updated.updatedAt })
+      .eq("id", id),
+  )
     .select("*")
     .single();
 

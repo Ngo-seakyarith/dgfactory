@@ -2,12 +2,16 @@ import { NextResponse } from "next/server";
 
 import { listDeliveryTasks, saveDeliveryTask } from "@/lib/delivery-storage";
 import type { DeliveryTask } from "@/lib/delivery";
+import { requirePermission } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Delivery task request failed.";
 }
 
 export async function GET(request: Request) {
+  const auth = await requirePermission(request, "read");
+  if (!auth.ok) return auth.response;
+
   try {
     const url = new URL(request.url);
     const deliveryProjectId = url.searchParams.get("deliveryProjectId") ?? undefined;
@@ -19,6 +23,9 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requirePermission(request, "manage_delivery");
+  if (!auth.ok) return auth.response;
+
   try {
     const body = (await request.json()) as Partial<DeliveryTask>;
 

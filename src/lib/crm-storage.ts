@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
 import {
   normalizeClient,
   normalizeOpportunity,
@@ -106,10 +107,11 @@ export async function listClients() {
     throw new Error("Supabase is required to list clients.");
   }
 
-  const { data, error } = await supabase
+  const query = supabase
     .from("clients")
     .select("*")
     .order("updated_at", { ascending: false });
+  const { data, error } = await scopeByOrganization(query);
 
   if (error) {
     throw new Error(error.message);
@@ -122,11 +124,9 @@ export async function getClient(id: string) {
   const supabase = getSupabaseServerClient();
 
   if (supabase) {
-    const { data, error } = await supabase
-      .from("clients")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+    const { data, error } = await scopeByOrganization(
+      supabase.from("clients").select("*").eq("id", id),
+    ).maybeSingle();
 
     if (!error && data) {
       return clientFromRow(data as ClientRow);
@@ -149,7 +149,7 @@ export async function saveClient(input: Partial<Client>) {
 
   const { data, error } = await supabase
     .from("clients")
-    .upsert(clientToRow(client), { onConflict: "id" })
+    .upsert(withOrganizationId(clientToRow(client)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -167,7 +167,7 @@ export async function deleteClient(id: string) {
     throw new Error("Supabase is required to delete clients.");
   }
 
-  const { error } = await supabase.from("clients").delete().eq("id", id);
+  const { error } = await scopeByOrganization(supabase.from("clients").delete().eq("id", id));
   if (error) {
     throw new Error(error.message);
   }
@@ -181,10 +181,11 @@ export async function listOpportunities() {
     throw new Error("Supabase is required to list opportunities.");
   }
 
-  const { data, error } = await supabase
+  const query = supabase
     .from("opportunities")
     .select("*")
     .order("updated_at", { ascending: false });
+  const { data, error } = await scopeByOrganization(query);
 
   if (error) {
     throw new Error(error.message);
@@ -197,11 +198,9 @@ export async function getOpportunity(id: string) {
   const supabase = getSupabaseServerClient();
 
   if (supabase) {
-    const { data, error } = await supabase
-      .from("opportunities")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+    const { data, error } = await scopeByOrganization(
+      supabase.from("opportunities").select("*").eq("id", id),
+    ).maybeSingle();
 
     if (!error && data) {
       return opportunityFromRow(data as OpportunityRow);
@@ -224,7 +223,7 @@ export async function saveOpportunity(input: Partial<Opportunity>) {
 
   const { data, error } = await supabase
     .from("opportunities")
-    .upsert(opportunityToRow(opportunity), { onConflict: "id" })
+    .upsert(withOrganizationId(opportunityToRow(opportunity)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -245,7 +244,9 @@ export async function deleteOpportunity(id: string) {
     throw new Error("Supabase is required to delete opportunities.");
   }
 
-  const { error } = await supabase.from("opportunities").delete().eq("id", id);
+  const { error } = await scopeByOrganization(
+    supabase.from("opportunities").delete().eq("id", id),
+  );
   if (error) {
     throw new Error(error.message);
   }

@@ -6,6 +6,7 @@ import Link from "next/link";
 import "./globals.css";
 import { roleHasPermission } from "@/lib/auth";
 import { getAuthenticatedCookieUser } from "@/lib/auth-production";
+import { setRequestAuthUser } from "@/lib/organization-scope";
 
 export const metadata: Metadata = {
   title: "DG Academy AI Training Production Factory",
@@ -38,6 +39,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const cookieStore = await cookies();
   const headerStore = await headers();
   const user = await getAuthenticatedCookieUser(cookieStore.toString());
+  setRequestAuthUser(user);
   const pathname = headerStore.get("x-dg-pathname") ?? "";
   const isClientPortal = pathname.startsWith("/client-portal");
   const resolvedNavItems = roleHasPermission(user.role, "manage_prompts")

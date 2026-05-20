@@ -16,7 +16,10 @@ function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Approval update failed.";
 }
 
-export async function GET(_request: Request, context: Context) {
+export async function GET(request: Request, context: Context) {
+  const auth = await requirePermission(request, "approve_requests");
+  if (!auth.ok) return auth.response;
+
   try {
     const { id } = await context.params;
     const approval = await getApprovalRequest(id);

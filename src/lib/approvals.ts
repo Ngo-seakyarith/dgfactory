@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
 
 export const approvalStatuses = [
   "Pending",
@@ -114,10 +115,10 @@ export async function listApprovalRequests(filters: {
     throw new Error("Supabase is required to list approval requests.");
   }
 
-  let query = supabase
+  let query = scopeByOrganization(supabase
     .from("approval_requests")
     .select("*")
-    .order("updated_at", { ascending: false });
+    .order("updated_at", { ascending: false }));
 
   if (filters.status) {
     query = query.eq("status", filters.status);
@@ -136,11 +137,9 @@ export async function getApprovalRequest(id: string) {
   const supabase = getSupabaseServerClient();
 
   if (supabase) {
-    const { data, error } = await supabase
-      .from("approval_requests")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+    const { data, error } = await scopeByOrganization(
+      supabase.from("approval_requests").select("*").eq("id", id),
+    ).maybeSingle();
 
     if (!error && data) {
       return approvalFromRow(data as ApprovalRequestRow);
@@ -160,7 +159,7 @@ export async function saveApprovalRequest(input: Partial<ApprovalRequest>) {
 
   const { data, error } = await supabase
     .from("approval_requests")
-    .upsert(approvalToRow(approval), { onConflict: "id" })
+    .upsert(withOrganizationId(approvalToRow(approval)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -196,14 +195,16 @@ export async function updateApprovalRequest({
     throw new Error("Supabase is required to update approval requests.");
   }
 
-  const { data, error } = await supabase
-    .from("approval_requests")
-    .update({
-      status: updated.status,
-      human_note: updated.humanNote,
-      updated_at: updated.updatedAt,
-    })
-    .eq("id", id)
+  const { data, error } = await scopeByOrganization(
+    supabase
+      .from("approval_requests")
+      .update({
+        status: updated.status,
+        human_note: updated.humanNote,
+        updated_at: updated.updatedAt,
+      })
+      .eq("id", id),
+  )
     .select("*")
     .single();
 

@@ -13,7 +13,10 @@ function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Training package request failed.";
 }
 
-export async function GET() {
+export async function GET(request: Request) {
+  const auth = await requirePermission(request, "read");
+  if (!auth.ok) return auth.response;
+
   try {
     const packages = await listTrainingPackages();
     return NextResponse.json({ packages });

@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
 import {
   normalizeSecurityAudit,
   normalizeSecurityAuditItem,
@@ -104,7 +105,7 @@ export async function saveSecurityAudit(input: Partial<SecurityAudit>) {
 
   const { data, error } = await supabase
     .from("security_audits")
-    .upsert(auditToRow(audit), { onConflict: "id" })
+    .upsert(withOrganizationId(auditToRow(audit)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -123,7 +124,7 @@ export async function saveSecurityAuditItems(items: SecurityAuditItem[]) {
 
   const { data, error } = await supabase
     .from("security_audit_items")
-    .upsert(items.map(itemToRow), { onConflict: "id" })
+    .upsert(items.map((item) => withOrganizationId(itemToRow(item))), { onConflict: "id" })
     .select("*");
 
   if (error) {
@@ -143,10 +144,11 @@ export async function listSecurityAudits() {
     throw new Error("Supabase is required to list security audits.");
   }
 
-  const { data, error } = await supabase
+  const query = supabase
     .from("security_audits")
     .select("*")
     .order("created_at", { ascending: false });
+  const { data, error } = await scopeByOrganization(query);
 
   if (error) {
     throw new Error(error.message);
@@ -162,7 +164,7 @@ export async function listSecurityAuditItems(auditId?: string) {
     throw new Error("Supabase is required to list security audit items.");
   }
 
-  let query = supabase.from("security_audit_items").select("*").order("category");
+  let query = scopeByOrganization(supabase.from("security_audit_items").select("*").order("category"));
   if (auditId) {
     query = query.eq("audit_id", auditId);
   }

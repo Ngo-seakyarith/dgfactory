@@ -4,6 +4,7 @@ import { exportTrainingPackage, type ExportFormat } from "@/lib/export-package";
 import { buildPilotReport, calculatePilotMetrics } from "@/lib/pilot";
 import { getPilotSnapshot } from "@/lib/pilot-storage";
 import { calculatePricing, defaultPricingInputs } from "@/lib/pricing";
+import { requirePermission } from "@/lib/route-guards";
 import type { TrainingPackage } from "@/lib/training-packages";
 
 function pilotReportFilename(format: ExportFormat) {
@@ -12,6 +13,9 @@ function pilotReportFilename(format: ExportFormat) {
 }
 
 export async function POST(request: Request) {
+  const auth = await requirePermission(request, "view_internal_notes");
+  if (!auth.ok) return auth.response;
+
   const body = await request.json().catch(() => ({}));
   const format = body.format as ExportFormat;
 

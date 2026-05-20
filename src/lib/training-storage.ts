@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
 import type {
   KnowledgeSourceNote,
 } from "@/lib/knowledge";
@@ -138,10 +139,11 @@ export async function listTrainingPackages() {
     throw new Error("Supabase is required to list training packages.");
   }
 
-  const { data, error } = await supabase
+  const query = supabase
     .from("training_packages")
     .select("*")
     .order("updated_at", { ascending: false });
+  const { data, error } = await scopeByOrganization(query);
 
   if (error) {
     throw new Error(error.message);
@@ -154,11 +156,9 @@ export async function getTrainingPackage(id: string) {
   const supabase = getSupabaseServerClient();
 
   if (supabase) {
-    const { data, error } = await supabase
-      .from("training_packages")
-      .select("*")
-      .eq("id", id)
-      .maybeSingle();
+    const { data, error } = await scopeByOrganization(
+      supabase.from("training_packages").select("*").eq("id", id),
+    ).maybeSingle();
 
     if (!error && data) {
       return fromRow(data as PackageRow);
@@ -182,7 +182,7 @@ export async function saveTrainingPackage(pkg: TrainingPackage) {
 
   const { data, error } = await supabase
     .from("training_packages")
-    .upsert(toRow(packageToSave), { onConflict: "id" })
+    .upsert(withOrganizationId(toRow(packageToSave)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -203,7 +203,9 @@ export async function deleteTrainingPackage(id: string) {
     throw new Error("Supabase is required to delete training packages.");
   }
 
-  const { error } = await supabase.from("training_packages").delete().eq("id", id);
+  const { error } = await scopeByOrganization(
+    supabase.from("training_packages").delete().eq("id", id),
+  );
 
   if (error) {
     throw new Error(error.message);
