@@ -12,7 +12,7 @@ import {
   improvementCategories,
   improvementSourceTypes,
 } from "@/lib/improvements";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 type GenerateImprovementBody = {
   sourceType?: string;
@@ -37,7 +37,7 @@ function safeCategory(value: unknown): ImprovementCategory {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_proposals");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

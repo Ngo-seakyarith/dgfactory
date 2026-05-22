@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
+import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import { createSeedEvalData } from "@/lib/brain/evals/benchmarks";
 import {
   normalizeAgentTrace,
@@ -221,13 +221,13 @@ export async function ensureSeedEvalDatasets() {
     throw new Error("Supabase is required to ensure eval datasets.");
   }
 
-  const { data } = await scopeByOrganization(supabase.from("eval_datasets").select("id").limit(1));
+  const { data } = await scopeAppData(supabase.from("eval_datasets").select("id").limit(1));
 
   if (!data?.length) {
-    await supabase.from("eval_datasets").upsert(seed.datasets.map((dataset) => withOrganizationId(datasetToRow(dataset))), {
+    await supabase.from("eval_datasets").upsert(seed.datasets.map((dataset) => withAppScope(datasetToRow(dataset))), {
       onConflict: "id",
     });
-    await supabase.from("eval_examples").upsert(seed.examples.map((example) => withOrganizationId(exampleToRow(example))), {
+    await supabase.from("eval_examples").upsert(seed.examples.map((example) => withAppScope(exampleToRow(example))), {
       onConflict: "id",
     });
   }
@@ -247,7 +247,7 @@ export async function listEvalDatasets() {
     .from("eval_datasets")
     .select("*")
     .order("name");
-  const { data, error } = await scopeByOrganization(query);
+  const { data, error } = await scopeAppData(query);
 
   if (error) {
     throw new Error(error.message);
@@ -264,7 +264,7 @@ export async function listEvalExamples(datasetId?: string) {
     throw new Error("Supabase is required to list eval examples.");
   }
 
-  let query = scopeByOrganization(supabase.from("eval_examples").select("*").order("id"));
+  let query = scopeAppData(supabase.from("eval_examples").select("*").order("id"));
   if (datasetId) {
     query = query.eq("dataset_id", datasetId);
   }
@@ -295,7 +295,7 @@ export async function saveEvalDataset(input: Partial<EvalDataset>) {
 
   const { data, error } = await supabase
     .from("eval_datasets")
-    .upsert(withOrganizationId(datasetToRow(dataset)), { onConflict: "id" })
+    .upsert(withAppScope(datasetToRow(dataset)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -322,7 +322,7 @@ export async function saveEvalExample(input: Partial<EvalExample>) {
 
   const { data, error } = await supabase
     .from("eval_examples")
-    .upsert(withOrganizationId(exampleToRow(example)), { onConflict: "id" })
+    .upsert(withAppScope(exampleToRow(example)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -346,7 +346,7 @@ export async function saveEvalRun(input: Partial<EvalRun>) {
 
   const { data, error } = await supabase
     .from("eval_runs")
-    .upsert(withOrganizationId(runToRow(run)), { onConflict: "id" })
+    .upsert(withAppScope(runToRow(run)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -365,7 +365,7 @@ export async function saveEvalResults(results: EvalResult[]) {
 
   const { data, error } = await supabase
     .from("eval_results")
-    .upsert(results.map((result) => withOrganizationId(resultToRow(result))), { onConflict: "id" })
+    .upsert(results.map((result) => withAppScope(resultToRow(result))), { onConflict: "id" })
     .select("*");
 
   if (error) {
@@ -385,7 +385,7 @@ export async function listEvalRuns(datasetId?: string) {
     throw new Error("Supabase is required to list eval runs.");
   }
 
-  let query = scopeByOrganization(supabase.from("eval_runs").select("*").order("started_at", {
+  let query = scopeAppData(supabase.from("eval_runs").select("*").order("started_at", {
     ascending: false,
   }));
   if (datasetId) {
@@ -407,7 +407,7 @@ export async function listEvalResults(evalRunId?: string) {
     throw new Error("Supabase is required to list eval results.");
   }
 
-  let query = scopeByOrganization(supabase.from("eval_results").select("*").order("created_at", {
+  let query = scopeAppData(supabase.from("eval_results").select("*").order("created_at", {
     ascending: false,
   }));
   if (evalRunId) {
@@ -432,7 +432,7 @@ export async function saveAgentTrace(input: Partial<AgentTrace>) {
 
   const { data, error } = await supabase
     .from("agent_traces")
-    .insert(withOrganizationId(traceToRow(trace)))
+    .insert(withAppScope(traceToRow(trace)))
     .select("*")
     .single();
 

@@ -4,7 +4,7 @@ import {
   deleteKnowledgeDocument,
   getKnowledgeDocument,
 } from "@/lib/knowledge-storage";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -15,7 +15,7 @@ function friendlyError(error: unknown) {
 }
 
 export async function GET(request: Request, context: Context) {
-  const auth = await requirePermission(request, "read");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {
@@ -36,7 +36,7 @@ export async function GET(request: Request, context: Context) {
 }
 
 export async function DELETE(request: Request, context: Context) {
-  const auth = await requirePermission(request, "manage_course_materials");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {

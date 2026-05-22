@@ -42,7 +42,7 @@ import {
   type TrainingPackageOutputs,
 } from "@/lib/training-packages";
 import type { ExportFormat, ExportTarget } from "@/lib/export-package";
-import type { UserRole } from "@/lib/auth";
+import { hasAppAccess, type UserRole } from "@/lib/auth";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import {
   outputEvaluationTypes,
@@ -1429,8 +1429,8 @@ export function OutputTabs({
   const [isRegenerating, setIsRegenerating] =
     useState<RegeneratablePackageSection | "">("");
   const [regenerateNotice, setRegenerateNotice] = useState("");
-  const [role, setRole] = useState<UserRole>("Admin");
-  const canViewInternal = role === "Admin";
+  const [role, setRole] = useState<UserRole>("Pending");
+  const canViewInternal = hasAppAccess(role);
 
   const activeSection = useMemo(
     () => sections.find((section) => section.key === activeKey)!,
@@ -1456,7 +1456,7 @@ export function OutputTabs({
           setRole(payload.user.role);
         }
       } catch {
-        setRole("Viewer");
+        setRole("Pending");
       }
     }
 

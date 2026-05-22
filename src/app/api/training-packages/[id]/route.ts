@@ -1,13 +1,13 @@
 import { NextResponse } from "next/server";
 
 import { deleteTrainingPackage, getTrainingPackage } from "@/lib/training-storage";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requirePermission(request, "read");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   const { id } = await params;
@@ -27,7 +27,7 @@ export async function DELETE(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requirePermission(request, "manage_proposals");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   const { id } = await params;

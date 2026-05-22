@@ -1,4 +1,5 @@
 import { CheckCircle2, CircleAlert } from "lucide-react";
+import { cookies } from "next/headers";
 
 import { AuthSettings } from "@/app/settings/_components/auth-settings";
 import { AiSettingsPanel } from "@/app/settings/_components/ai-settings";
@@ -10,6 +11,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { hasAppAccess } from "@/lib/auth";
+import { getAuthenticatedCookieUser } from "@/lib/auth-production";
 
 const checks = [
   ["OpenAI API", "OPENAI_API_KEY", Boolean(process.env.OPENAI_API_KEY)],
@@ -26,10 +29,27 @@ const checks = [
   ],
   ["Loop API key", "LOOP_API_KEY", Boolean(process.env.LOOP_API_KEY)],
   ["Auth enforcement", "DG_REQUIRE_AUTH", process.env.DG_REQUIRE_AUTH === "true"],
-  ["Admin PIN", "ADMIN_ACCESS_PIN", Boolean(process.env.ADMIN_ACCESS_PIN)],
 ];
 
-export default function SettingsPage() {
+export default async function SettingsPage() {
+  const user = await getAuthenticatedCookieUser((await cookies()).toString());
+  const canUseApp = hasAppAccess(user.role);
+
+  if (!canUseApp) {
+    return (
+      <div className="space-y-5">
+        <div>
+          <h1 className="text-2xl font-semibold text-white">Settings</h1>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">
+            Your account is signed in but waiting for approved DG Academy
+            Factory access.
+          </p>
+        </div>
+        <AuthSettings />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       <div>

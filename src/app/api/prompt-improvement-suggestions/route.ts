@@ -8,14 +8,14 @@ import {
   isPromptSuggestionStatus,
   type PromptImprovementSuggestion,
 } from "@/lib/evaluations";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Improvement suggestion request failed.";
 }
 
 export async function GET(request: Request) {
-  const auth = await requirePermission(request, "manage_prompts");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {
@@ -33,7 +33,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_prompts");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {

@@ -16,7 +16,7 @@ import {
   improvementSourceTypes,
   improvementStatuses,
 } from "@/lib/improvements";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 function isOneOf<T extends readonly string[]>(options: T, value: unknown): value is T[number] {
   return typeof value === "string" && options.includes(value);
@@ -44,7 +44,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_proposals");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

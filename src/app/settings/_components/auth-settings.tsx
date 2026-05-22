@@ -24,8 +24,7 @@ type SessionPayload = {
 
 export function AuthSettings() {
   const [actor, setActor] = useState("DG Academy Operator");
-  const [role, setRole] = useState<UserRole>("Admin");
-  const [adminPin, setAdminPin] = useState("");
+  const [role, setRole] = useState<UserRole>("Approved");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [notice, setNotice] = useState("");
@@ -97,17 +96,17 @@ export function AuthSettings() {
       const response = await fetch("/api/auth/session", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ actor, role, adminPin }),
+        body: JSON.stringify({ actor, role }),
       });
       const payload = (await response.json()) as SessionPayload;
 
       if (!response.ok || !payload.user) {
-        throw new Error(payload.error ?? "Role update failed.");
+        throw new Error(payload.error ?? "Access update failed.");
       }
 
-      setNotice(`Active role set to ${payload.user.role}. Refresh if navigation does not update immediately.`);
+      setNotice(`Access state set to ${payload.user.role}. Refresh if navigation does not update immediately.`);
     } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Role update failed.");
+      setNotice(error instanceof Error ? error.message : "Access update failed.");
     } finally {
       setIsSaving(false);
     }
@@ -126,8 +125,8 @@ export function AuthSettings() {
         </CardTitle>
         <CardDescription>
           {isAuthRequired
-            ? "Sign in with Supabase Auth. Roles come from active organization memberships."
-            : "Select an internal role for this browser session while production auth is disabled."}
+            ? "Sign in with Supabase Auth. Approved access comes from your profile status."
+            : "Select an internal access state for this browser session while production auth is disabled."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -163,13 +162,13 @@ export function AuthSettings() {
           </>
         ) : (
           <>
-            <div className="grid gap-4 md:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2">
               <label className="space-y-2">
                 <span className="text-sm font-medium text-white">Actor</span>
                 <Input value={actor} onChange={(event) => setActor(event.target.value)} />
               </label>
               <label className="space-y-2">
-                <span className="text-sm font-medium text-white">Role</span>
+                <span className="text-sm font-medium text-white">Access state</span>
                 <Select
                   value={role}
                   onChange={(event) => setRole(event.target.value as UserRole)}
@@ -179,20 +178,11 @@ export function AuthSettings() {
                   ))}
                 </Select>
               </label>
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-white">Admin PIN</span>
-                <Input
-                  type="password"
-                  value={adminPin}
-                  onChange={(event) => setAdminPin(event.target.value)}
-                  placeholder="Only if configured"
-                />
-              </label>
             </div>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="gold" onClick={saveSession} disabled={isSaving}>
                 {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                Save Role
+                Save Access
               </Button>
             </div>
           </>

@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
 import { replicateWinningOffer } from "@/lib/adaptive-growth/replicateWinningOffer";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 type ReplicateOfferBody = {
   offer_variant_id?: string;
@@ -15,7 +15,7 @@ type ReplicateOfferBody = {
 };
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_proposals");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

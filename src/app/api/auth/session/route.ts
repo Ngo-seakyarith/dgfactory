@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         error:
-          "Cookie role selection is disabled when DG_REQUIRE_AUTH=true. Use Supabase Auth roles from organization_memberships.",
+          "Cookie access selection is disabled when DG_REQUIRE_AUTH=true. Use Supabase Auth memberships for approval.",
       },
       { status: 403 },
     );
@@ -33,7 +33,6 @@ export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
     actor?: unknown;
     role?: unknown;
-    adminPin?: unknown;
   };
 
   if (!isUserRole(body.role)) {
@@ -41,15 +40,6 @@ export async function POST(request: Request) {
   }
 
   const actor = String(body.actor ?? "DG Academy Operator").trim();
-  const adminPin = process.env.ADMIN_ACCESS_PIN;
-
-  if (
-    body.role === "Admin" &&
-    adminPin &&
-    String(body.adminPin ?? "") !== adminPin
-  ) {
-    return NextResponse.json({ error: "Admin PIN is incorrect." }, { status: 403 });
-  }
 
   await saveAuditLog({
     actor,
@@ -76,7 +66,7 @@ export async function DELETE() {
   const response = NextResponse.json({
     user: {
       actor: "DG Academy Operator",
-      role: isAuthRequired() ? "Viewer" : "Admin",
+      role: isAuthRequired() ? "Pending" : "Approved",
     },
   });
 

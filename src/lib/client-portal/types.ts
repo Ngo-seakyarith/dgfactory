@@ -27,7 +27,6 @@ export type ClientPortalAccess = {
   clientId: string;
   contactEmail: string;
   accessTokenHash: string;
-  organizationId?: string;
   status: ClientPortalAccessStatus;
   expiresAt: string | null;
   createdAt: string;
@@ -91,7 +90,6 @@ export function normalizePortalAccess(
     clientId: String(input.clientId ?? "").trim(),
     contactEmail: String(input.contactEmail ?? "").trim(),
     accessTokenHash: String(input.accessTokenHash ?? "").trim(),
-    organizationId: input.organizationId,
     status,
     expiresAt: input.expiresAt || null,
     createdAt: input.createdAt || now,

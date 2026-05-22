@@ -8,7 +8,7 @@ import {
   calculateOfferFitness,
   type FitnessComponentKey,
 } from "@/lib/adaptive-growth/fitness";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 type EvaluateFitnessBody = {
   offer_variant_id?: string;
@@ -18,7 +18,7 @@ type EvaluateFitnessBody = {
 };
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_proposals");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

@@ -8,10 +8,10 @@ import {
   saveSecurityAudit,
   saveSecurityAuditItems,
 } from "@/lib/security/storage";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 export async function GET(request: Request) {
-  const auth = await requirePermission(request, "admin");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

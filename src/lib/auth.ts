@@ -1,78 +1,20 @@
-export const userRoles = ["Admin", "Trainer", "Sales", "Viewer"] as const;
+export const userRoles = ["Pending", "Approved"] as const;
 
 export type UserRole = (typeof userRoles)[number];
-
-export type Permission =
-  | "admin"
-  | "read"
-  | "manage_prompts"
-  | "approve_prompts"
-  | "view_pricing"
-  | "view_internal_notes"
-  | "manage_delivery"
-  | "manage_course_materials"
-  | "manage_feedback"
-  | "manage_post_training_reports"
-  | "manage_clients"
-  | "manage_opportunities"
-  | "manage_proposals"
-  | "generate_follow_ups"
-  | "client_exports"
-  | "approve_requests"
-  | "run_loops";
 
 export type AuthUser = {
   actor: string;
   role: UserRole;
   userId?: string;
   email?: string;
-  organizationId?: string;
-};
-
-const rolePermissions: Record<UserRole, Permission[]> = {
-  Admin: [
-    "admin",
-    "read",
-    "manage_prompts",
-    "approve_prompts",
-    "view_pricing",
-    "view_internal_notes",
-    "manage_delivery",
-    "manage_course_materials",
-    "manage_feedback",
-    "manage_post_training_reports",
-    "manage_clients",
-    "manage_opportunities",
-    "manage_proposals",
-    "generate_follow_ups",
-    "client_exports",
-    "approve_requests",
-    "run_loops",
-  ],
-  Trainer: [
-    "read",
-    "manage_delivery",
-    "manage_course_materials",
-    "manage_feedback",
-    "manage_post_training_reports",
-  ],
-  Sales: [
-    "read",
-    "manage_clients",
-    "manage_opportunities",
-    "manage_proposals",
-    "generate_follow_ups",
-    "client_exports",
-  ],
-  Viewer: ["read"],
 };
 
 export function isUserRole(value: unknown): value is UserRole {
   return typeof value === "string" && userRoles.includes(value as UserRole);
 }
 
-export function roleHasPermission(role: UserRole, permission: Permission) {
-  return rolePermissions[role].includes(permission);
+export function hasAppAccess(role: UserRole) {
+  return role === "Approved";
 }
 
 export function parseCookieHeader(cookieHeader: string | null) {
@@ -209,8 +151,8 @@ export function getRequestUserFallback(request: Request): AuthUser {
   const role = isUserRole(roleCandidate)
     ? roleCandidate
     : isAuthRequired()
-      ? "Viewer"
-      : "Admin";
+      ? "Pending"
+      : "Approved";
   const actor =
     (isTrustedRoleHeaderEnabled() ? request.headers.get("x-dg-actor") : null) ||
     cookies.get("dg_actor") ||
@@ -230,8 +172,8 @@ export function getClientSessionFromCookiesFallback(cookieHeader: string | null)
   const role = isUserRole(cookies.get("dg_role"))
     ? (cookies.get("dg_role") as UserRole)
     : isAuthRequired()
-      ? "Viewer"
-      : "Admin";
+      ? "Pending"
+      : "Approved";
 
   return {
     actor: cookies.get("dg_actor") || process.env.DG_DEFAULT_ACTOR || "DG Academy Operator",

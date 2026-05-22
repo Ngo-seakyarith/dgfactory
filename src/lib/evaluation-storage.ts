@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
+import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import {
   calculateQualityMetrics,
   normalizeOutputEvaluation,
@@ -110,7 +110,7 @@ export async function listOutputEvaluations(filters: {
     throw new Error("Supabase is required to list output evaluations.");
   }
 
-  let query = scopeByOrganization(supabase
+  let query = scopeAppData(supabase
     .from("output_evaluations")
     .select("*")
     .order("created_at", { ascending: false }));
@@ -142,7 +142,7 @@ export async function saveOutputEvaluation(input: Partial<OutputEvaluation>) {
 
   const { data, error } = await supabase
     .from("output_evaluations")
-    .upsert(withOrganizationId(evaluationToRow(evaluation)), { onConflict: "id" })
+    .upsert(withAppScope(evaluationToRow(evaluation)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -166,7 +166,7 @@ export async function listPromptImprovementSuggestions(filters: {
     throw new Error("Supabase is required to list prompt improvement suggestions.");
   }
 
-  let query = scopeByOrganization(supabase
+  let query = scopeAppData(supabase
     .from("prompt_improvement_suggestions")
     .select("*")
     .order("updated_at", { ascending: false }));
@@ -200,7 +200,7 @@ export async function savePromptImprovementSuggestion(
 
   const { data, error } = await supabase
     .from("prompt_improvement_suggestions")
-    .upsert(withOrganizationId(suggestionToRow(suggestion)), { onConflict: "id" })
+    .upsert(withAppScope(suggestionToRow(suggestion)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -230,7 +230,7 @@ export async function updatePromptImprovementSuggestionStatus(
     throw new Error("Supabase is required to update prompt improvement suggestions.");
   }
 
-  const { data, error } = await scopeByOrganization(
+  const { data, error } = await scopeAppData(
     supabase
       .from("prompt_improvement_suggestions")
       .update({ status, updated_at: updated.updatedAt })

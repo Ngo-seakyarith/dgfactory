@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
+import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import {
   normalizeImprovementOpportunity,
   type ImprovementCategory,
@@ -74,7 +74,7 @@ export async function listImprovementOpportunities(filters: {
     throw new Error("Supabase is required to list improvement opportunities.");
   }
 
-  let query = scopeByOrganization(supabase
+  let query = scopeAppData(supabase
     .from("improvement_opportunities")
     .select("*")
     .order("priority", { ascending: true })
@@ -97,7 +97,7 @@ export async function getImprovementOpportunity(id: string) {
   const supabase = getSupabaseServerClient();
 
   if (supabase) {
-    const { data, error } = await scopeByOrganization(
+    const { data, error } = await scopeAppData(
       supabase.from("improvement_opportunities").select("*").eq("id", id),
     ).maybeSingle();
 
@@ -124,7 +124,7 @@ export async function saveImprovementOpportunity(
 
   const { data, error } = await supabase
     .from("improvement_opportunities")
-    .upsert(withOrganizationId(toRow(opportunity)), { onConflict: "id" })
+    .upsert(withAppScope(toRow(opportunity)), { onConflict: "id" })
     .select("*")
     .single();
 

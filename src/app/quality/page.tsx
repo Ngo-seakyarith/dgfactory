@@ -101,7 +101,7 @@ export default function QualityDashboard() {
       }
 
       setNotice(
-        `Draft prompt v${payload.template.version} created for ${payload.template.agentName}. Approve it in Admin Prompts before activation.`,
+        `Draft prompt v${payload.template.version} created for ${payload.template.agentName}. Approve it in Prompts before activation.`,
       );
     } catch (error) {
       setNotice(

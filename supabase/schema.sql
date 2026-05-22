@@ -1,3 +1,15 @@
+-- Auth and app access.
+
+create table if not exists public.profiles (
+  id uuid primary key references auth.users(id) on delete cascade,
+  full_name text,
+  email text,
+  access_status text not null default 'Pending' check (access_status in ('Pending', 'Approved')),
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.profiles enable row level security;
 create table if not exists public.training_packages (
   id uuid primary key default gen_random_uuid(),
   title text not null,
@@ -1036,75 +1048,3 @@ create index if not exists idx_selection_decisions_fitness_score on public.selec
 create index if not exists idx_learning_genome_items_status on public.learning_genome_items(status);
 create index if not exists idx_learning_genome_items_type on public.learning_genome_items(type);
 create index if not exists idx_learning_genome_items_tags on public.learning_genome_items using gin(tags);
-
--- V3.6 Enterprise Auth and RLS hardening.
--- Concrete policies live in this schema file.
-
-create table if not exists public.organizations (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  slug text unique,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-alter table public.organizations enable row level security;
-
-create table if not exists public.profiles (
-  id uuid primary key references auth.users(id) on delete cascade,
-  full_name text,
-  email text,
-  default_organization_id uuid references public.organizations(id) on delete set null,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-alter table public.profiles enable row level security;
-
-create table if not exists public.organization_memberships (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null references auth.users(id) on delete cascade,
-  organization_id uuid not null references public.organizations(id) on delete cascade,
-  role text not null check (role in ('Admin', 'Sales', 'Trainer', 'Viewer')),
-  status text not null default 'Active' check (status in ('Active', 'Invited', 'Suspended')),
-  created_at timestamptz default now(),
-  updated_at timestamptz default now(),
-  unique (user_id, organization_id)
-);
-
-alter table public.organization_memberships enable row level security;
-
-alter table public.clients add column if not exists organization_id uuid references public.organizations(id);
-alter table public.opportunities add column if not exists organization_id uuid references public.organizations(id);
-alter table public.training_packages add column if not exists organization_id uuid references public.organizations(id);
-alter table public.delivery_projects add column if not exists organization_id uuid references public.organizations(id);
-alter table public.knowledge_documents add column if not exists organization_id uuid references public.organizations(id);
-alter table public.knowledge_chunks add column if not exists organization_id uuid references public.organizations(id);
-alter table public.prompt_templates add column if not exists organization_id uuid references public.organizations(id);
-alter table public.approval_requests add column if not exists organization_id uuid references public.organizations(id);
-alter table public.audit_logs add column if not exists organization_id uuid references public.organizations(id);
-alter table public.loop_runs add column if not exists organization_id uuid references public.organizations(id);
-alter table public.market_signals add column if not exists organization_id uuid references public.organizations(id);
-alter table public.offer_variants add column if not exists organization_id uuid references public.organizations(id);
-alter table public.growth_experiments add column if not exists organization_id uuid references public.organizations(id);
-alter table public.experiment_metrics add column if not exists organization_id uuid references public.organizations(id);
-alter table public.selection_decisions add column if not exists organization_id uuid references public.organizations(id);
-alter table public.learning_genome_items add column if not exists organization_id uuid references public.organizations(id);
-alter table public.improvement_opportunities add column if not exists organization_id uuid references public.organizations(id);
-alter table public.eval_datasets add column if not exists organization_id uuid references public.organizations(id);
-alter table public.eval_examples add column if not exists organization_id uuid references public.organizations(id);
-alter table public.eval_runs add column if not exists organization_id uuid references public.organizations(id);
-alter table public.eval_results add column if not exists organization_id uuid references public.organizations(id);
-alter table public.delivery_tasks add column if not exists organization_id uuid references public.organizations(id);
-alter table public.output_evaluations add column if not exists organization_id uuid references public.organizations(id);
-alter table public.prompt_improvement_suggestions add column if not exists organization_id uuid references public.organizations(id);
-alter table public.prompt_template_changes add column if not exists organization_id uuid references public.organizations(id);
-alter table public.pilot_goals add column if not exists organization_id uuid references public.organizations(id);
-alter table public.pilot_issues add column if not exists organization_id uuid references public.organizations(id);
-alter table public.pilot_feedback add column if not exists organization_id uuid references public.organizations(id);
-alter table public.security_audits add column if not exists organization_id uuid references public.organizations(id);
-alter table public.security_audit_items add column if not exists organization_id uuid references public.organizations(id);
-alter table public.client_portal_access add column if not exists organization_id uuid references public.organizations(id);
-alter table public.client_portal_items add column if not exists organization_id uuid references public.organizations(id);
-alter table public.client_feedback add column if not exists organization_id uuid references public.organizations(id);
-alter table public.agent_traces add column if not exists organization_id uuid references public.organizations(id);

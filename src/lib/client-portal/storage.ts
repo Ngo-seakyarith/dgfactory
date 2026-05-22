@@ -1,9 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import {
-  scopeByOrganization,
-  setRequestAuthUser,
-  withOrganizationId,
-} from "@/lib/organization-scope";
+import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import { hashPortalToken } from "@/lib/client-portal/token";
 import {
   normalizeClientFeedback,
@@ -20,7 +16,6 @@ type AccessRow = {
   client_id: string;
   contact_email: string;
   access_token_hash: string;
-  organization_id?: string | null;
   status: string;
   expires_at: string | null;
   created_at: string;
@@ -71,7 +66,6 @@ function accessFromRow(row: AccessRow) {
     clientId: row.client_id,
     contactEmail: row.contact_email,
     accessTokenHash: row.access_token_hash,
-    organizationId: row.organization_id ?? undefined,
     status: row.status as ClientPortalAccess["status"],
     expiresAt: row.expires_at,
     createdAt: row.created_at,
@@ -156,7 +150,7 @@ export async function listPortalAccess(clientId?: string) {
     throw new Error("Supabase is required to list portal access.");
   }
 
-  let query = scopeByOrganization(supabase
+  let query = scopeAppData(supabase
     .from("client_portal_access")
     .select("*")
     .order("updated_at", { ascending: false }));
@@ -186,7 +180,7 @@ export async function savePortalAccess(input: Partial<ClientPortalAccess>) {
 
   const { data, error } = await supabase
     .from("client_portal_access")
-    .upsert(withOrganizationId(accessToRow(access)), { onConflict: "id" })
+    .upsert(withAppScope(accessToRow(access)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -203,7 +197,7 @@ export async function revokePortalAccess(id: string) {
     throw new Error("Supabase is required to revoke portal access.");
   }
 
-  const { data, error } = await scopeByOrganization(
+  const { data, error } = await scopeAppData(
     supabase
       .from("client_portal_access")
       .update({ status: "Revoked", updated_at: new Date().toISOString() })
@@ -245,14 +239,6 @@ export async function validatePortalToken(
     return { status: "not_found", access: null };
   }
 
-  if (access.organizationId) {
-    setRequestAuthUser({
-      actor: `Client Portal ${access.contactEmail}`,
-      role: "Viewer",
-      organizationId: access.organizationId,
-    });
-  }
-
   if (access.status === "Revoked") {
     return { status: "revoked", access };
   }
@@ -275,7 +261,7 @@ export async function listPortalItems(
     throw new Error("Supabase is required to list portal items.");
   }
 
-  let query = scopeByOrganization(supabase
+  let query = scopeAppData(supabase
     .from("client_portal_items")
     .select("*")
     .eq("client_id", clientId)
@@ -311,7 +297,7 @@ export async function savePortalItem(input: Partial<ClientPortalItem>) {
 
   const { data, error } = await supabase
     .from("client_portal_items")
-    .upsert(withOrganizationId(itemToRow(item)), { onConflict: "id" })
+    .upsert(withAppScope(itemToRow(item)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -329,7 +315,7 @@ export async function listClientFeedback(clientId?: string) {
     throw new Error("Supabase is required to list client feedback.");
   }
 
-  let query = scopeByOrganization(supabase
+  let query = scopeAppData(supabase
     .from("client_feedback")
     .select("*")
     .order("created_at", { ascending: false }));
@@ -356,7 +342,7 @@ export async function saveClientFeedback(input: Partial<ClientFeedback>) {
 
   const { data, error } = await supabase
     .from("client_feedback")
-    .insert(withOrganizationId(feedbackToRow(feedback)))
+    .insert(withAppScope(feedbackToRow(feedback)))
     .select("*")
     .single();
 

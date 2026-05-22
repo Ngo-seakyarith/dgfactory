@@ -3,10 +3,10 @@ import { NextResponse } from "next/server";
 import { saveAuditLog } from "@/lib/audit";
 import { getAuthenticatedRequestUser } from "@/lib/auth-production";
 import { listPilotIssues, savePilotIssue } from "@/lib/pilot-storage";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 export async function GET(request: Request) {
-  const auth = await requirePermission(request, "read");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   const issues = await listPilotIssues();
@@ -14,7 +14,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "read");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
   const user = await getAuthenticatedRequestUser(request);
   const body = await request.json().catch(() => ({}));

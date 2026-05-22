@@ -6,8 +6,8 @@ import {
   type ExportFormat,
   type ExportTarget,
 } from "@/lib/export-package";
-import { requirePermission } from "@/lib/route-guards";
-import { roleHasPermission } from "@/lib/auth";
+import { hasAppAccess } from "@/lib/auth";
+import { requireApproved } from "@/lib/route-guards";
 import { validateClientExportSafety } from "@/lib/security/exportSafety";
 import type { TrainingPackage } from "@/lib/training-packages";
 
@@ -24,7 +24,7 @@ const targets: ExportTarget[] = [
 ];
 
 export async function POST(request: Request) {
-  const exportAuth = await requirePermission(request, "client_exports");
+  const exportAuth = await requireApproved(request);
 
   if (!exportAuth.ok) {
     return exportAuth.response;
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
     }
 
     if (body.includeInternalNotes) {
-      const internalAuth = await requirePermission(request, "view_internal_notes");
+      const internalAuth = await requireApproved(request);
 
       if (!internalAuth.ok) {
         return internalAuth.response;
@@ -74,10 +74,7 @@ export async function POST(request: Request) {
       pkg: body.package,
       target,
       includeInternalNotes: Boolean(body.includeInternalNotes),
-      actorCanApproveInternal: roleHasPermission(
-        exportAuth.user.role,
-        "view_internal_notes",
-      ),
+      actorCanApproveInternal: hasAppAccess(exportAuth.user.role),
     });
 
     if (!safety.allowed) {

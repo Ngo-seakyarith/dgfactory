@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
+import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import {
   isLoopStatus,
   isLoopType,
@@ -57,7 +57,7 @@ export async function listLoopRuns(filters: { loopType?: LoopType } = {}) {
     throw new Error("Supabase is required to list loop runs.");
   }
 
-  let query = scopeByOrganization(supabase
+  let query = scopeAppData(supabase
     .from("loop_runs")
     .select("*")
     .order("created_at", { ascending: false }));
@@ -79,7 +79,7 @@ export async function getLoopRun(id: string) {
   const supabase = getSupabaseServerClient();
 
   if (supabase) {
-    const { data, error } = await scopeByOrganization(
+    const { data, error } = await scopeAppData(
       supabase.from("loop_runs").select("*").eq("id", id),
     ).maybeSingle();
 
@@ -101,7 +101,7 @@ export async function saveLoopRun(input: Partial<LoopRun>) {
 
   const { data, error } = await supabase
     .from("loop_runs")
-    .upsert(withOrganizationId(runToRow(run)), { onConflict: "id" })
+    .upsert(withAppScope(runToRow(run)), { onConflict: "id" })
     .select("*")
     .single();
 

@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server";
 
 import { listAuditLogs } from "@/lib/audit";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 export async function GET(request: Request) {
-  const auth = await requirePermission(request, "admin");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

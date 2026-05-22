@@ -5,14 +5,14 @@ import {
   saveOutputEvaluation,
 } from "@/lib/evaluation-storage";
 import type { OutputEvaluation } from "@/lib/evaluations";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Evaluation request failed.";
 }
 
 export async function GET(request: Request) {
-  const auth = await requirePermission(request, "read");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_feedback");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {

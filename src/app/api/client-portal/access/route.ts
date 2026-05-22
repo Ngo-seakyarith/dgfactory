@@ -7,7 +7,7 @@ import {
   publicPortalAccess,
   savePortalAccess,
 } from "@/lib/client-portal/storage";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 function buildPortalLink(request: NextRequest, token: string) {
   const origin =
@@ -18,7 +18,7 @@ function buildPortalLink(request: NextRequest, token: string) {
 }
 
 export async function GET(request: NextRequest) {
-  const guard = await requirePermission(request, "manage_clients");
+  const guard = await requireApproved(request);
   if (!guard.ok) {
     return guard.response;
   }
@@ -32,7 +32,7 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const guard = await requirePermission(request, "manage_clients");
+  const guard = await requireApproved(request);
   if (!guard.ok) {
     return guard.response;
   }

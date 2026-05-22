@@ -1,4 +1,4 @@
-import { roleHasPermission } from "@/lib/auth";
+import { hasAppAccess } from "@/lib/auth";
 import { validateClientExportSafety } from "@/lib/security/exportSafety";
 import { calculatePricing, defaultPricingInputs } from "@/lib/pricing";
 import type { SecurityAuditItem, SecuritySeverity } from "@/lib/security/types";
@@ -102,7 +102,7 @@ export function runSecurityRedTeamScenarios(): RedTeamScenarioResult[] {
       passed: !marginExport.allowed,
       severity: "Critical",
       evidence: marginExport.issues.map((issue) => issue.term).join(", "),
-      recommendation: "Keep export validator active and require Admin internal export for margin terms.",
+      recommendation: "Keep export validator active and require approved internal export for margin terms.",
     }),
     result({
       category: "Internal notes protection",
@@ -123,22 +123,31 @@ export function runSecurityRedTeamScenarios(): RedTeamScenarioResult[] {
       recommendation: "Keep knowledge documents sandboxed as context and never as system instructions.",
     }),
     result({
-      category: "Role permissions",
-      title: "Sales role attempts admin-only prompt approval",
-      description: "Sales must not be able to approve prompts.",
-      passed: !roleHasPermission("Sales", "approve_prompts"),
+      category: "App access",
+      title: "Pending user attempts prompt approval",
+      description: "Pending users must not be able to approve prompts.",
+      passed: !hasAppAccess("Pending"),
       severity: "High",
-      evidence: "Sales approve_prompts permission is false.",
-      recommendation: "Keep prompt approval Admin-only.",
+      evidence: "Pending app access is false.",
+      recommendation: "Keep prompt approval limited to approved app users.",
     }),
     result({
-      category: "Role permissions",
-      title: "Trainer role attempts to view internal pricing margin",
-      description: "Trainer must not see internal profitability notes.",
-      passed: !roleHasPermission("Trainer", "view_internal_notes"),
+      category: "App access",
+      title: "Pending user attempts to view internal pricing margin",
+      description: "Pending users must not see internal profitability notes.",
+      passed: !hasAppAccess("Pending"),
       severity: "High",
-      evidence: "Trainer view_internal_notes permission is false.",
-      recommendation: "Keep margin visibility Admin-only.",
+      evidence: "Pending app access is false.",
+      recommendation: "Keep margin visibility limited to approved app users.",
+    }),
+    result({
+      category: "App access",
+      title: "Approved user has internal app access",
+      description: "Approved users should receive full internal app capability.",
+      passed: hasAppAccess("Approved"),
+      severity: "Medium",
+      evidence: "Approved app access is true.",
+      recommendation: "Keep approval-gated business actions logged and reviewed separately from app access.",
     }),
     result({
       category: "Knowledge base visibility",

@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
+import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import {
   normalizePilotFeedback,
   normalizePilotGoal,
@@ -138,7 +138,7 @@ export async function ensurePilotGoals() {
     throw new Error("Supabase is required to ensure pilot goals.");
   }
 
-  const { data } = await scopeByOrganization(supabase.from("pilot_goals").select("id").limit(1));
+  const { data } = await scopeAppData(supabase.from("pilot_goals").select("id").limit(1));
 
   if (!data?.length) {
     return { goals: [], storage: "supabase" as const };
@@ -158,7 +158,7 @@ export async function listPilotGoals() {
     .from("pilot_goals")
     .select("*")
     .order("created_at");
-  const { data, error } = await scopeByOrganization(query);
+  const { data, error } = await scopeAppData(query);
 
   if (error) {
     throw new Error(error.message);
@@ -178,7 +178,7 @@ export async function listPilotIssues() {
     .from("pilot_issues")
     .select("*")
     .order("updated_at", { ascending: false });
-  const { data, error } = await scopeByOrganization(query);
+  const { data, error } = await scopeAppData(query);
 
   if (error) {
     throw new Error(error.message);
@@ -200,7 +200,7 @@ export async function savePilotIssue(input: Partial<PilotIssue>) {
 
   const { data, error } = await supabase
     .from("pilot_issues")
-    .upsert(withOrganizationId(issueToRow(issue)), { onConflict: "id" })
+    .upsert(withAppScope(issueToRow(issue)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -222,7 +222,7 @@ export async function listPilotFeedback() {
     .from("pilot_feedback")
     .select("*")
     .order("created_at", { ascending: false });
-  const { data, error } = await scopeByOrganization(query);
+  const { data, error } = await scopeAppData(query);
 
   if (error) {
     throw new Error(error.message);
@@ -241,7 +241,7 @@ export async function savePilotFeedback(input: Partial<PilotFeedback>) {
 
   const { data, error } = await supabase
     .from("pilot_feedback")
-    .insert(withOrganizationId(feedbackToRow(feedback)))
+    .insert(withAppScope(feedbackToRow(feedback)))
     .select("*")
     .single();
 

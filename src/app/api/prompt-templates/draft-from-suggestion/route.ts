@@ -2,14 +2,14 @@ import { NextResponse } from "next/server";
 
 import { listPromptImprovementSuggestions } from "@/lib/evaluation-storage";
 import { createDraftFromImprovementSuggestion } from "@/lib/prompt-template-storage";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Prompt draft request failed.";
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_prompts");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {

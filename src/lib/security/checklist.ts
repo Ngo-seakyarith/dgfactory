@@ -5,17 +5,17 @@ export const securityChecklistSections = [
     category: "Authentication",
     checks: [
       "Production requires `DG_REQUIRE_AUTH=true`.",
-      "Production roles come from active Supabase organization memberships.",
-      "Local role selection is disabled when production auth is required.",
-      "Server routes re-check permissions instead of trusting hidden UI.",
+      "Approved app access comes from the Supabase profile access status.",
+      "Local access selection is disabled when production auth is required.",
+      "Server routes require approved app access instead of trusting hidden UI.",
     ],
   },
   {
-    category: "Role permissions",
+    category: "App access",
     checks: [
-      "Sales cannot approve prompts or view internal profitability notes.",
-      "Trainer cannot access admin prompt templates or internal pricing margins.",
-      "Viewer is read-only.",
+      "Pending users cannot read or write internal app data.",
+      "Pending users cannot approve prompts or approval requests.",
+      "Approved users receive full internal app access.",
     ],
   },
   {
@@ -30,7 +30,7 @@ export const securityChecklistSections = [
     category: "Client export safety",
     checks: [
       "Client exports scan for internal markers before download.",
-      "Internal notes require explicit Admin permission.",
+      "Internal notes require explicit approved internal access.",
       "Exported filenames are clean and client-appropriate.",
     ],
   },
@@ -87,7 +87,7 @@ export const securityChecklistSections = [
     category: "File export safety",
     checks: [
       "DOCX/PPTX/PDF/TXT export routes are server-side.",
-      "Risky export content is blocked or requires explicit Admin internal export.",
+      "Risky export content is blocked or requires explicit approved internal export.",
     ],
   },
   {

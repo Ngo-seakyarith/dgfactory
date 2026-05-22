@@ -2,11 +2,12 @@ import type { Metadata } from "next";
 import { cookies } from "next/headers";
 import { headers } from "next/headers";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 
 import "./globals.css";
-import { roleHasPermission } from "@/lib/auth";
+import { hasAppAccess } from "@/lib/auth";
 import { getAuthenticatedCookieUser } from "@/lib/auth-production";
-import { setRequestAuthUser } from "@/lib/organization-scope";
+import { setRequestAuthUser } from "@/lib/request-scope";
 
 export const metadata: Metadata = {
   title: "DG Academy AI Training Production Factory",
@@ -42,7 +43,16 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   setRequestAuthUser(user);
   const pathname = headerStore.get("x-dg-pathname") ?? "";
   const isClientPortal = pathname.startsWith("/client-portal");
-  const resolvedNavItems = roleHasPermission(user.role, "manage_prompts")
+  const isAccessStatusPage =
+    pathname.startsWith("/login") ||
+    pathname === "/settings" ||
+    pathname.startsWith("/unauthorized");
+
+  if (!isClientPortal && !isAccessStatusPage && !hasAppAccess(user.role)) {
+    redirect("/unauthorized");
+  }
+
+  const resolvedNavItems = hasAppAccess(user.role)
     ? [
         ...navItems.slice(0, 8),
         ["Prompts", "/admin/prompts"],

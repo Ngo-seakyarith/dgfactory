@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
+import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import {
   calculateGrowthDashboardMetrics,
   normalizeExperimentMetrics,
@@ -336,12 +336,12 @@ export async function listAdaptiveGrowthData(): Promise<AdaptiveGrowthData> {
     decisions,
     genomeItems,
   ] = await Promise.all([
-    scopeByOrganization(supabase.from("market_signals").select("*").order("updated_at", { ascending: false })),
-    scopeByOrganization(supabase.from("offer_variants").select("*").order("updated_at", { ascending: false })),
-    scopeByOrganization(supabase.from("growth_experiments").select("*").order("updated_at", { ascending: false })),
-    scopeByOrganization(supabase.from("experiment_metrics").select("*").order("updated_at", { ascending: false })),
-    scopeByOrganization(supabase.from("selection_decisions").select("*").order("created_at", { ascending: false })),
-    scopeByOrganization(supabase.from("learning_genome_items").select("*").order("updated_at", { ascending: false })),
+    scopeAppData(supabase.from("market_signals").select("*").order("updated_at", { ascending: false })),
+    scopeAppData(supabase.from("offer_variants").select("*").order("updated_at", { ascending: false })),
+    scopeAppData(supabase.from("growth_experiments").select("*").order("updated_at", { ascending: false })),
+    scopeAppData(supabase.from("experiment_metrics").select("*").order("updated_at", { ascending: false })),
+    scopeAppData(supabase.from("selection_decisions").select("*").order("created_at", { ascending: false })),
+    scopeAppData(supabase.from("learning_genome_items").select("*").order("updated_at", { ascending: false })),
   ]);
 
   if (
@@ -383,17 +383,17 @@ export async function saveAdaptiveGrowthRecord(kind: AdaptiveGrowthKind, input: 
 
   if (kind === "signal") {
     const signal = normalizeMarketSignal({ ...(input as Partial<MarketSignal>), updatedAt: now });
-    const { data, error } = await supabase.from("market_signals").upsert(withOrganizationId(signalToRow(signal)), { onConflict: "id" }).select("*").single();
+    const { data, error } = await supabase.from("market_signals").upsert(withAppScope(signalToRow(signal)), { onConflict: "id" }).select("*").single();
     if (error) throw new Error(error.message);
     return { record: signalFromRow(data as SignalRow), storage: "supabase" as const };
   }
 
   if (kind === "offer") {
     const offer = normalizeOfferVariant({ ...(input as Partial<OfferVariant>), updatedAt: now });
-    const { data, error } = await supabase.from("offer_variants").upsert(withOrganizationId(offerToRow(offer)), { onConflict: "id" }).select("*").single();
+    const { data, error } = await supabase.from("offer_variants").upsert(withAppScope(offerToRow(offer)), { onConflict: "id" }).select("*").single();
     if (error) throw new Error(error.message);
     if (offer.signalId) {
-      const update = await scopeByOrganization(supabase.from("market_signals").update({ status: "Converted to Offer", updated_at: now }).eq("id", offer.signalId));
+      const update = await scopeAppData(supabase.from("market_signals").update({ status: "Converted to Offer", updated_at: now }).eq("id", offer.signalId));
       if (update.error) throw new Error(update.error.message);
     }
     return { record: offerFromRow(data as OfferRow), storage: "supabase" as const };
@@ -401,14 +401,14 @@ export async function saveAdaptiveGrowthRecord(kind: AdaptiveGrowthKind, input: 
 
   if (kind === "experiment") {
     const experiment = normalizeGrowthExperiment({ ...(input as Partial<GrowthExperiment>), updatedAt: now });
-    const { data, error } = await supabase.from("growth_experiments").upsert(withOrganizationId(experimentToRow(experiment)), { onConflict: "id" }).select("*").single();
+    const { data, error } = await supabase.from("growth_experiments").upsert(withAppScope(experimentToRow(experiment)), { onConflict: "id" }).select("*").single();
     if (error) throw new Error(error.message);
     return { record: experimentFromRow(data as ExperimentRow), storage: "supabase" as const };
   }
 
   if (kind === "metric") {
     const metric = normalizeExperimentMetrics({ ...(input as Partial<ExperimentMetrics>), updatedAt: now });
-    const { data, error } = await supabase.from("experiment_metrics").upsert(withOrganizationId(metricToRow(metric)), { onConflict: "id" }).select("*").single();
+    const { data, error } = await supabase.from("experiment_metrics").upsert(withAppScope(metricToRow(metric)), { onConflict: "id" }).select("*").single();
     if (error) throw new Error(error.message);
     return { record: metricFromRow(data as MetricRow), storage: "supabase" as const };
   }
@@ -423,15 +423,15 @@ export async function saveAdaptiveGrowthRecord(kind: AdaptiveGrowthKind, input: 
           : decision.decision === "Park"
             ? "Parked"
             : "Iterating";
-    const { data, error } = await supabase.from("selection_decisions").insert(withOrganizationId(decisionToRow(decision))).select("*").single();
+    const { data, error } = await supabase.from("selection_decisions").insert(withAppScope(decisionToRow(decision))).select("*").single();
     if (error) throw new Error(error.message);
-    const update = await scopeByOrganization(supabase.from("offer_variants").update({ status: offerStatus, updated_at: now }).eq("id", decision.offerVariantId));
+    const update = await scopeAppData(supabase.from("offer_variants").update({ status: offerStatus, updated_at: now }).eq("id", decision.offerVariantId));
     if (update.error) throw new Error(update.error.message);
     return { record: decisionFromRow(data as DecisionRow), storage: "supabase" as const };
   }
 
   const item = normalizeLearningGenomeItem({ ...(input as Partial<LearningGenomeItem>), updatedAt: now });
-  const { data, error } = await supabase.from("learning_genome_items").upsert(withOrganizationId(genomeToRow(item)), { onConflict: "id" }).select("*").single();
+  const { data, error } = await supabase.from("learning_genome_items").upsert(withAppScope(genomeToRow(item)), { onConflict: "id" }).select("*").single();
   if (error) throw new Error(error.message);
   return { record: genomeFromRow(data as GenomeRow), storage: "supabase" as const };
 }
@@ -451,7 +451,7 @@ export async function deleteAdaptiveGrowthRecord(kind: AdaptiveGrowthKind, id: s
     throw new Error("Supabase is required to delete Adaptive Growth records.");
   }
 
-  const { error } = await scopeByOrganization(supabase.from(tableMap[kind]).delete().eq("id", id));
+  const { error } = await scopeAppData(supabase.from(tableMap[kind]).delete().eq("id", id));
   if (error) throw new Error(error.message);
   return { deleted: true, storage: "supabase" as const };
 }

@@ -11,7 +11,7 @@ import type {
   ImprovementOpportunity,
   ImprovementStatus,
 } from "@/lib/improvements";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 function isImprovementStatus(value: unknown): value is ImprovementStatus {
   return typeof value === "string" && improvementStatuses.includes(value as ImprovementStatus);
@@ -35,7 +35,7 @@ export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const auth = await requirePermission(request, "manage_proposals");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

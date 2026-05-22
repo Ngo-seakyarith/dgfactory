@@ -22,7 +22,7 @@ This app is separate from DG Command OS.
 - V2.0 Evaluation + Feedback Loop with output scoring, AI rubric evaluation, improvement suggestions, human approval, and a Quality Dashboard
 - V2.2 Prompt and Template Optimization System with versioned prompts, human approval, rollback, and code-defined Brain Layer instructions
 - V2.4 Scheduled Business Loops for pipeline, content, revenue, quality, delivery readiness, stale follow-up, and prompt reviews
-- V3.0 Production Hardening with internal roles, permission gates, audit logs, launch dashboard, and error boundaries
+- V3.0 Production Hardening with internal access gates, audit logs, launch dashboard, and error boundaries
 - V3.1 Internal Pilot Launch System with 30-day pilot dashboard, goals, issues, feedback capture, pilot reports, and pilot weekly loop
 - V3.2 Agent Reliability and Evaluation Benchmarks with eval datasets, runs, results, regression risks, trace summaries, and smoke checks
 - V3.3 Security Red Team and Governance Audit with export safety blocking, approval validation, RLS guidance, and security reports
@@ -66,12 +66,10 @@ SUPABASE_SERVICE_ROLE_KEY=
 OPENAI_API_KEY=
 AI_BRAIN_MODEL=gpt-5.5
 LOOP_API_KEY=
-DG_SYSTEM_ORGANIZATION_ID=
 DG_REQUIRE_AUTH=false
 DG_TRUST_ROLE_HEADERS=false
 DG_DEV_ROLE_SESSION=true
 DG_DEFAULT_ACTOR=DG Academy Operator
-ADMIN_ACCESS_PIN=
 ```
 
 Required production keys:
@@ -80,34 +78,30 @@ Required production keys:
 - `AI_BRAIN_MODEL` controls the intended Brain Layer model and all OpenAI-backed generation. V3.6 defaults to `gpt-5.5`.
 - Missing Supabase server configuration causes persistence routes to fail explicitly. Server persistence requires `SUPABASE_SERVICE_ROLE_KEY`; it no longer falls back to the anon key.
 - `LOOP_API_KEY` is required for every `/api/loops/*` endpoint.
-- `DG_SYSTEM_ORGANIZATION_ID` is optional for internal scheduled/API-key workflows that do not have an interactive Supabase Auth user.
-- `DG_REQUIRE_AUTH=true` requires a Supabase Auth session for protected app routes; local development defaults to `Admin` when false.
+- `DG_REQUIRE_AUTH=true` requires a Supabase Auth session for protected app routes; local development defaults to `Approved` when false.
 - `DG_TRUST_ROLE_HEADERS=true` allows trusted infrastructure to pass `x-dg-role` and `x-dg-actor`. Keep it `false` unless a server-side gateway is enforcing identity.
-- `DG_DEV_ROLE_SESSION=true` keeps local role switching available while `DG_REQUIRE_AUTH=false`. Production roles come from active `organization_memberships` rows.
-- `ADMIN_ACCESS_PIN` is optional. If configured, selecting the `Admin` role from `/settings` requires that PIN.
+- `DG_DEV_ROLE_SESSION=true` keeps local access switching available while `DG_REQUIRE_AUTH=false`. Production access comes from `profiles.access_status`.
 
 ## V3.0 Production Hardening
 
 V3.0 prepares the app for real internal DG Academy operation.
 
-Roles:
+Access states:
 
-- `Admin`: full access, prompt approval, pricing visibility, internal notes, and approval decisions.
-- `Trainer`: delivery projects, course materials, feedback, and post-training reports.
-- `Sales`: clients, opportunities, proposals, follow-up drafts, and client-facing exports.
-- `Viewer`: read-only access.
+- `Pending`: signed in but not approved to use internal app surfaces.
+- `Approved`: full internal app access, including prompt approval, pricing visibility, internal notes, exports, delivery, CRM, loops, and approval decisions.
 
 Auth model:
 
-- Internal role session lives in secure-by-default route cookies set from `/settings`.
+- Internal access session lives in secure-by-default route cookies set from `/settings`.
 - Server routes can also accept `x-dg-role` and `x-dg-actor` for controlled internal automation.
-- For production, set `DG_REQUIRE_AUTH=true`, `DG_DEV_ROLE_SESSION=false`, and configure Supabase Auth users with active organization memberships. Server storage stamps and filters persisted records by that active organization.
-- The local role selector is only for development when production auth is disabled.
+- For production, set `DG_REQUIRE_AUTH=true`, `DG_DEV_ROLE_SESSION=false`, and approve Supabase Auth users by setting `profiles.access_status` to `Approved`.
+- The local access selector is only for development when production auth is disabled.
 
 Protection:
 
-- Prompt templates and prompt approvals require admin permissions.
-- Internal profitability notes and internal export options require admin permissions.
+- Prompt templates and prompt approvals require approved internal access.
+- Internal profitability notes and internal export options require approved internal access.
 - Client-facing exports exclude internal notes by default.
 - Internal knowledge citations stay as internal source notes and are not included in client exports by default.
 - Loop endpoints remain API-key protected.
@@ -141,8 +135,8 @@ Adaptive Growth hardening:
 
 Security foundation:
 
-- `supabase/schema.sql` includes organizations, profiles, organization memberships, and `organization_id` columns for every table used by app storage. Server storage uses the service role and applies organization scoping in application code.
-- `src/lib/auth-production.ts` resolves Supabase Auth users through active organization memberships.
+- `supabase/schema.sql` includes `profiles.access_status` for simple `Pending` / `Approved` app access.
+- `src/lib/auth-production.ts` resolves Supabase Auth users through their profile access status.
 - `src/middleware.ts` protects app routes when `DG_REQUIRE_AUTH=true`.
 - `/login` and `/unauthorized` support the production auth transition.
 
@@ -167,7 +161,7 @@ Pilot workspace:
 
 30-day pilot process:
 
-1. Start with `DG_REQUIRE_AUTH=true`, an Admin session, and `supabase/schema.sql` applied.
+1. Start with `DG_REQUIRE_AUTH=true`, an Approved session, and `supabase/schema.sql` applied.
 2. Use real DG Academy opportunities and packages, but keep confidential client data minimized.
 3. Review `/pilot` weekly with the team and run `pilot_weekly_review` from `/loops`.
 4. Log confusing screens, export problems, pricing concerns, and missing workflow steps as pilot issues.
@@ -214,7 +208,7 @@ V3.3 adds internal security checks for wider deployment readiness.
 
 Security workspace:
 
-- `/security` shows authentication, role permissions, Supabase RLS, export safety, margin protection, prompt injection, automation, approval, audit logging, environment, secret, file export, and knowledge visibility checks.
+- `/security` shows authentication, app access, Supabase RLS, export safety, margin protection, prompt injection, automation, approval, audit logging, environment, secret, file export, and knowledge visibility checks.
 - `POST /api/security/run-red-team` runs deterministic red-team scenarios and records audit results.
 - `GET /api/security` loads the latest security audit and report.
 - Security reports include executive summary, passed checks, failed checks, critical risks, recommended fixes, and go/no-go recommendation.
@@ -230,8 +224,8 @@ Red-team scenarios cover:
 - Internal notes in client proposals.
 - Malicious knowledge prompt injection.
 - Unauthenticated approval requests.
-- Sales prompt approval attempt.
-- Trainer internal margin access attempt.
+- Pending prompt approval attempt.
+- Pending internal margin access attempt.
 - Internal-only knowledge in client-safe export.
 - Confidential notes in follow-up email.
 
@@ -1040,7 +1034,7 @@ npm run build
    - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
    - AI: `OPENAI_API_KEY`, `AI_BRAIN_MODEL`
    - Loops: `LOOP_API_KEY`
-   - Internal auth: `DG_REQUIRE_AUTH=true`, `DG_TRUST_ROLE_HEADERS=false`, `DG_DEV_ROLE_SESSION=false`, `DG_DEFAULT_ACTOR`, `ADMIN_ACCESS_PIN`
+   - Internal auth: `DG_REQUIRE_AUTH=true`, `DG_TRUST_ROLE_HEADERS=false`, `DG_DEV_ROLE_SESSION=false`, `DG_DEFAULT_ACTOR`
    - Public URL: `NEXT_PUBLIC_APP_URL` for generated portal links when request origin is unavailable
 4. Apply `supabase/schema.sql` to the target Supabase project.
 5. Deploy.
@@ -1051,12 +1045,11 @@ npm run build
 - Set `DG_REQUIRE_AUTH=true` in production.
 - Keep `DG_TRUST_ROLE_HEADERS=false` unless a trusted identity gateway is installed.
 - Keep `DG_DEV_ROLE_SESSION=false` in production once Supabase Auth is active.
-- Set a strong `ADMIN_ACCESS_PIN`.
 - Keep `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, and `LOOP_API_KEY` server-only.
-- Confirm prompt template routes are admin-only.
-- Confirm client exports do not include internal notes unless Admin explicitly selects them.
+- Confirm prompt template routes require approved internal access.
+- Confirm client exports do not include internal notes unless an Approved user explicitly selects them.
 - Review `/approvals` before any external sending, export handoff, deployment, deletion, payment, or production database schema change.
-- Review `/api/audit-logs` as Admin after launch testing.
+- Review `/api/audit-logs` as an Approved user after launch testing.
 - Run `/security` red-team checks before wider team rollout or client-facing export changes.
 
 ## Troubleshooting
@@ -1064,7 +1057,7 @@ npm run build
 - If generation fails, check `OPENAI_API_KEY`, `AI_BRAIN_MODEL`, and the route error message.
 - If Supabase is missing, persistence routes fail until Supabase credentials are configured.
 - If `/api/loops/*` returns 401, check `LOOP_API_KEY`.
-- If `/admin/prompts` returns 403, set an Admin role in `/settings`.
+- If `/admin/prompts` returns 403, set Approved access in `/settings` or approve the user's Supabase membership.
 - If `next build` fails with a stale `.next` cache error, remove this app's `.next` folder and rebuild.
 
 ## Known Limitations

@@ -5,14 +5,14 @@ import {
   saveDeliveryProject,
 } from "@/lib/delivery-storage";
 import type { DeliveryProject } from "@/lib/delivery";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Delivery project request failed.";
 }
 
 export async function GET(request: Request) {
-  const auth = await requirePermission(request, "read");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {
@@ -24,7 +24,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_delivery");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {

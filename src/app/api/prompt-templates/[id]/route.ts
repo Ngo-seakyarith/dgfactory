@@ -6,7 +6,7 @@ import {
   archivePromptTemplate,
   rollbackPromptTemplate,
 } from "@/lib/prompt-template-storage";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -17,7 +17,7 @@ function friendlyError(error: unknown) {
 }
 
 export async function PATCH(request: Request, context: Context) {
-  const auth = await requirePermission(request, "approve_prompts");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

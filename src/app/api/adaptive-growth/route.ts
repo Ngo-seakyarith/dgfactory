@@ -7,7 +7,7 @@ import {
   saveAdaptiveGrowthRecord,
 } from "@/lib/adaptive-growth-storage";
 import type { AdaptiveGrowthKind } from "@/lib/adaptive-growth";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 const kinds: AdaptiveGrowthKind[] = [
   "signal",
@@ -23,7 +23,7 @@ function isKind(value: unknown): value is AdaptiveGrowthKind {
 }
 
 export async function GET(request: Request) {
-  const auth = await requirePermission(request, "read");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   const data = await listAdaptiveGrowthData();
@@ -31,7 +31,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_proposals");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;
@@ -63,7 +63,7 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
-  const auth = await requirePermission(request, "manage_proposals");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

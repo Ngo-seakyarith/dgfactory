@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
+import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import {
   appendPromptSuggestion,
   createPromptTemplateDraft,
@@ -114,7 +114,7 @@ export async function ensureSeedPromptTemplates(seeds: PromptTemplateSeed[]) {
       .select("id")
       .eq("agent_name", seed.agentName)
       .limit(1);
-    const { data: existing } = await scopeByOrganization(existingQuery);
+    const { data: existing } = await scopeAppData(existingQuery);
 
     if (existing?.length) {
       continue;
@@ -127,7 +127,7 @@ export async function ensureSeedPromptTemplates(seeds: PromptTemplateSeed[]) {
     });
     const { data, error } = await supabase
       .from("prompt_templates")
-      .insert(withOrganizationId(templateToRow(template)))
+      .insert(withAppScope(templateToRow(template)))
       .select("*")
       .single();
 
@@ -147,7 +147,7 @@ export async function listPromptTemplates(filters: {
     throw new Error("Supabase is required to list prompt templates.");
   }
 
-  let query = scopeByOrganization(supabase
+  let query = scopeAppData(supabase
     .from("prompt_templates")
     .select("*")
     .order("agent_name")
@@ -182,7 +182,7 @@ export async function listPromptTemplateChanges(promptTemplateId?: string) {
     throw new Error("Supabase is required to list prompt template changes.");
   }
 
-  let query = scopeByOrganization(supabase
+  let query = scopeAppData(supabase
     .from("prompt_template_changes")
     .select("*")
     .order("created_at", { ascending: false }));
@@ -210,7 +210,7 @@ export async function savePromptTemplate(input: Partial<PromptTemplate>) {
 
   const { data, error } = await supabase
     .from("prompt_templates")
-    .upsert(withOrganizationId(templateToRow(template)), { onConflict: "id" })
+    .upsert(withAppScope(templateToRow(template)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -234,7 +234,7 @@ async function savePromptTemplateChange(input: Partial<PromptTemplateChange>) {
 
   const { data, error } = await supabase
     .from("prompt_template_changes")
-    .insert(withOrganizationId(changeToRow(change)))
+    .insert(withAppScope(changeToRow(change)))
     .select("*")
     .single();
 
@@ -367,7 +367,7 @@ export async function activatePromptTemplate({
   });
 
   if (supabase && active) {
-    await scopeByOrganization(
+    await scopeAppData(
       supabase
         .from("prompt_templates")
         .update({ status: "Archived", updated_at: now })

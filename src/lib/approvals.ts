@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import { scopeByOrganization, withOrganizationId } from "@/lib/organization-scope";
+import { scopeAppData, withAppScope } from "@/lib/request-scope";
 
 export const approvalStatuses = [
   "Pending",
@@ -115,7 +115,7 @@ export async function listApprovalRequests(filters: {
     throw new Error("Supabase is required to list approval requests.");
   }
 
-  let query = scopeByOrganization(supabase
+  let query = scopeAppData(supabase
     .from("approval_requests")
     .select("*")
     .order("updated_at", { ascending: false }));
@@ -137,7 +137,7 @@ export async function getApprovalRequest(id: string) {
   const supabase = getSupabaseServerClient();
 
   if (supabase) {
-    const { data, error } = await scopeByOrganization(
+    const { data, error } = await scopeAppData(
       supabase.from("approval_requests").select("*").eq("id", id),
     ).maybeSingle();
 
@@ -159,7 +159,7 @@ export async function saveApprovalRequest(input: Partial<ApprovalRequest>) {
 
   const { data, error } = await supabase
     .from("approval_requests")
-    .upsert(withOrganizationId(approvalToRow(approval)), { onConflict: "id" })
+    .upsert(withAppScope(approvalToRow(approval)), { onConflict: "id" })
     .select("*")
     .single();
 
@@ -195,7 +195,7 @@ export async function updateApprovalRequest({
     throw new Error("Supabase is required to update approval requests.");
   }
 
-  const { data, error } = await scopeByOrganization(
+  const { data, error } = await scopeAppData(
     supabase
       .from("approval_requests")
       .update({

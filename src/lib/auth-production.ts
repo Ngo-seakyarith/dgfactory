@@ -13,7 +13,6 @@ export type ProductionAuthProfile = {
   userId: string;
   email: string;
   fullName: string;
-  organizationId: string;
   role: UserRole;
 };
 
@@ -39,29 +38,24 @@ export async function getProductionAuthProfile(accessToken: string | null) {
     return null;
   }
 
-  const { data: membership } = await supabase
-    .from("organization_memberships")
-    .select("organization_id, role, status, profiles(full_name, email)")
-    .eq("user_id", user.id)
-    .eq("status", "Active")
-    .limit(1)
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("full_name, email, access_status")
+    .eq("id", user.id)
     .maybeSingle();
 
-  if (!membership || !isUserRole((membership as { role?: unknown }).role)) {
-    return null;
-  }
-
-  const rawProfile = (membership as {
-    profiles?: { full_name?: string; email?: string } | Array<{ full_name?: string; email?: string }>;
-  }).profiles;
-  const profile = Array.isArray(rawProfile) ? rawProfile[0] : rawProfile;
+  const role = isUserRole((profile as { access_status?: unknown } | null)?.access_status)
+    ? ((profile as { access_status: UserRole }).access_status)
+    : "Pending";
 
   return {
     userId: user.id,
-    email: profile?.email || user.email || "",
-    fullName: profile?.full_name || user.email || "DG Academy User",
-    organizationId: String((membership as { organization_id: string }).organization_id),
-    role: (membership as { role: UserRole }).role,
+    email: (profile as { email?: string } | null)?.email || user.email || "",
+    fullName:
+      (profile as { full_name?: string } | null)?.full_name ||
+      user.email ||
+      "DG Academy User",
+    role,
   };
 }
 
@@ -71,7 +65,6 @@ function profileToAuthUser(profile: ProductionAuthProfile): AuthUser {
     role: profile.role,
     userId: profile.userId,
     email: profile.email,
-    organizationId: profile.organizationId,
   };
 }
 
@@ -89,7 +82,7 @@ export async function getAuthenticatedRequestUser(request: Request): Promise<Aut
     ? profileToAuthUser(profile)
     : {
         actor: process.env.DG_DEFAULT_ACTOR || "DG Academy Operator",
-        role: "Viewer",
+        role: "Pending",
       };
 }
 
@@ -110,6 +103,6 @@ export async function getAuthenticatedCookieUser(
     ? profileToAuthUser(profile)
     : {
         actor: process.env.DG_DEFAULT_ACTOR || "DG Academy Operator",
-        role: "Viewer",
+        role: "Pending",
       };
 }

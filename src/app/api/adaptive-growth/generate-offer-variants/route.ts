@@ -14,7 +14,7 @@ import {
   retrieveKnowledge,
 } from "@/lib/knowledge/retrieve";
 import { knowledgeSourceNotesFromResults } from "@/lib/knowledge";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 function isMutationStrategy(value: unknown): value is MutationStrategy {
   return (
@@ -24,7 +24,7 @@ function isMutationStrategy(value: unknown): value is MutationStrategy {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_proposals");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

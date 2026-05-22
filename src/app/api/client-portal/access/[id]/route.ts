@@ -2,13 +2,13 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
 import { publicPortalAccess, revokePortalAccess } from "@/lib/client-portal/storage";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
 ) {
-  const guard = await requirePermission(request, "manage_clients");
+  const guard = await requireApproved(request);
   if (!guard.ok) {
     return guard.response;
   }

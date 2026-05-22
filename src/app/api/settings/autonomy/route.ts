@@ -5,7 +5,7 @@ import {
   isAutonomyLevel,
   saveAutonomySettings,
 } from "@/lib/safety/autonomy";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 import { saveAuditLog } from "@/lib/audit";
 
 export async function GET() {
@@ -13,7 +13,7 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "admin");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;

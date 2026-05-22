@@ -74,7 +74,7 @@ export function validateClientExportSafety({
       allowed: true,
       issues: [],
       recommendation:
-        "Admin explicitly selected internal export. Review file before sharing externally.",
+        "Approved internal user explicitly selected internal export. Review file before sharing externally.",
     };
   }
 
@@ -106,7 +106,7 @@ export function validateClientExportSafety({
     allowed: issues.filter((issue) => issue.severity !== "Medium").length === 0,
     issues,
     recommendation: issues.length
-      ? "Remove internal margin/notes language or export as an explicit Admin internal file only."
+      ? "Remove internal margin/notes language or export as an explicit approved internal file only."
       : "No internal export leakage markers detected.",
   };
 }

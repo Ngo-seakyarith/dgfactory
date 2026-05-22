@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { deleteDeliveryTask } from "@/lib/delivery-storage";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 type Context = {
   params: Promise<{ id: string }>;
@@ -12,7 +12,7 @@ function friendlyError(error: unknown) {
 }
 
 export async function DELETE(request: Request, context: Context) {
-  const auth = await requirePermission(request, "manage_delivery");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {

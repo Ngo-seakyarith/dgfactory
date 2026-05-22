@@ -3,14 +3,14 @@ import { NextResponse } from "next/server";
 import { saveAuditLog } from "@/lib/audit";
 import { getOpportunity, listOpportunities, saveOpportunity } from "@/lib/crm-storage";
 import type { Opportunity } from "@/lib/crm";
-import { requirePermission } from "@/lib/route-guards";
+import { requireApproved } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Opportunity request failed.";
 }
 
 export async function GET(request: Request) {
-  const auth = await requirePermission(request, "read");
+  const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
   try {
@@ -22,7 +22,7 @@ export async function GET(request: Request) {
 }
 
 export async function POST(request: Request) {
-  const auth = await requirePermission(request, "manage_opportunities");
+  const auth = await requireApproved(request);
 
   if (!auth.ok) {
     return auth.response;
