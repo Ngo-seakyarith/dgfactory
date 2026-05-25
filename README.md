@@ -61,8 +61,8 @@ Create `.env.local`:
 
 ```bash
 NEXT_PUBLIC_SUPABASE_URL=
-NEXT_PUBLIC_SUPABASE_ANON_KEY=
-SUPABASE_SERVICE_ROLE_KEY=
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
+SUPABASE_SECRET_KEY=
 OPENAI_API_KEY=
 AI_BRAIN_MODEL=gpt-5.5
 LOOP_API_KEY=
@@ -76,9 +76,10 @@ Required production keys:
 
 - Missing or invalid OpenAI credentials cause AI generation routes to fail explicitly.
 - `AI_BRAIN_MODEL` controls the intended Brain Layer model and all OpenAI-backed generation. V3.6 defaults to `gpt-5.5`.
-- Missing Supabase server configuration causes persistence routes to fail explicitly. Server persistence requires `SUPABASE_SERVICE_ROLE_KEY`; it no longer falls back to the anon key.
+- Missing Supabase server configuration causes persistence routes to fail explicitly. Server persistence requires `SUPABASE_SECRET_KEY`; browser auth requires `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 - `LOOP_API_KEY` is required for every `/api/loops/*` endpoint.
 - `DG_REQUIRE_AUTH=true` requires a Supabase Auth session for protected app routes; local development defaults to `Approved` when false.
+- Production sign-in uses Google OAuth only. Configure Google in Supabase Auth providers and add `/auth/callback` to the allowed redirect URLs.
 - `DG_TRUST_ROLE_HEADERS=true` allows trusted infrastructure to pass `x-dg-role` and `x-dg-actor`. Keep it `false` unless a server-side gateway is enforcing identity.
 - `DG_DEV_ROLE_SESSION=true` keeps local access switching available while `DG_REQUIRE_AUTH=false`. Production access comes from `profiles.access_status`.
 
@@ -95,7 +96,7 @@ Auth model:
 
 - Internal access session lives in secure-by-default route cookies set from `/settings`.
 - Server routes can also accept `x-dg-role` and `x-dg-actor` for controlled internal automation.
-- For production, set `DG_REQUIRE_AUTH=true`, `DG_DEV_ROLE_SESSION=false`, and approve Supabase Auth users by setting `profiles.access_status` to `Approved`.
+- For production, set `DG_REQUIRE_AUTH=true`, `DG_DEV_ROLE_SESSION=false`, enable Google OAuth in Supabase, and approve users by setting `profiles.access_status` to `Approved`.
 - The local access selector is only for development when production auth is disabled.
 
 Protection:
@@ -1031,7 +1032,7 @@ npm run build
 1. Push this standalone folder as its own GitHub repo.
 2. Import the repo into Vercel as a new project.
 3. Add environment variables:
-   - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
+   - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
    - AI: `OPENAI_API_KEY`, `AI_BRAIN_MODEL`
    - Loops: `LOOP_API_KEY`
    - Internal auth: `DG_REQUIRE_AUTH=true`, `DG_TRUST_ROLE_HEADERS=false`, `DG_DEV_ROLE_SESSION=false`, `DG_DEFAULT_ACTOR`
@@ -1045,7 +1046,7 @@ npm run build
 - Set `DG_REQUIRE_AUTH=true` in production.
 - Keep `DG_TRUST_ROLE_HEADERS=false` unless a trusted identity gateway is installed.
 - Keep `DG_DEV_ROLE_SESSION=false` in production once Supabase Auth is active.
-- Keep `SUPABASE_SERVICE_ROLE_KEY`, `OPENAI_API_KEY`, and `LOOP_API_KEY` server-only.
+- Keep `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`, and `LOOP_API_KEY` server-only.
 - Confirm prompt template routes require approved internal access.
 - Confirm client exports do not include internal notes unless an Approved user explicitly selects them.
 - Review `/approvals` before any external sending, export handoff, deployment, deletion, payment, or production database schema change.

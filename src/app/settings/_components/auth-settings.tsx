@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Loader2, ShieldCheck, UserCog } from "lucide-react";
+import { Loader2, LogIn, ShieldCheck, UserCog } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -25,8 +25,6 @@ type SessionPayload = {
 export function AuthSettings() {
   const [actor, setActor] = useState("DG Academy Operator");
   const [role, setRole] = useState<UserRole>("Approved");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [notice, setNotice] = useState("");
   const [isSaving, setIsSaving] = useState(false);
   const [isAuthRequired, setIsAuthRequired] = useState(false);
@@ -42,7 +40,7 @@ export function AuthSettings() {
     setIsAuthRequired(Boolean(payload.authRequired));
   }
 
-  async function signInWithSupabase() {
+  async function signInWithGoogle() {
     setIsSaving(true);
     setNotice("");
 
@@ -53,17 +51,17 @@ export function AuthSettings() {
         throw new Error("Supabase browser auth is not configured.");
       }
 
-      const { error } = await supabase.auth.signInWithPassword({
-        email: email.trim(),
-        password,
+      const next = new URLSearchParams(window.location.search).get("next") || "/dashboard";
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: "google",
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+        },
       });
 
       if (error) {
         throw new Error(error.message);
       }
-
-      setNotice("Signed in. Refreshing session...");
-      window.location.reload();
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Sign in failed.");
     } finally {
@@ -125,35 +123,17 @@ export function AuthSettings() {
         </CardTitle>
         <CardDescription>
           {isAuthRequired
-            ? "Sign in with Supabase Auth. Approved access comes from your profile status."
+            ? "Sign in with Google. Approved access comes from your profile status."
             : "Select an internal access state for this browser session while production auth is disabled."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         {isAuthRequired ? (
           <>
-            <div className="grid gap-4 md:grid-cols-2">
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-white">Email</span>
-                <Input
-                  type="email"
-                  value={email}
-                  onChange={(event) => setEmail(event.target.value)}
-                />
-              </label>
-              <label className="space-y-2">
-                <span className="text-sm font-medium text-white">Password</span>
-                <Input
-                  type="password"
-                  value={password}
-                  onChange={(event) => setPassword(event.target.value)}
-                />
-              </label>
-            </div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="gold" onClick={signInWithSupabase} disabled={isSaving}>
-                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                Sign in
+              <Button type="button" variant="gold" onClick={signInWithGoogle} disabled={isSaving}>
+                {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogIn className="h-4 w-4" />}
+                Sign in with Google
               </Button>
               <Button type="button" variant="outline" onClick={signOut} disabled={isSaving}>
                 Sign out

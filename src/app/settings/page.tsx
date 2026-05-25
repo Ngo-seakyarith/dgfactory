@@ -23,9 +23,14 @@ const checks = [
     Boolean(process.env.NEXT_PUBLIC_SUPABASE_URL),
   ],
   [
-    "Supabase service role",
-    "SUPABASE_SERVICE_ROLE_KEY",
-    Boolean(process.env.SUPABASE_SERVICE_ROLE_KEY),
+    "Supabase publishable key",
+    "NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY",
+    Boolean(process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY),
+  ],
+  [
+    "Supabase secret key",
+    "SUPABASE_SECRET_KEY",
+    Boolean(process.env.SUPABASE_SECRET_KEY),
   ],
   ["Loop API key", "LOOP_API_KEY", Boolean(process.env.LOOP_API_KEY)],
   ["Auth enforcement", "DG_REQUIRE_AUTH", process.env.DG_REQUIRE_AUTH === "true"],

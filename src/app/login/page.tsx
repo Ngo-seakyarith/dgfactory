@@ -14,7 +14,8 @@ export default function LoginPage() {
         <CardHeader>
           <CardTitle>DG Academy Factory Access</CardTitle>
           <CardDescription>
-            Production identity uses Supabase Auth and profile approval.
+            Production identity uses Google sign-in through Supabase Auth and
+            profile approval.
             When production auth is enabled, the form below signs in with
             Supabase and shows whether the user is pending or approved for app
             access.

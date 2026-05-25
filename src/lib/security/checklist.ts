@@ -79,7 +79,7 @@ export const securityChecklistSections = [
   {
     category: "Secret handling",
     checks: [
-      "OpenAI, Supabase service role, and loop keys are never committed.",
+      "OpenAI, Supabase secret, and loop keys are never committed.",
       "Pasted or exposed secrets are rotated before production use.",
     ],
   },
