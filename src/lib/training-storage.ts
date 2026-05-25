@@ -3,10 +3,7 @@ import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import type {
   KnowledgeSourceNote,
 } from "@/lib/knowledge";
-import type {
-  QualityChecklistItem,
-  TrainingPackage,
-} from "@/lib/training-packages";
+import type { TrainingPackage } from "@/lib/training-packages";
 import {
   buildCommercialProposalSection,
   calculatePricing,
@@ -28,15 +25,9 @@ type PackageRow = {
   syllabus: string;
   proposal: string;
   commercial_proposal?: string | null;
-  deck_outline: string;
-  workbook: string;
-  follow_up_email?: string;
-  quality_checklist?: QualityChecklistItem[] | string | null;
   pricing_inputs?: Partial<PricingInputs> | null;
   pricing_outputs?: PricingOutputs | null;
   knowledge_used?: KnowledgeSourceNote[] | null;
-  email?: string;
-  checklist?: string;
   generation_mode: "openai" | null;
   created_at: string;
   updated_at: string;
@@ -55,10 +46,6 @@ function toRow(pkg: TrainingPackage) {
     syllabus: pkg.syllabus,
     proposal: pkg.proposal,
     commercial_proposal: pkg.commercialProposal,
-    deck_outline: pkg.deckOutline,
-    workbook: pkg.workbook,
-    follow_up_email: pkg.followUpEmail,
-    quality_checklist: pkg.qualityChecklist,
     pricing_inputs: pkg.pricingInputs,
     pricing_outputs: pkg.pricingOutputs,
     knowledge_used: pkg.knowledgeUsed ?? [],
@@ -66,34 +53,6 @@ function toRow(pkg: TrainingPackage) {
     created_at: pkg.createdAt,
     updated_at: pkg.updatedAt,
   };
-}
-
-function normalizeChecklist(
-  value: QualityChecklistItem[] | string | null | undefined,
-): QualityChecklistItem[] {
-  if (Array.isArray(value)) {
-    return value.filter(
-      (item): item is QualityChecklistItem =>
-        Boolean(item) &&
-        typeof item.category === "string" &&
-        typeof item.item === "string" &&
-        (item.status === "ready" || item.status === "review"),
-    );
-  }
-
-  if (typeof value === "string" && value.trim()) {
-    return value
-      .split("\n")
-      .map((line) => line.replace(/^[-*]\s*/, "").trim())
-      .filter(Boolean)
-      .map((item) => ({
-        category: "Imported",
-        item,
-        status: "review" as const,
-      }));
-  }
-
-  return [];
 }
 
 function fromRow(row: PackageRow): TrainingPackage {
@@ -119,10 +78,10 @@ function fromRow(row: PackageRow): TrainingPackage {
         inputs: pricingInputs,
         outputs: pricingOutputs,
       }),
-    deckOutline: row.deck_outline,
-    workbook: row.workbook,
-    followUpEmail: row.follow_up_email ?? row.email ?? "",
-    qualityChecklist: normalizeChecklist(row.quality_checklist ?? row.checklist),
+    deckOutline: "",
+    workbook: "",
+    followUpEmail: "",
+    qualityChecklist: [],
     pricingInputs,
     pricingOutputs,
     knowledgeUsed: Array.isArray(row.knowledge_used) ? row.knowledge_used : [],

@@ -12,7 +12,6 @@ import {
   Loader2,
   Mail,
   MessageSquareText,
-  Presentation,
   Save,
   Send,
   Sparkles,
@@ -81,24 +80,15 @@ type QaReviewOutput = {
 type OutputTabKey = PackageOutputKey | "qaReview" | "feedback";
 type RegeneratablePackageSection =
   | "syllabus"
-  | "proposal"
-  | "deckOutline"
-  | "workbook"
-  | "commercialProposal"
-  | "followUpEmail";
+  | "proposal";
 
 type WorkflowStepName =
-  | "Planning"
   | "Syllabus"
   | "Proposal"
-  | "Slides"
-  | "Workbook"
-  | "Commercial"
-  | "QA"
-  | "Final Review";
+  | "Commercial";
 
 type WorkflowTraceItem = {
-  step: WorkflowStepName | "Follow-up";
+  step: string;
   agent: string;
   mode: "openai";
   model: string;
@@ -106,14 +96,9 @@ type WorkflowTraceItem = {
 };
 
 const workflowSteps: WorkflowStepName[] = [
-  "Planning",
   "Syllabus",
   "Proposal",
-  "Slides",
-  "Workbook",
   "Commercial",
-  "QA",
-  "Final Review",
 ];
 
 const defaultInput: TrainingPackageInput = {
@@ -218,10 +203,6 @@ export function PackageForm() {
         syllabus?: string;
         proposal?: string;
         commercialProposal?: string;
-        deckOutline?: string;
-        workbook?: string;
-        followUpEmail?: string;
-        qualityChecklist?: TrainingPackageOutputs["qualityChecklist"];
         traceSummary?: WorkflowTraceItem[];
         knowledgeUsed?: KnowledgeSourceNote[];
         state?: { currentStep?: string; error?: string };
@@ -232,20 +213,11 @@ export function PackageForm() {
       };
       const outputs =
         payload.outputs ??
-        (payload.syllabus &&
-        payload.proposal &&
-        payload.deckOutline &&
-        payload.workbook &&
-        payload.followUpEmail &&
-        payload.qualityChecklist
+        (payload.syllabus && payload.proposal
           ? {
               syllabus: payload.syllabus,
               proposal: payload.proposal,
               commercialProposal: payload.commercialProposal ?? "",
-              deckOutline: payload.deckOutline,
-              workbook: payload.workbook,
-              followUpEmail: payload.followUpEmail,
-              qualityChecklist: payload.qualityChecklist,
             }
           : undefined);
 
@@ -403,8 +375,8 @@ export function PackageForm() {
                 Use multi-agent generation
               </span>
               <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                Chief Brain plans, specialists draft sections, QA reviews, and
-                final recommendations are captured.
+                Chief Brain plans, specialists draft the syllabus, proposal,
+                and commercial pricing narrative.
               </span>
             </span>
           </label>
@@ -533,7 +505,9 @@ function WorkflowProgress({
   failedStep: string;
   workflowId: string | null;
 }) {
-  const completedSteps = new Set(trace.map((item) => item.step));
+  const visibleStepNames = new Set<string>(workflowSteps);
+  const visibleTrace = trace.filter((item) => visibleStepNames.has(item.step));
+  const completedSteps = new Set(visibleTrace.map((item) => item.step));
 
   return (
     <div className="mb-5 rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
@@ -573,9 +547,9 @@ function WorkflowProgress({
           );
         })}
       </div>
-      {trace.length ? (
+      {visibleTrace.length ? (
         <div className="mt-4 space-y-2">
-          {trace.slice(-3).map((item) => (
+          {visibleTrace.slice(-2).map((item) => (
             <div
               key={`${item.step}-${item.agent}`}
               className="rounded-lg border border-white/10 bg-[#07111f]/60 p-3 text-xs leading-5 text-muted-foreground"
@@ -1342,10 +1316,6 @@ function sectionLabel(section: RegeneratablePackageSection) {
   const labels: Record<RegeneratablePackageSection, string> = {
     syllabus: "Syllabus",
     proposal: "Proposal",
-    deckOutline: "Deck outline",
-    workbook: "Workbook",
-    commercialProposal: "Commercial proposal",
-    followUpEmail: "Follow-up email",
   };
 
   return labels[section];
@@ -1354,14 +1324,7 @@ function sectionLabel(section: RegeneratablePackageSection) {
 function regeneratableSectionForKey(
   key: OutputTabKey,
 ): RegeneratablePackageSection | null {
-  if (
-    key === "syllabus" ||
-    key === "proposal" ||
-    key === "deckOutline" ||
-    key === "workbook" ||
-    key === "commercialProposal" ||
-    key === "followUpEmail"
-  ) {
+  if (key === "syllabus" || key === "proposal") {
     return key;
   }
 
@@ -1400,21 +1363,7 @@ export function OutputTabs({
   onPackageUpdate?: (pkg: TrainingPackage) => void | Promise<void>;
 }) {
   const sections = useMemo(
-    () => [
-      ...packageOutputSections,
-      {
-        key: "qaReview" as const,
-        label: "QA Review",
-        description:
-          "Brain Layer review for client readiness, gaps, risks, and improvements.",
-      },
-      {
-        key: "feedback" as const,
-        label: "Feedback",
-        description:
-          "Score outputs, capture human feedback, and suggest prompt improvements.",
-      },
-    ],
+    () => packageOutputSections,
     [],
   );
   const [activeKey, setActiveKey] = useState<OutputTabKey>(
@@ -1438,12 +1387,7 @@ export function OutputTabs({
   );
   const fullPackage = fullPackageToMarkdown(pkg);
   const qaReviewText = qaReview ? qaReviewToMarkdown(qaReview) : "";
-  const activeText =
-    activeSection.key === "qaReview"
-      ? qaReviewText
-      : activeSection.key === "feedback"
-        ? ""
-      : outputToText(pkg, activeSection.key as PackageOutputKey);
+  const activeText = outputToText(pkg, activeSection.key as PackageOutputKey);
   const activeRegeneratableSection = regeneratableSectionForKey(activeSection.key);
   const emailHref = `mailto:?subject=${encodeURIComponent(`DG Academy Training Package: ${pkg.title}`)}&body=${encodeURIComponent(fullPackage)}`;
 
@@ -1512,53 +1456,11 @@ export function OutputTabs({
       disabled: !pkg.proposal.trim(),
     },
     {
-      label: "Export Pricing DOCX",
-      format: "docx",
-      target: "pricing",
-      icon: FileText,
-      disabled: !pkg.pricingOutputs,
-    },
-    {
-      label: "Export Pricing PDF",
-      format: "pdf",
-      target: "pricing",
-      icon: FileDown,
-      disabled: !pkg.pricingOutputs,
-    },
-    {
       label: "Export Syllabus DOCX",
       format: "docx",
       target: "syllabus",
       icon: FileText,
       disabled: !pkg.syllabus.trim(),
-    },
-    {
-      label: "Export Workbook DOCX",
-      format: "docx",
-      target: "workbook",
-      icon: FileText,
-      disabled: !pkg.workbook.trim(),
-    },
-    {
-      label: "Export Email DOCX",
-      format: "docx",
-      target: "follow-up-email",
-      icon: Mail,
-      disabled: !pkg.followUpEmail.trim(),
-    },
-    {
-      label: "Export Slide Deck PPTX",
-      format: "pptx",
-      target: "slides",
-      icon: Presentation,
-      disabled: !pkg.deckOutline.trim(),
-    },
-    {
-      label: "Export Summary PDF",
-      format: "pdf",
-      target: "summary",
-      icon: FileDown,
-      disabled: !pkg.proposal.trim() && !pkg.syllabus.trim(),
     },
     {
       label: "Export Proposal PDF",
@@ -1639,11 +1541,6 @@ export function OutputTabs({
           currentPackage: {
             syllabus: pkg.syllabus,
             proposal: pkg.proposal,
-            commercialProposal: pkg.commercialProposal,
-            deckOutline: pkg.deckOutline,
-            workbook: pkg.workbook,
-            followUpEmail: pkg.followUpEmail,
-            qualityChecklist: pkg.qualityChecklist,
           },
         }),
       });
@@ -1707,28 +1604,10 @@ export function OutputTabs({
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {activeSection.key === "qaReview" ? (
-              <Button
-                type="button"
-                variant="gold"
-                size="sm"
-                onClick={runQaReview}
-                disabled={isRunningQa}
-              >
-                {isRunningQa ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                Run QA Review
-              </Button>
-            ) : null}
-            {activeSection.key === "feedback" ? null : (
-              <CopyButton
-                value={activeText}
-                label={`Copy ${activeSection.label}`}
-              />
-            )}
+            <CopyButton
+              value={activeText}
+              label={`Copy ${activeSection.label}`}
+            />
             {activeRegeneratableSection ? (
               <Button
                 type="button"
@@ -1766,21 +1645,8 @@ export function OutputTabs({
             ) : null}
           </div>
         </div>
-        {activeSection.key === "qualityChecklist" ? (
-          <div className="max-h-[34rem] overflow-auto p-4">
-            <QualityChecklist checklist={pkg.qualityChecklist} />
-          </div>
-        ) : activeSection.key === "pricing" ? (
+        {activeSection.key === "pricing" ? (
           <PricingPanel pkg={pkg} canViewInternal={canViewInternal} />
-        ) : activeSection.key === "qaReview" ? (
-          <QaReviewPanel
-            review={qaReview}
-            notice={qaNotice}
-            isRunning={isRunningQa}
-            onRun={runQaReview}
-          />
-        ) : activeSection.key === "feedback" ? (
-          <FeedbackPanel pkg={pkg} />
         ) : (
           <pre className="max-h-[34rem] overflow-auto whitespace-pre-wrap p-4 font-sans text-sm leading-7 text-slate-100">
             {activeText}

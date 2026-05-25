@@ -3,7 +3,6 @@ import {
   chiefBrainAgent,
   type BrainAgentDefinition,
   type CoursePackageBrainInput,
-  type QaReviewInput,
   type QaReviewOutput,
   type TextAgentOutput,
 } from "@/lib/brain/agents";
@@ -14,34 +13,23 @@ import {
   type PricingInputs,
 } from "@/lib/pricing";
 import {
-  fullPackageToMarkdown,
   type TrainingPackage,
   type TrainingPackageInput,
   type TrainingPackageOutputs,
 } from "@/lib/training-packages";
-import type { FollowUpDraft } from "@/lib/crm";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
 
 export const packageWorkflowSteps = [
-  "Planning",
   "Syllabus",
   "Proposal",
-  "Slides",
-  "Workbook",
   "Commercial",
-  "QA",
-  "Final Review",
 ] as const;
 
 export type PackageWorkflowStep = (typeof packageWorkflowSteps)[number];
 export type PackageWorkflowStatus = "running" | "completed" | "failed";
 export type RegeneratablePackageSection =
   | "syllabus"
-  | "proposal"
-  | "deckOutline"
-  | "workbook"
-  | "commercialProposal"
-  | "followUpEmail";
+  | "proposal";
 
 export type PackageWorkflowInput = TrainingPackageInput & {
   pricingInputs?: Partial<PricingInputs>;
@@ -90,7 +78,7 @@ function createWorkflowState(workflowId = createWorkflowId()): PackageWorkflowSt
   return {
     workflowId,
     status: "running",
-    currentStep: "Planning",
+    currentStep: "Syllabus",
     startedAt: now,
     completedAt: null,
     error: null,
@@ -152,6 +140,11 @@ function createTemporaryPackage({
     context: input.context,
     tone: input.tone,
     ...outputs,
+    commercialProposal: "",
+    deckOutline: "",
+    workbook: "",
+    followUpEmail: "",
+    qualityChecklist: [],
     pricingInputs: pricingFacts.inputs,
     pricingOutputs: pricingFacts.outputs,
     knowledgeUsed: input.knowledgeUsed ?? [],
@@ -187,7 +180,7 @@ export async function runPackageWorkflow(
       pricingOutputs: pricingFacts.outputs,
       pricingSummary: pricingFacts.summary,
     };
-    state = updateState(state, { currentStep: "Planning" });
+    state = updateState(state, { currentStep: "Syllabus" });
     const plan = await generateStructuredOutput<
       Record<string, unknown>,
       TextAgentOutput
@@ -203,14 +196,13 @@ export async function runPackageWorkflow(
     });
     recordAgentOutput({
       state,
-      step: "Planning",
+      step: "Syllabus",
       agent: chiefBrainAgent.name,
       mode: plan.mode,
       model: plan.model,
       content: plan.output.content,
     });
 
-    state = updateState(state, { currentStep: "Syllabus" });
     const syllabusResult = await routeBrainTask<
       CoursePackageBrainInput,
       TrainingPackageOutputs
@@ -251,46 +243,6 @@ export async function runPackageWorkflow(
       content: proposalResult.output.content,
     });
 
-    state = updateState(state, { currentStep: "Slides" });
-    const slideResult = await routeBrainTask<Record<string, unknown>, TextAgentOutput>({
-      taskType: "slide_outline",
-      input: {
-        input: baseInput,
-        plan: plan.output.content,
-        syllabus: syllabusResult.output.syllabus,
-        proposal: proposalResult.output.content,
-      },
-    });
-    recordAgentOutput({
-      state,
-      step: "Slides",
-      agent: "slideAgent",
-      mode: slideResult.mode,
-      model: slideResult.model,
-      content: slideResult.output.content,
-    });
-
-    state = updateState(state, { currentStep: "Workbook" });
-    const workbookResult = await routeBrainTask<
-      Record<string, unknown>,
-      TextAgentOutput
-    >({
-      taskType: "workbook",
-      input: {
-        input: baseInput,
-        syllabus: syllabusResult.output.syllabus,
-        deckOutline: slideResult.output.content,
-      },
-    });
-    recordAgentOutput({
-      state,
-      step: "Workbook",
-      agent: "workbookAgent",
-      mode: workbookResult.mode,
-      model: workbookResult.model,
-      content: workbookResult.output.content,
-    });
-
     state = updateState(state, { currentStep: "Commercial" });
     const commercialResult = await routeBrainTask<
       Record<string, unknown>,
@@ -303,112 +255,47 @@ export async function runPackageWorkflow(
         proposal: proposalResult.output.content,
       },
     });
+    const commercialProposal =
+      commercialResult.output.content ||
+      buildCommercialProposalSection({
+        title: input.courseTitle,
+        client: input.client,
+        inputs: pricingFacts.inputs,
+        outputs: pricingFacts.outputs,
+      });
     recordAgentOutput({
       state,
       step: "Commercial",
       agent: "pricingNarrativeAgent",
       mode: commercialResult.mode,
       model: commercialResult.model,
-      content: commercialResult.output.content,
-    });
-
-    const followUpResult = await routeBrainTask<
-      Record<string, unknown>,
-      FollowUpDraft
-    >({
-      taskType: "follow_up",
-      input: {
-        clientName: input.client,
-        trainingNeed: input.promise,
-        packageTitle: input.courseTitle,
-      },
-    });
-    recordAgentOutput({
-      state,
-      step: "Follow-up",
-      agent: "salesFollowUpAgent",
-      mode: followUpResult.mode,
-      model: followUpResult.model,
-      content: followUpResult.output.followUpEmail,
+      content: commercialProposal,
     });
 
     const outputs: TrainingPackageOutputs = {
       syllabus: syllabusResult.output.syllabus,
       proposal: proposalResult.output.content,
-      commercialProposal:
-        commercialResult.output.content ||
-        buildCommercialProposalSection({
-          title: input.courseTitle,
-          client: input.client,
-          inputs: pricingFacts.inputs,
-          outputs: pricingFacts.outputs,
-        }),
-      deckOutline: slideResult.output.content,
-      workbook: workbookResult.output.content,
-      followUpEmail: followUpResult.output.followUpEmail,
-      qualityChecklist: syllabusResult.output.qualityChecklist,
+      commercialProposal,
     };
-
-    state = updateState(state, { currentStep: "QA", finalOutput: outputs });
-    const packageContent = fullPackageToMarkdown(
-      createTemporaryPackage({ input, outputs }),
-    );
-    const qaResult = await routeBrainTask<QaReviewInput, QaReviewOutput>({
-      taskType: "qa_review",
-      input: {
-        packageContent,
-        client: input.client,
-        audience: input.audience,
-        context: input.context,
-      },
-    });
-    recordAgentOutput({
-      state,
-      step: "QA",
-      agent: "qaAgent",
-      mode: qaResult.mode,
-      model: qaResult.model,
-      content: `QA score ${qaResult.output.score}/100, readiness ${qaResult.output.clientReadiness}`,
-    });
-
-    state = updateState(state, {
-      currentStep: "Final Review",
-      qaReview: qaResult.output,
-      qaScore: qaResult.output.score,
-    });
-    const improvementResult = await routeBrainTask<
-      Record<string, unknown>,
-      TextAgentOutput
-    >({
-      taskType: "improvement_suggestion",
-      input: {
-        input: baseInput,
-        qaReview: qaResult.output,
-        outputs,
-      },
-    });
-    recordAgentOutput({
-      state,
-      step: "Final Review",
-      agent: "improvementAgent",
-      mode: improvementResult.mode,
-      model: improvementResult.model,
-      content: improvementResult.output.content,
-    });
 
     state = updateState(state, {
       status: "completed",
       completedAt: new Date().toISOString(),
       finalOutput: outputs,
-      qaReview: qaResult.output,
-      qaScore: qaResult.output.score,
-      improvementRecommendations: improvementResult.output.content,
     });
 
     return {
       workflowId: state.workflowId,
       output: outputs,
-      qaReview: qaResult.output,
+      qaReview: {
+        score: 0,
+        strengths: [],
+        weaknesses: [],
+        missingSections: [],
+        risks: [],
+        recommendedImprovements: [],
+        clientReadiness: "medium",
+      },
       traceSummary: state.agentOutputs,
       state,
     };
@@ -468,33 +355,5 @@ export async function regeneratePackageSection({
     return { section, content: result.output.content, mode: result.mode };
   }
 
-  if (section === "deckOutline") {
-    const result = await routeBrainTask<Record<string, unknown>, TextAgentOutput>({
-      taskType: "slide_outline",
-      input: baseContext,
-    });
-    return { section, content: result.output.content, mode: result.mode };
-  }
-
-  if (section === "workbook") {
-    const result = await routeBrainTask<Record<string, unknown>, TextAgentOutput>({
-      taskType: "workbook",
-      input: baseContext,
-    });
-    return { section, content: result.output.content, mode: result.mode };
-  }
-
-  if (section === "commercialProposal") {
-    const result = await routeBrainTask<Record<string, unknown>, TextAgentOutput>({
-      taskType: "pricing_narrative",
-      input: baseContext,
-    });
-    return { section, content: result.output.content, mode: result.mode };
-  }
-
-  const result = await routeBrainTask<Record<string, unknown>, FollowUpDraft>({
-    taskType: "follow_up",
-    input: baseContext,
-  });
-  return { section, content: result.output.followUpEmail, mode: result.mode };
+  throw new Error("Only syllabus and proposal can be regenerated for packages.");
 }

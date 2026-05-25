@@ -142,7 +142,7 @@ export function TrainingDashboardClient() {
         <CardContent>
           <div className="grid gap-3 md:grid-cols-3">
             <FactoryStep title="1. Brief" detail="Capture the title, audience, client, promise, examples, and tone." />
-            <FactoryStep title="2. Generate" detail="Create syllabus, proposal, deck outline, workbook, email, and QA." />
+            <FactoryStep title="2. Generate" detail="Create the syllabus and proposal." />
             <FactoryStep title="3. Package" detail="Copy outputs, save to Supabase, and reopen detail pages." />
           </div>
         </CardContent>

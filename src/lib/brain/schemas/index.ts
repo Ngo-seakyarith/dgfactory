@@ -103,23 +103,10 @@ export const qualityChecklistItemSchema: JsonSchema = {
 
 export const trainingPackageOutputSchema: JsonSchema = {
   type: "object",
-  required: [
-    "syllabus",
-    "proposal",
-    "commercialProposal",
-    "deckOutline",
-    "workbook",
-    "followUpEmail",
-    "qualityChecklist",
-  ],
+  required: ["syllabus", "proposal"],
   properties: {
     syllabus: { type: "string" },
     proposal: { type: "string" },
-    commercialProposal: { type: "string" },
-    deckOutline: { type: "string" },
-    workbook: { type: "string" },
-    followUpEmail: { type: "string" },
-    qualityChecklist: { type: "array", items: qualityChecklistItemSchema },
   },
 };
 

@@ -9,10 +9,6 @@ import type { TrainingPackageOutputs } from "@/lib/training-packages";
 const sections: RegeneratablePackageSection[] = [
   "syllabus",
   "proposal",
-  "deckOutline",
-  "workbook",
-  "commercialProposal",
-  "followUpEmail",
 ];
 
 export async function POST(request: Request) {

@@ -28,14 +28,10 @@ export type QualityChecklistItem = {
 export type TrainingPackageOutputs = {
   syllabus: string;
   proposal: string;
-  commercialProposal: string;
-  deckOutline: string;
-  workbook: string;
-  followUpEmail: string;
-  qualityChecklist: QualityChecklistItem[];
+  commercialProposal?: string;
 };
 
-export type PackageOutputKey = keyof TrainingPackageOutputs | "pricing";
+export type PackageOutputKey = "syllabus" | "proposal" | "commercialProposal" | "pricing";
 
 export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle"> &
   TrainingPackageOutputs & {
@@ -43,6 +39,11 @@ export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle"> &
     title: string;
     pricingInputs: PricingInputs;
     pricingOutputs: PricingOutputs;
+    commercialProposal: string;
+    deckOutline: string;
+    workbook: string;
+    followUpEmail: string;
+    qualityChecklist: QualityChecklistItem[];
     knowledgeUsed?: KnowledgeSourceNote[];
     createdAt: string;
     updatedAt: string;
@@ -65,34 +66,14 @@ export const packageOutputSections: Array<{
     description: "Client-ready scope, value case, outcomes, and investment framing.",
   },
   {
+    key: "commercialProposal",
+    label: "Commercial",
+    description: "Client-facing investment terms generated from pricing inputs.",
+  },
+  {
     key: "pricing",
     label: "Pricing",
-    description: "Deterministic commercial pricing, cost breakdown, and margin view.",
-  },
-  {
-    key: "commercialProposal",
-    label: "Commercial Proposal",
-    description: "Client-facing investment terms and next steps.",
-  },
-  {
-    key: "deckOutline",
-    label: "Slide Deck",
-    description: "Executive presentation structure for the facilitator deck.",
-  },
-  {
-    key: "workbook",
-    label: "Workbook",
-    description: "Participant exercises, reflection prompts, and templates.",
-  },
-  {
-    key: "followUpEmail",
-    label: "Follow-Up Email",
-    description: "Post-program message with next steps and momentum builders.",
-  },
-  {
-    key: "qualityChecklist",
-    label: "QA Checklist",
-    description: "Quality controls before a package is sold or delivered.",
+    description: "Deterministic pricing, cost assumptions, and margin view.",
   },
 ];
 
@@ -136,9 +117,7 @@ export function normalizeTrainingInput(
 
 export function createTrainingOutputTemplate(
   input: TrainingPackageInput,
-  pricingInputs: PricingInputs = defaultPricingInputs,
 ): TrainingPackageOutputs {
-  const pricingOutputs = calculatePricing(pricingInputs);
   const contextLine = input.context
     ? `Context to weave through the program: ${input.context}`
     : "Context to weave through the program: practical DG Academy examples, executive decision-making, and hands-on AI workflow design.";
@@ -195,14 +174,11 @@ DG Academy will deliver a ${input.duration} training experience for ${input.audi
 Organizations need practical AI capability that moves beyond awareness into repeatable business workflows. This program gives participants a clear operating language, hands-on practice, and an implementation path they can use immediately.
 
 ## Program Design
-The experience combines executive briefing, practical demonstrations, facilitated exercises, participant workbook activities, and a final action-plan readout. The tone will be ${input.tone.toLowerCase()}.
+The experience combines executive briefing, practical demonstrations, facilitated exercises, and a final action-plan readout. The tone will be ${input.tone.toLowerCase()}.
 
 ## Deliverables
 - Full syllabus and facilitator flow
-- Slide deck outline for executive delivery
-- Participant workbook with exercises and templates
-- Follow-up email and post-session next steps
-- Quality checklist for readiness review
+- Client-ready proposal
 
 ## Expected Outcomes
 - Shared understanding of the topic and its business value
@@ -212,119 +188,6 @@ The experience combines executive briefing, practical demonstrations, facilitate
 
 ## Next Step
 Confirm audience profile, delivery date, and decision-maker priorities, then finalize the examples and workshop cases.`,
-
-    commercialProposal: buildCommercialProposalSection({
-      title: input.courseTitle,
-      client: input.client,
-      inputs: normalizePricingInputs(pricingInputs),
-      outputs: pricingOutputs,
-    }),
-
-    deckOutline: `# Slide Deck Outline: ${input.courseTitle}
-
-1. Title and DG Academy positioning
-2. Why this topic matters now
-3. Audience reality: ${input.audience}
-4. Program promise: ${input.promise}
-5. What participants will build or decide
-6. Core concept 1: the operating shift
-7. Core concept 2: opportunity selection
-8. Core concept 3: risk and governance
-9. Example walkthrough for ${input.client}
-10. Lab instructions: workflow map
-11. Lab instructions: AI-enabled redesign
-12. Lab instructions: success metrics
-13. Group readout template
-14. 30-day implementation plan
-15. Next steps and DG Academy support options`,
-
-    workbook: `# Participant Workbook: ${input.courseTitle}
-
-## Section 1: Starting Point
-- What is one current workflow or decision that feels slower than it should?
-- Who is affected by that friction?
-- What would improve if this training promise became real: ${input.promise}?
-
-## Section 2: Opportunity Map
-Capture 3 opportunities:
-- Opportunity
-- Business value
-- Ease of implementation
-- Data or policy dependency
-- Owner
-
-## Section 3: Lab Template
-Current workflow:
-1. Trigger
-2. Inputs
-3. Steps
-4. Decisions
-5. Outputs
-6. Risks
-
-Improved workflow:
-1. Where AI assists
-2. Human checkpoints
-3. Quality controls
-4. Measurement
-
-## Section 4: 30-Day Plan
-- First action within 48 hours
-- Owner
-- Stakeholders
-- Success metric
-- Risk to manage
-- Decision needed from leadership`,
-
-    followUpEmail: `Subject: Next steps from ${input.courseTitle}
-
-Hi team,
-
-Thank you for joining the ${input.courseTitle} program with DG Academy. The focus was practical: helping ${input.audience} move from idea to action around this promise: ${input.promise}.
-
-Recommended next steps:
-1. Review the opportunity map and select one priority workflow.
-2. Assign an owner and define a simple 30-day success measure.
-3. Confirm any data, policy, or approval requirements before implementation.
-4. Schedule a short follow-up session to review progress and unblock decisions.
-
-DG Academy can support the next phase with implementation coaching, executive alignment, or a deeper workflow design sprint.
-
-Best,
-DG Academy`,
-
-    qualityChecklist: [
-      {
-        category: "Strategic Fit",
-        item: "The program promise is specific, commercial, and relevant to the buyer.",
-        status: "ready",
-      },
-      {
-        category: "Learning Design",
-        item: `The syllabus matches ${input.audience} and balances teaching with practical labs.`,
-        status: "ready",
-      },
-      {
-        category: "Client Relevance",
-        item: `Examples and discussion prompts are tailored to ${input.client}.`,
-        status: "ready",
-      },
-      {
-        category: "Commercial Readiness",
-        item: "Proposal language avoids unsupported guarantees and makes next steps clear.",
-        status: "review",
-      },
-      {
-        category: "Delivery Readiness",
-        item: "Slides, workbook, and follow-up email are coherent enough for facilitator review.",
-        status: "ready",
-      },
-      {
-        category: "Risk Control",
-        item: "No confidential client data is included unless it has been approved for use.",
-        status: "review",
-      },
-    ],
   };
 }
 
@@ -349,10 +212,6 @@ export function outputToText(
   pkg: TrainingPackage,
   key: PackageOutputKey,
 ) {
-  if (key === "qualityChecklist") {
-    return qualityChecklistToMarkdown(pkg.qualityChecklist);
-  }
-
   if (key === "pricing") {
     return pricingSummaryToMarkdown(pkg.pricingInputs, pkg.pricingOutputs);
   }
@@ -377,14 +236,6 @@ export function fullPackageToMarkdown(pkg: TrainingPackage) {
     pkg.commercialProposal,
     "",
     pricingSummaryToMarkdown(pkg.pricingInputs, pkg.pricingOutputs),
-    "",
-    pkg.deckOutline,
-    "",
-    pkg.workbook,
-    "",
-    pkg.followUpEmail,
-    "",
-    qualityChecklistToMarkdown(pkg.qualityChecklist),
   ].join("\n\n");
 }
 
@@ -426,6 +277,10 @@ export function buildPackageFromParts({
     tone: input.tone,
     ...outputs,
     commercialProposal,
+    deckOutline: "",
+    workbook: "",
+    followUpEmail: "",
+    qualityChecklist: [],
     pricingInputs: normalizedPricingInputs,
     pricingOutputs,
     knowledgeUsed,

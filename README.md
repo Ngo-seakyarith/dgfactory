@@ -12,7 +12,7 @@ This app is separate from DG Command OS.
 - Commercial Setup with deterministic pricing calculations
 - Client-facing commercial proposal
 - Internal profitability note hidden from client exports by default
-- Export Proposal/Syllabus/Workbook DOCX, Slide Deck PPTX, Summary PDF, Pricing DOCX/PDF, and TXT
+- Export Proposal and Syllabus DOCX/PDF plus TXT package handoff
 - Email handoff and Telegram handoff to `@sopheaphin`
 - Client CRM with clients, opportunities, proposal pipeline, follow-up reminders, and package-to-opportunity linking
 - Training Delivery OS for won opportunities, preparation checklists, evaluation capture, post-training report drafts, and report export
@@ -616,11 +616,9 @@ Workflow sequence:
 1. Chief Brain creates the package plan.
 2. Course Architect creates the syllabus.
 3. Proposal Agent creates the client proposal.
-4. Slide Agent creates the deck outline.
-5. Workbook Agent creates the participant workbook.
-6. Pricing Narrative Agent creates commercial proposal text from deterministic pricing outputs.
-7. QA Agent reviews the final package.
-8. Improvement Agent produces final recommendations.
+4. Pricing Narrative Agent creates the commercial proposal from deterministic pricing inputs.
+
+Package generation stores syllabus, proposal, commercial proposal, and deterministic pricing inputs/outputs on `training_packages`.
 
 Files:
 
@@ -631,9 +629,9 @@ Files:
 UI behavior:
 
 - New Package page includes `Use multi-agent generation`, default on.
-- The generation panel shows workflow steps: Planning, Syllabus, Proposal, Slides, Workbook, Commercial, QA, and Final Review.
+- The generation panel shows the Syllabus, Proposal, and Commercial workflow steps.
 - If a workflow step fails, the UI shows the failed step and a retry button.
-- Package output tabs include `Regenerate this section` for syllabus, proposal, deck outline, workbook, commercial proposal, and follow-up email.
+- Package output tabs include `Regenerate this section` for syllabus and proposal.
 - One-shot generation remains available by turning off the multi-agent toggle.
 
 State:

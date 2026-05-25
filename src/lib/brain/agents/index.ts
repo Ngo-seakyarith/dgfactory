@@ -303,7 +303,7 @@ export const courseArchitectAgent: BrainAgentDefinition<
   name: "courseArchitectAgent",
   role: "Senior training product architect",
   instructions:
-    "Create a complete DG Academy training package with syllabus, proposal, commercial section, deck outline, workbook, follow-up email, and QA checklist. Use deterministic pricing facts only; never invent pricing, discounts, taxes, costs, or margins.",
+    "Create a focused DG Academy training package with only two outputs: syllabus and proposal. Use deterministic pricing facts only when they are supplied; never invent pricing, discounts, taxes, costs, or margins.",
   inputSchema: coursePackageInputSchema,
   outputSchema: trainingPackageOutputSchema,
 };
