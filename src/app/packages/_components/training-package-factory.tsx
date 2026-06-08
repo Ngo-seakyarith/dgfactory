@@ -54,7 +54,6 @@ import {
 } from "@/lib/evaluations";
 import {
   applyPricingPreset,
-  buildCommercialProposalSection,
   calculatePricing,
   clientPricingParagraph,
   defaultPricingInputs,
@@ -84,8 +83,7 @@ type RegeneratablePackageSection =
 
 type WorkflowStepName =
   | "Syllabus"
-  | "Proposal"
-  | "Commercial";
+  | "Proposal";
 
 type WorkflowTraceItem = {
   step: string;
@@ -95,10 +93,22 @@ type WorkflowTraceItem = {
   summary: string;
 };
 
+type ProposalBriefField =
+  | "clientBackground"
+  | "trainingNeed"
+  | "objectives"
+  | "participantRoles"
+  | "contentPriorities"
+  | "methodology"
+  | "schedule"
+  | "trainerProfile"
+  | "commercialNotes";
+
+type ProposalBrief = Record<ProposalBriefField, string>;
+
 const workflowSteps: WorkflowStepName[] = [
   "Syllabus",
   "Proposal",
-  "Commercial",
 ];
 
 const defaultInput: TrainingPackageInput = {
@@ -111,10 +121,57 @@ const defaultInput: TrainingPackageInput = {
   tone: "Executive, practical, commercially sharp",
 };
 
+const defaultProposalBrief: ProposalBrief = {
+  clientBackground: "",
+  trainingNeed: "",
+  objectives: "",
+  participantRoles: "",
+  contentPriorities: "",
+  methodology: "",
+  schedule: "",
+  trainerProfile: "",
+  commercialNotes: "",
+};
+
+const proposalBriefLabels: Record<ProposalBriefField, string> = {
+  clientBackground: "Client background",
+  trainingNeed: "Training need",
+  objectives: "Objectives and outcomes",
+  participantRoles: "Who should attend",
+  contentPriorities: "Content priorities",
+  methodology: "Training methodology",
+  schedule: "Schedule, date, venue",
+  trainerProfile: "Trainer profile",
+  commercialNotes: "Fee and acceptance notes",
+};
+
+function buildProposalContext(baseContext: string, proposalBrief: ProposalBrief) {
+  const sections = (Object.keys(proposalBrief) as ProposalBriefField[])
+    .map((key) => {
+      const value = proposalBrief[key].trim();
+      return value ? `${proposalBriefLabels[key]}:\n${value}` : "";
+    })
+    .filter(Boolean);
+
+  if (sections.length === 0) {
+    return baseContext;
+  }
+
+  return [
+    baseContext.trim(),
+    "DG Academy proposal template brief:",
+    sections.join("\n\n"),
+  ]
+    .filter(Boolean)
+    .join("\n\n");
+}
+
 export function PackageForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [form, setForm] = useState<TrainingPackageInput>(defaultInput);
+  const [proposalBrief, setProposalBrief] =
+    useState<ProposalBrief>(defaultProposalBrief);
   const [pricingInputs, setPricingInputs] =
     useState<PricingInputs>(defaultPricingInputs);
   const [currentPackage, setCurrentPackage] = useState<TrainingPackage | null>(null);
@@ -160,6 +217,10 @@ export function PackageForm() {
     setForm((current) => ({ ...current, [key]: value }));
   }
 
+  function updateProposalBrief(key: ProposalBriefField, value: string) {
+    setProposalBrief((current) => ({ ...current, [key]: value }));
+  }
+
   function updatePricing(nextInputs: PricingInputs) {
     const normalizedInputs = normalizePricingInputs(nextInputs);
     const pricingOutputs = calculatePricing(normalizedInputs);
@@ -171,12 +232,6 @@ export function PackageForm() {
             ...current,
             pricingInputs: normalizedInputs,
             pricingOutputs,
-            commercialProposal: buildCommercialProposalSection({
-              title: current.title,
-              client: current.client,
-              inputs: normalizedInputs,
-              outputs: pricingOutputs,
-            }),
             updatedAt: new Date().toISOString(),
           }
         : current,
@@ -191,10 +246,14 @@ export function PackageForm() {
     setIsGenerating(true);
 
     try {
+      const generationInput: TrainingPackageInput = {
+        ...form,
+        context: buildProposalContext(form.context, proposalBrief),
+      };
       const response = await fetch(useMultiAgent ? "/api/workflows/generate-package" : "/api/generate-package", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...form, pricingInputs, useMultiAgent }),
+        body: JSON.stringify({ ...generationInput, pricingInputs, useMultiAgent }),
       });
 
       const payload = (await response.json()) as {
@@ -202,7 +261,6 @@ export function PackageForm() {
         outputs?: TrainingPackageOutputs;
         syllabus?: string;
         proposal?: string;
-        commercialProposal?: string;
         traceSummary?: WorkflowTraceItem[];
         knowledgeUsed?: KnowledgeSourceNote[];
         state?: { currentStep?: string; error?: string };
@@ -217,7 +275,6 @@ export function PackageForm() {
           ? {
               syllabus: payload.syllabus,
               proposal: payload.proposal,
-              commercialProposal: payload.commercialProposal ?? "",
             }
           : undefined);
 
@@ -228,7 +285,7 @@ export function PackageForm() {
       }
 
       const pkg = buildPackageFromParts({
-        input: form,
+        input: generationInput,
         outputs,
         generationMode: "openai",
         pricingInputs,
@@ -351,6 +408,100 @@ export function PackageForm() {
               placeholder="Include local enterprise examples, workflow redesign, governance, and customer-facing AI use cases."
             />
           </Field>
+          <div className="space-y-3">
+            <div>
+              <h3 className="text-sm font-semibold text-white">
+                Proposal Template Details
+              </h3>
+              <p className="mt-1 text-xs leading-5 text-muted-foreground">
+                These feed the proposal sections: overview, objectives, outcomes,
+                outline, attendance, methodology, schedule, trainer, and fee.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Client background">
+                <Textarea
+                  value={proposalBrief.clientBackground}
+                  onChange={(event) =>
+                    updateProposalBrief("clientBackground", event.target.value)
+                  }
+                  placeholder="LOLC business context, sector, branch network, customer segment, current priority."
+                />
+              </Field>
+              <Field label="Training need">
+                <Textarea
+                  value={proposalBrief.trainingNeed}
+                  onChange={(event) =>
+                    updateProposalBrief("trainingNeed", event.target.value)
+                  }
+                  placeholder="What problem should the workshop solve? Sales conversion, service quality, AI adoption, leadership readiness..."
+                />
+              </Field>
+              <Field label="Objectives and outcomes">
+                <Textarea
+                  value={proposalBrief.objectives}
+                  onChange={(event) =>
+                    updateProposalBrief("objectives", event.target.value)
+                  }
+                  placeholder="What participants must be able to understand, practice, and apply after training."
+                />
+              </Field>
+              <Field label="Who should attend">
+                <Textarea
+                  value={proposalBrief.participantRoles}
+                  onChange={(event) =>
+                    updateProposalBrief("participantRoles", event.target.value)
+                  }
+                  placeholder="Credit officers, supervisors, managers, sales teams, support roles, executives."
+                />
+              </Field>
+              <Field label="Content priorities">
+                <Textarea
+                  value={proposalBrief.contentPriorities}
+                  onChange={(event) =>
+                    updateProposalBrief("contentPriorities", event.target.value)
+                  }
+                  placeholder="Topics to include in the content outline, ordered by client priority."
+                />
+              </Field>
+              <Field label="Training methodology">
+                <Textarea
+                  value={proposalBrief.methodology}
+                  onChange={(event) =>
+                    updateProposalBrief("methodology", event.target.value)
+                  }
+                  placeholder="Role-play, case practice, discussion, reflection, action plan, assessment, Q&A."
+                />
+              </Field>
+              <Field label="Schedule, date, venue">
+                <Textarea
+                  value={proposalBrief.schedule}
+                  onChange={(event) =>
+                    updateProposalBrief("schedule", event.target.value)
+                  }
+                  placeholder="Date, time, venue/TBC, participant count, room notes."
+                />
+              </Field>
+              <Field label="Trainer profile">
+                <Textarea
+                  value={proposalBrief.trainerProfile}
+                  onChange={(event) =>
+                    updateProposalBrief("trainerProfile", event.target.value)
+                  }
+                  placeholder="Facilitator name, role, practical experience, sector expertise, certifications."
+                />
+              </Field>
+            </div>
+            <Field label="Fee and acceptance notes">
+              <Textarea
+                value={proposalBrief.commercialNotes}
+                onChange={(event) =>
+                  updateProposalBrief("commercialNotes", event.target.value)
+                }
+                placeholder="Payment timing, included items, client responsibilities, acknowledgement wording, contact deadline."
+              />
+            </Field>
+          </div>
           <Field label="Tone">
             <Select
               value={form.tone}
@@ -375,8 +526,8 @@ export function PackageForm() {
                 Use multi-agent generation
               </span>
               <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                Chief Brain plans, specialists draft the syllabus, proposal,
-                and commercial pricing narrative.
+                Chief Brain plans, specialists draft the syllabus and proposal.
+                Commercial Setup feeds the proposal fee section.
               </span>
             </span>
           </label>
@@ -1629,29 +1780,11 @@ export function OutputTabs({
                 Regenerate this section
               </Button>
             ) : null}
-            {activeSection.key === "pricing" ? (
-              <>
-                <CopyButton
-                  value={pkg.commercialProposal}
-                  label="Copy Commercial Proposal"
-                />
-                {canViewInternal ? (
-                  <CopyButton
-                    value={internalProfitabilityNote(pkg.pricingInputs, pkg.pricingOutputs)}
-                    label="Copy Internal Note"
-                  />
-                ) : null}
-              </>
-            ) : null}
           </div>
         </div>
-        {activeSection.key === "pricing" ? (
-          <PricingPanel pkg={pkg} canViewInternal={canViewInternal} />
-        ) : (
-          <pre className="max-h-[34rem] overflow-auto whitespace-pre-wrap p-4 font-sans text-sm leading-7 text-slate-100">
-            {activeText}
-          </pre>
-        )}
+        <pre className="max-h-[34rem] overflow-auto whitespace-pre-wrap p-4 font-sans text-sm leading-7 text-slate-100">
+          {activeText}
+        </pre>
       </div>
       {regenerateNotice ? (
         <p className="rounded-lg border border-teal-300/20 bg-teal-300/10 p-3 text-sm text-teal-50">

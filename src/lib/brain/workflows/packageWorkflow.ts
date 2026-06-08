@@ -8,10 +8,7 @@ import {
 } from "@/lib/brain/agents";
 import { routeBrainTask } from "@/lib/brain/router";
 import { buildDeterministicPricingFacts } from "@/lib/brain/tools";
-import {
-  buildCommercialProposalSection,
-  type PricingInputs,
-} from "@/lib/pricing";
+import type { PricingInputs } from "@/lib/pricing";
 import {
   type TrainingPackage,
   type TrainingPackageInput,
@@ -22,7 +19,6 @@ import type { KnowledgeSourceNote } from "@/lib/knowledge";
 export const packageWorkflowSteps = [
   "Syllabus",
   "Proposal",
-  "Commercial",
 ] as const;
 
 export type PackageWorkflowStep = (typeof packageWorkflowSteps)[number];
@@ -243,39 +239,9 @@ export async function runPackageWorkflow(
       content: proposalResult.output.content,
     });
 
-    state = updateState(state, { currentStep: "Commercial" });
-    const commercialResult = await routeBrainTask<
-      Record<string, unknown>,
-      TextAgentOutput
-    >({
-      taskType: "pricing_narrative",
-      input: {
-        input: baseInput,
-        deterministicPricing: pricingFacts,
-        proposal: proposalResult.output.content,
-      },
-    });
-    const commercialProposal =
-      commercialResult.output.content ||
-      buildCommercialProposalSection({
-        title: input.courseTitle,
-        client: input.client,
-        inputs: pricingFacts.inputs,
-        outputs: pricingFacts.outputs,
-      });
-    recordAgentOutput({
-      state,
-      step: "Commercial",
-      agent: "pricingNarrativeAgent",
-      mode: commercialResult.mode,
-      model: commercialResult.model,
-      content: commercialProposal,
-    });
-
     const outputs: TrainingPackageOutputs = {
       syllabus: syllabusResult.output.syllabus,
       proposal: proposalResult.output.content,
-      commercialProposal,
     };
 
     state = updateState(state, {

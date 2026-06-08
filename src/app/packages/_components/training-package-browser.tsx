@@ -34,7 +34,6 @@ import {
 import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 import type { TrainingPackage } from "@/lib/training-packages";
 import {
-  buildCommercialProposalSection,
   calculatePricing,
   normalizePricingInputs,
   type PricingInputs,
@@ -314,12 +313,6 @@ export function PackageDetailClient({ id }: { id: string }) {
         ...current,
         pricingInputs,
         pricingOutputs,
-        commercialProposal: buildCommercialProposalSection({
-          title: current.title,
-          client: current.client,
-          inputs: pricingInputs,
-          outputs: pricingOutputs,
-        }),
         updatedAt: new Date().toISOString(),
       };
     });

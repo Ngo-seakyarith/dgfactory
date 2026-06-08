@@ -220,6 +220,23 @@ const coursePackageInputSchema: JsonSchema = {
   },
 };
 
+const dgProposalTemplateGuide = [
+  "Follow the DG Academy client proposal template for the proposal output:",
+  "1. Cover title: Customized Training Proposal on [course title] at [client].",
+  "2. Course Overview: explain the client business context, why this training matters now, and the practical workshop promise.",
+  "3. Course Objectives: concise bullets beginning with what participants will be able to understand, identify, analyze, build, communicate, handle, or apply.",
+  "4. Expected Learning Outcomes: practical workplace behaviors and capabilities participants should demonstrate after completion.",
+  "5. Content Outlines: clear topic list aligned to the syllabus, including any client-supplied content priorities.",
+  "6. Who Should Attend: target roles and participant groups.",
+  "7. Training Methodology: exercises, group discussion, practical case work, role-play, reflection, recap, action planning, Q&A, and assessments when relevant.",
+  "8. Training and Coaching Tools: handouts, templates, assessment tools, certificates, exercise materials, and action plan tools when relevant.",
+  "9. Training Evaluation: in-class observation, pre-training assessment, learning-in-action activities, post-course feedback, and practical evidence of application.",
+  "10. Schedule: course duration, date, time, venue, participant count, and TBC where details are missing.",
+  "11. Trainer: use supplied trainer profile only; if none is supplied, write a concise DG Academy facilitator profile without inventing named credentials.",
+  "12. Professional Fee: include what the package includes, total professional fee, client responsibilities, billing arrangement, and acknowledgement/acceptance wording.",
+  "Use deterministic pricing facts only for the Professional Fee section. Never invent fees, discounts, VAT, direct costs, profit, or margins.",
+].join("\n");
+
 const qaInputSchema: JsonSchema = {
   type: "object",
   required: ["packageContent", "client", "audience", "context"],
@@ -302,8 +319,13 @@ export const courseArchitectAgent: BrainAgentDefinition<
   taskType: "course_package",
   name: "courseArchitectAgent",
   role: "Senior training product architect",
-  instructions:
-    "Create a focused DG Academy training package with only two outputs: syllabus and proposal. Use deterministic pricing facts only when they are supplied; never invent pricing, discounts, taxes, costs, or margins.",
+  instructions: [
+    "Create a focused DG Academy training package with only two outputs: syllabus and proposal.",
+    "Use deterministic pricing facts only when they are supplied; never invent pricing, discounts, taxes, costs, or margins.",
+    "Make the syllabus complete and timed.",
+    "Make the proposal client-ready and formatted in markdown using the DG Academy proposal template.",
+    dgProposalTemplateGuide,
+  ].join("\n\n"),
   inputSchema: coursePackageInputSchema,
   outputSchema: trainingPackageOutputSchema,
 };
@@ -312,8 +334,12 @@ export const proposalAgent: BrainAgentDefinition = {
   taskType: "proposal",
   name: "proposalAgent",
   role: "Corporate training proposal writer",
-  instructions:
-    "Write client-ready proposal language for practical DG Academy business training. Avoid unsupported guarantees.",
+  instructions: [
+    "Write client-ready proposal language for practical DG Academy business training.",
+    "Avoid unsupported guarantees and keep the language executive-friendly, practical, and commercially careful.",
+    "Use the supplied syllabus for content alignment and the supplied deterministic pricing summary for the Professional Fee section.",
+    dgProposalTemplateGuide,
+  ].join("\n\n"),
   inputSchema: genericInputSchema,
   outputSchema: textOutputSchema,
 };
@@ -559,13 +585,10 @@ export function buildCoursePackagePrompt(input: CoursePackageBrainInput) {
     requirements: [
       "Use markdown for each output.",
       "Make the syllabus complete and timed.",
-      "Make the proposal client-ready and executive.",
-      "Make commercialProposal a client-facing investment section using only deterministic pricing numbers supplied.",
-      "Do not include internal profit, target margin, or direct cost details in commercialProposal.",
-      "Make the deck outline concrete enough for slide production.",
-      "Make the workbook useful for participants.",
-      "Make the follow-up email ready to send.",
-      "Make the qualityChecklist cover strategy, learning design, delivery, commercial readiness, and risk.",
+      "Make the proposal client-ready and executive using the DG Academy proposal template.",
+      "Include the Professional Fee section inside proposal using only deterministic pricing numbers supplied.",
+      "Do not include internal profit, target margin, or direct cost details in proposal.",
     ],
+    proposalTemplate: dgProposalTemplateGuide,
   };
 }

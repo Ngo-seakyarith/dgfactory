@@ -5,7 +5,6 @@ import type {
 } from "@/lib/knowledge";
 import type { TrainingPackage } from "@/lib/training-packages";
 import {
-  buildCommercialProposalSection,
   calculatePricing,
   defaultPricingInputs,
   normalizePricingInputs,
@@ -24,7 +23,6 @@ type PackageRow = {
   tone: string | null;
   syllabus: string;
   proposal: string;
-  commercial_proposal?: string | null;
   pricing_inputs?: Partial<PricingInputs> | null;
   pricing_outputs?: PricingOutputs | null;
   knowledge_used?: KnowledgeSourceNote[] | null;
@@ -45,7 +43,6 @@ function toRow(pkg: TrainingPackage) {
     tone: pkg.tone,
     syllabus: pkg.syllabus,
     proposal: pkg.proposal,
-    commercial_proposal: pkg.commercialProposal,
     pricing_inputs: pkg.pricingInputs,
     pricing_outputs: pkg.pricingOutputs,
     knowledge_used: pkg.knowledgeUsed ?? [],
@@ -70,14 +67,7 @@ function fromRow(row: PackageRow): TrainingPackage {
     tone: row.tone ?? "",
     syllabus: row.syllabus,
     proposal: row.proposal,
-    commercialProposal:
-      row.commercial_proposal ??
-      buildCommercialProposalSection({
-        title: row.title,
-        client: row.client,
-        inputs: pricingInputs,
-        outputs: pricingOutputs,
-      }),
+    commercialProposal: "",
     deckOutline: "",
     workbook: "",
     followUpEmail: "",

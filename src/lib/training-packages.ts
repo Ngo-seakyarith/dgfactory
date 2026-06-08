@@ -1,9 +1,7 @@
 import {
-  buildCommercialProposalSection,
   calculatePricing,
   defaultPricingInputs,
   normalizePricingInputs,
-  pricingSummaryToMarkdown,
   type PricingInputs,
   type PricingOutputs,
 } from "@/lib/pricing";
@@ -28,10 +26,9 @@ export type QualityChecklistItem = {
 export type TrainingPackageOutputs = {
   syllabus: string;
   proposal: string;
-  commercialProposal?: string;
 };
 
-export type PackageOutputKey = "syllabus" | "proposal" | "commercialProposal" | "pricing";
+export type PackageOutputKey = keyof TrainingPackageOutputs;
 
 export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle"> &
   TrainingPackageOutputs & {
@@ -64,16 +61,6 @@ export const packageOutputSections: Array<{
     key: "proposal",
     label: "Proposal",
     description: "Client-ready scope, value case, outcomes, and investment framing.",
-  },
-  {
-    key: "commercialProposal",
-    label: "Commercial",
-    description: "Client-facing investment terms generated from pricing inputs.",
-  },
-  {
-    key: "pricing",
-    label: "Pricing",
-    description: "Deterministic pricing, cost assumptions, and margin view.",
   },
 ];
 
@@ -212,10 +199,6 @@ export function outputToText(
   pkg: TrainingPackage,
   key: PackageOutputKey,
 ) {
-  if (key === "pricing") {
-    return pricingSummaryToMarkdown(pkg.pricingInputs, pkg.pricingOutputs);
-  }
-
   return pkg[key];
 }
 
@@ -232,10 +215,6 @@ export function fullPackageToMarkdown(pkg: TrainingPackage) {
     pkg.syllabus,
     "",
     pkg.proposal,
-    "",
-    pkg.commercialProposal,
-    "",
-    pricingSummaryToMarkdown(pkg.pricingInputs, pkg.pricingOutputs),
   ].join("\n\n");
 }
 
@@ -258,14 +237,6 @@ export function buildPackageFromParts({
 }): TrainingPackage {
   const normalizedPricingInputs = normalizePricingInputs(pricingInputs);
   const pricingOutputs = calculatePricing(normalizedPricingInputs);
-  const commercialProposal =
-    outputs.commercialProposal?.trim() ||
-    buildCommercialProposalSection({
-      title: input.courseTitle,
-      client: input.client,
-      inputs: normalizedPricingInputs,
-      outputs: pricingOutputs,
-    });
 
   return {
     title: input.courseTitle,
@@ -276,7 +247,7 @@ export function buildPackageFromParts({
     context: input.context,
     tone: input.tone,
     ...outputs,
-    commercialProposal,
+    commercialProposal: "",
     deckOutline: "",
     workbook: "",
     followUpEmail: "",

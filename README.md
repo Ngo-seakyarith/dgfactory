@@ -616,9 +616,10 @@ Workflow sequence:
 1. Chief Brain creates the package plan.
 2. Course Architect creates the syllabus.
 3. Proposal Agent creates the client proposal.
-4. Pricing Narrative Agent creates the commercial proposal from deterministic pricing inputs.
 
-Package generation stores syllabus, proposal, commercial proposal, and deterministic pricing inputs/outputs on `training_packages`.
+Commercial Setup pricing assumptions are calculated deterministically before generation and passed into the proposal prompt.
+
+Package generation stores syllabus, proposal, and deterministic pricing inputs/outputs on `training_packages`.
 
 Files:
 
@@ -629,7 +630,8 @@ Files:
 UI behavior:
 
 - New Package page includes `Use multi-agent generation`, default on.
-- The generation panel shows the Syllabus, Proposal, and Commercial workflow steps.
+- The generation panel shows the Syllabus and Proposal workflow steps.
+- Commercial Setup pricing assumptions feed the proposal prompt and are stored as deterministic pricing inputs/outputs.
 - If a workflow step fails, the UI shows the failed step and a retry button.
 - Package output tabs include `Regenerate this section` for syllabus and proposal.
 - One-shot generation remains available by turning off the multi-agent toggle.
