@@ -12,6 +12,7 @@ import {
 import { knowledgeSourceNotesFromResults } from "@/lib/knowledge";
 import type { CoursePackageBrainInput } from "@/lib/brain/agents";
 import {
+  normalizeTrainingOutputs,
   normalizeTrainingInput,
   type TrainingPackageOutputs,
 } from "@/lib/training-packages";
@@ -63,7 +64,7 @@ export async function POST(request: Request) {
 
       return NextResponse.json({
         workflowId: null,
-        outputs: oneShot.output,
+        outputs: normalizeTrainingOutputs(oneShot.output, input),
         mode: oneShot.mode,
         model: oneShot.model,
         notice: oneShot.notice,

@@ -41,6 +41,7 @@ export async function POST(request: Request) {
     tone: "Executive and practical",
     syllabus: "",
     proposal: report,
+    proposalContent: null,
     commercialProposal: "",
     deckOutline: "",
     workbook: "",
@@ -53,7 +54,7 @@ export async function POST(request: Request) {
     createdAt: now,
     updatedAt: now,
   };
-  const exported = exportTrainingPackage(packageForExport, format, "proposal");
+  const exported = await exportTrainingPackage(packageForExport, format, "proposal");
 
   return new NextResponse(new Uint8Array(exported.buffer), {
     headers: {

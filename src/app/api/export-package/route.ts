@@ -102,7 +102,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = exportTrainingPackage(body.package, body.format, target, {
+    const result = await exportTrainingPackage(body.package, body.format, target, {
       includeInternalNotes: Boolean(body.includeInternalNotes),
     });
 

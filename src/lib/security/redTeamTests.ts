@@ -30,6 +30,7 @@ function testPackage(overrides: Partial<TrainingPackage> = {}): TrainingPackage 
     tone: "Executive and practical",
     syllabus: "# Syllabus\nPractical AI workflow training.",
     proposal: "# Proposal\nClient-facing training proposal.",
+    proposalContent: null,
     commercialProposal:
       "## Investment\nThe recommended program fee is USD 1,000. Internal only: estimated profit is USD 350.",
     deckOutline: "# Slides\n1. Context\n2. Workshop",

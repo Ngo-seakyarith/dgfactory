@@ -1,15 +1,19 @@
 import { generateStructuredOutput } from "@/lib/brain/client";
 import {
   chiefBrainAgent,
+  courseArchitectAgent,
   type BrainAgentDefinition,
   type CoursePackageBrainInput,
+  type ProposalAgentOutput,
   type QaReviewOutput,
   type TextAgentOutput,
 } from "@/lib/brain/agents";
 import { routeBrainTask } from "@/lib/brain/router";
+import type { JsonSchema } from "@/lib/brain/schemas";
 import { buildDeterministicPricingFacts } from "@/lib/brain/tools";
 import type { PricingInputs } from "@/lib/pricing";
 import {
+  normalizeTrainingOutputs,
   type TrainingPackage,
   type TrainingPackageInput,
   type TrainingPackageOutputs,
@@ -32,6 +36,14 @@ export type PackageWorkflowInput = TrainingPackageInput & {
   knowledgeContext?: string;
   knowledgeUsed?: KnowledgeSourceNote[];
   workflowId?: string;
+};
+
+const syllabusOnlySchema: JsonSchema = {
+  type: "object",
+  required: ["syllabus"],
+  properties: {
+    syllabus: { type: "string" },
+  },
 };
 
 export type AgentOutputRecord = {
@@ -136,6 +148,7 @@ function createTemporaryPackage({
     context: input.context,
     tone: input.tone,
     ...outputs,
+    proposalContent: outputs.proposalContent ?? null,
     commercialProposal: "",
     deckOutline: "",
     workbook: "",
@@ -199,15 +212,19 @@ export async function runPackageWorkflow(
       content: plan.output.content,
     });
 
-    const syllabusResult = await routeBrainTask<
+    const syllabusResult = await generateStructuredOutput<
       CoursePackageBrainInput,
-      TrainingPackageOutputs
+      { syllabus: string }
     >({
-      taskType: "course_package",
+      agent: courseArchitectAgent as BrainAgentDefinition<
+        CoursePackageBrainInput,
+        { syllabus: string }
+      >,
       input: {
         ...baseInput,
-        context: `${baseInput.context}\n\nChief Brain plan:\n${plan.output.content}`,
+        context: `${baseInput.context}\n\nChief Brain plan:\n${plan.output.content}\n\nGenerate only the syllabus for this step. The proposal agent will create proposalContent separately.`,
       },
+      schema: syllabusOnlySchema,
     });
     recordAgentOutput({
       state,
@@ -221,7 +238,7 @@ export async function runPackageWorkflow(
     state = updateState(state, { currentStep: "Proposal" });
     const proposalResult = await routeBrainTask<
       Record<string, unknown>,
-      TextAgentOutput
+      ProposalAgentOutput
     >({
       taskType: "proposal",
       input: {
@@ -236,13 +253,22 @@ export async function runPackageWorkflow(
       agent: "proposalAgent",
       mode: proposalResult.mode,
       model: proposalResult.model,
-      content: proposalResult.output.content,
+      content: normalizeTrainingOutputs(
+        {
+          syllabus: syllabusResult.output.syllabus,
+          proposalContent: proposalResult.output.proposalContent,
+        },
+        baseInput,
+      ).proposal,
     });
 
-    const outputs: TrainingPackageOutputs = {
-      syllabus: syllabusResult.output.syllabus,
-      proposal: proposalResult.output.content,
-    };
+    const outputs: TrainingPackageOutputs = normalizeTrainingOutputs(
+      {
+        syllabus: syllabusResult.output.syllabus,
+        proposalContent: proposalResult.output.proposalContent,
+      },
+      baseInput,
+    );
 
     state = updateState(state, {
       status: "completed",
@@ -314,11 +340,21 @@ export async function regeneratePackageSection({
   }
 
   if (section === "proposal") {
-    const result = await routeBrainTask<Record<string, unknown>, TextAgentOutput>({
+    const result = await routeBrainTask<Record<string, unknown>, ProposalAgentOutput>({
       taskType: "proposal",
       input: baseContext,
     });
-    return { section, content: result.output.content, mode: result.mode };
+    return {
+      section,
+      content: normalizeTrainingOutputs(
+        {
+          syllabus: currentPackage.syllabus,
+          proposalContent: result.output.proposalContent,
+        },
+        packageInput,
+      ).proposal,
+      mode: result.mode,
+    };
   }
 
   throw new Error("Only syllabus and proposal can be regenerated for packages.");

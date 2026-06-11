@@ -101,12 +101,96 @@ export const qualityChecklistItemSchema: JsonSchema = {
   },
 };
 
+const stringArraySchema: JsonSchema = {
+  type: "array",
+  items: { type: "string" },
+};
+
+export const proposalContentSchema: JsonSchema = {
+  type: "object",
+  required: [
+    "coverTitle",
+    "courseTitle",
+    "client",
+    "courseOverview",
+    "courseObjectives",
+    "expectedLearningOutcomes",
+    "contentOutlines",
+    "whoShouldAttend",
+    "trainingMethodology",
+    "trainingTools",
+    "trainingEvaluation",
+    "schedule",
+    "trainer",
+    "professionalFee",
+  ],
+  properties: {
+    coverTitle: { type: "string" },
+    courseTitle: { type: "string" },
+    client: { type: "string" },
+    courseOverview: stringArraySchema,
+    courseObjectives: stringArraySchema,
+    expectedLearningOutcomes: stringArraySchema,
+    contentOutlines: stringArraySchema,
+    whoShouldAttend: stringArraySchema,
+    trainingMethodology: stringArraySchema,
+    trainingTools: stringArraySchema,
+    trainingEvaluation: stringArraySchema,
+    schedule: {
+      type: "object",
+      required: ["duration", "date", "time", "venue", "participants"],
+      properties: {
+        duration: { type: "string" },
+        date: { type: "string" },
+        time: { type: "string" },
+        venue: { type: "string" },
+        participants: { type: "string" },
+      },
+    },
+    trainer: {
+      type: "object",
+      required: ["name", "title", "bio"],
+      properties: {
+        name: { type: "string" },
+        title: { type: "string" },
+        bio: stringArraySchema,
+      },
+    },
+    professionalFee: {
+      type: "object",
+      required: [
+        "included",
+        "totalFee",
+        "clientResponsibilities",
+        "billingArrangement",
+        "acceptanceText",
+      ],
+      properties: {
+        included: stringArraySchema,
+        totalFee: { type: "string" },
+        clientResponsibilities: stringArraySchema,
+        billingArrangement: { type: "string" },
+        acceptanceText: { type: "string" },
+      },
+    },
+  },
+};
+
 export const trainingPackageOutputSchema: JsonSchema = {
   type: "object",
-  required: ["syllabus", "proposal"],
+  required: ["syllabus", "proposalContent"],
   properties: {
     syllabus: { type: "string" },
     proposal: { type: "string" },
+    proposalContent: proposalContentSchema,
+  },
+};
+
+export const proposalAgentOutputSchema: JsonSchema = {
+  type: "object",
+  required: ["proposalContent"],
+  properties: {
+    proposalContent: proposalContentSchema,
   },
 };
 

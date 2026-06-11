@@ -1,4 +1,18 @@
 import {
+  AlignmentType,
+  Document,
+  HeadingLevel,
+  Packer,
+  PageBreak,
+  Paragraph,
+  Table,
+  TableCell,
+  TableRow,
+  TextRun,
+  WidthType,
+} from "docx";
+
+import {
   fullPackageToMarkdown,
   qualityChecklistToMarkdown,
   type TrainingPackage,
@@ -7,6 +21,10 @@ import {
   internalProfitabilityNote,
   pricingSummaryToMarkdown,
 } from "@/lib/pricing";
+import {
+  normalizeProposalContent,
+  type ProposalContent,
+} from "@/lib/proposal-content";
 
 export type ExportFormat = "docx" | "pptx" | "pdf" | "txt";
 export type ExportTarget =
@@ -273,73 +291,241 @@ function createZip(files: Array<{ name: string; content: string | Buffer }>) {
   return Buffer.concat([...localParts, ...centralParts, end]);
 }
 
-function docxRun(text: string, options?: { bold?: boolean; size?: number }) {
-  return `<w:r><w:rPr>${options?.bold ? "<w:b/>" : ""}${options?.size ? `<w:sz w:val="${options.size}"/>` : ""}</w:rPr><w:t xml:space="preserve">${xmlEscape(text)}</w:t></w:r>`;
+function docxHeading(text: string, level: typeof HeadingLevel[keyof typeof HeadingLevel]) {
+  return new Paragraph({
+    text,
+    heading: level,
+    spacing: { before: 240, after: 120 },
+  });
 }
 
-function docxParagraph(text: string, style?: "Title" | "Heading1" | "Heading2") {
-  const trimmed = text.trim();
-  const headingLevel = trimmed.match(/^(#{1,3})\s+/)?.[1].length;
-  const clean = trimmed.replace(/^#+\s*/, "");
-  const resolvedStyle =
-    style ?? (headingLevel === 1 ? "Heading1" : headingLevel ? "Heading2" : undefined);
+function docxText(text: string, options: { bold?: boolean; size?: number } = {}) {
+  return new TextRun({
+    text,
+    bold: options.bold,
+    size: options.size ?? 22,
+  });
+}
 
-  if (!clean) {
-    return "<w:p/>";
+function docxParagraph(text: string) {
+  return new Paragraph({
+    children: [docxText(text)],
+    spacing: { after: 120 },
+  });
+}
+
+function docxBullet(text: string) {
+  return new Paragraph({
+    text,
+    bullet: { level: 0 },
+    spacing: { after: 80 },
+  });
+}
+
+function emptyParagraph() {
+  return new Paragraph({ text: "", spacing: { after: 120 } });
+}
+
+function pageBreakParagraph() {
+  return new Paragraph({ children: [new PageBreak()] });
+}
+
+function sectionChildren(title: string, body: string | string[]) {
+  const children: Paragraph[] = [docxHeading(title, HeadingLevel.HEADING_1)];
+
+  if (Array.isArray(body)) {
+    body.forEach((item) => children.push(docxBullet(item)));
+  } else {
+    body
+      .split(/\n{2,}/)
+      .map((item) => item.trim())
+      .filter(Boolean)
+      .forEach((item) => children.push(docxParagraph(item)));
   }
 
-  const size = resolvedStyle === "Title" ? 36 : resolvedStyle === "Heading1" ? 28 : resolvedStyle === "Heading2" ? 24 : 22;
-  return `<w:p><w:pPr>${resolvedStyle ? `<w:pStyle w:val="${resolvedStyle}"/>` : ""}</w:pPr>${docxRun(clean, { bold: Boolean(resolvedStyle), size })}</w:p>`;
+  return children;
 }
 
-function pageBreak() {
-  return '<w:p><w:r><w:br w:type="page"/></w:r></w:p>';
+function tableCell(text: string, bold = false) {
+  return new TableCell({
+    children: [
+      new Paragraph({
+        children: [docxText(text, { bold })],
+        spacing: { after: 0 },
+      }),
+    ],
+  });
 }
 
-function createDocx(
+function keyValueTable(rows: Array<[string, string]>) {
+  return new Table({
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    rows: rows.map(
+      ([label, value]) =>
+        new TableRow({
+          children: [tableCell(label, true), tableCell(value)],
+        }),
+    ),
+  });
+}
+
+function markdownToDocxChildren(markdown: string) {
+  const children: Paragraph[] = [];
+
+  markdownToLines(markdown).forEach((line) => {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      children.push(emptyParagraph());
+      return;
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)/);
+    if (heading) {
+      children.push(
+        docxHeading(
+          heading[2],
+          heading[1].length === 1
+            ? HeadingLevel.HEADING_1
+            : HeadingLevel.HEADING_2,
+        ),
+      );
+      return;
+    }
+
+    const bullet = trimmed.match(/^[-*]\s+(.+)/);
+    if (bullet) {
+      children.push(docxBullet(bullet[1]));
+      return;
+    }
+
+    children.push(docxParagraph(trimmed));
+  });
+
+  return children;
+}
+
+function proposalDocxChildren(content: ProposalContent) {
+  const title = content.coverTitle || "Customized Training Proposal";
+
+  return [
+    new Paragraph({
+      children: [docxText("DG Academy", { bold: true, size: 28 })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 360 },
+    }),
+    new Paragraph({
+      children: [docxText(title, { bold: true, size: 40 })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 240 },
+    }),
+    new Paragraph({
+      children: [docxText("On", { size: 24 })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 120 },
+    }),
+    new Paragraph({
+      children: [docxText(content.courseTitle, { bold: true, size: 32 })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 180 },
+    }),
+    new Paragraph({
+      children: [docxText(`at ${content.client}`, { bold: true, size: 28 })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 720 },
+    }),
+    pageBreakParagraph(),
+    ...sectionChildren("Course Overview", content.courseOverview.join("\n\n")),
+    ...sectionChildren("Course Objectives", content.courseObjectives),
+    ...sectionChildren(
+      "Expected Learning Outcomes",
+      content.expectedLearningOutcomes,
+    ),
+    ...sectionChildren("Content Outlines", content.contentOutlines),
+    ...sectionChildren("Who Should Attend", content.whoShouldAttend),
+    ...sectionChildren("Training Methodology", content.trainingMethodology),
+    ...sectionChildren("Training and Coaching Tools", content.trainingTools),
+    ...sectionChildren("Training Evaluation", content.trainingEvaluation),
+    docxHeading("Schedule", HeadingLevel.HEADING_1),
+    keyValueTable([
+      ["Course Duration", content.schedule.duration],
+      ["Date", content.schedule.date],
+      ["Time", content.schedule.time],
+      ["Venue", content.schedule.venue],
+      ["Participants", content.schedule.participants],
+    ]),
+    emptyParagraph(),
+    docxHeading("Trainer", HeadingLevel.HEADING_1),
+    docxParagraph(
+      [content.trainer.name, content.trainer.title].filter(Boolean).join(" - "),
+    ),
+    ...content.trainer.bio.map((item) => docxParagraph(item)),
+    docxHeading("Professional Fee", HeadingLevel.HEADING_1),
+    docxParagraph("The training package includes:"),
+    ...content.professionalFee.included.map((item) => docxBullet(item)),
+    docxParagraph(content.professionalFee.totalFee),
+    docxParagraph(`${content.client} will be responsible for the following:`),
+    ...content.professionalFee.clientResponsibilities.map((item) =>
+      docxBullet(item),
+    ),
+    docxParagraph(content.professionalFee.billingArrangement),
+    docxHeading("Acknowledgement and Acceptance", HeadingLevel.HEADING_2),
+    docxParagraph(content.professionalFee.acceptanceText),
+  ];
+}
+
+async function createDocx(
   pkg: TrainingPackage,
   target: ExportTarget,
   options: ExportOptions = {},
 ) {
-  const date = new Date().toLocaleDateString("en-US");
   const body = contentForTarget(pkg, target, options);
-  const paragraphs = [
-    docxParagraph("DG Academy", "Title"),
-    docxParagraph(docTitle(target), "Heading1"),
-    docxParagraph(`Course: ${pkg.title}`),
-    docxParagraph(`Client: ${pkg.client}`),
-    docxParagraph(`Date generated: ${date}`),
-    pageBreak(),
-    ...markdownToLines(body).map((line) => docxParagraph(line)),
-  ].join("\n");
+  const children =
+    target === "proposal" && pkg.proposalContent
+      ? proposalDocxChildren(
+          normalizeProposalContent(pkg.proposalContent, body, {
+            title: pkg.title,
+            client: pkg.client,
+            audience: pkg.audience,
+            duration: pkg.duration,
+            promise: pkg.promise,
+          }),
+        )
+      : [
+          new Paragraph({
+            children: [docxText("DG Academy", { bold: true, size: 30 })],
+            alignment: AlignmentType.CENTER,
+            spacing: { after: 240 },
+          }),
+          docxHeading(docTitle(target), HeadingLevel.HEADING_1),
+          docxParagraph(`Course: ${pkg.title}`),
+          docxParagraph(`Client: ${pkg.client}`),
+          docxParagraph(`Date generated: ${new Date().toLocaleDateString("en-US")}`),
+          pageBreakParagraph(),
+          ...markdownToDocxChildren(body),
+        ];
 
-  const document = `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
-  <w:body>
-    ${paragraphs}
-    <w:sectPr><w:pgSz w:w="12240" w:h="15840"/><w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720"/></w:sectPr>
-  </w:body>
-</w:document>`;
+  const document = new Document({
+    creator: "DG Academy",
+    title: `${pkg.title} - ${docTitle(target)}`,
+    sections: [
+      {
+        properties: {
+          page: {
+            margin: {
+              top: 720,
+              right: 720,
+              bottom: 720,
+              left: 720,
+            },
+          },
+        },
+        children,
+      },
+    ],
+  });
 
-  return createZip([
-    {
-      name: "[Content_Types].xml",
-      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
-</Types>`,
-    },
-    {
-      name: "_rels/.rels",
-      content: `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
-</Relationships>`,
-    },
-    { name: "word/document.xml", content: document },
-  ]);
+  return Packer.toBuffer(document);
 }
 
 function parseDeckSections(deckOutline: string) {
@@ -558,12 +744,12 @@ function createPdf(
   return Buffer.from(parts.join(""), "utf8");
 }
 
-export function exportTrainingPackage(
+export async function exportTrainingPackage(
   pkg: TrainingPackage,
   format: ExportFormat,
   target: ExportTarget = "full",
   options: ExportOptions = {},
-): ExportResult {
+): Promise<ExportResult> {
   if (format === "txt") {
     return {
       buffer: Buffer.from(contentForTarget(pkg, target, options), "utf8"),
@@ -574,7 +760,7 @@ export function exportTrainingPackage(
 
   if (format === "docx") {
     return {
-      buffer: createDocx(pkg, target, options),
+      buffer: await createDocx(pkg, target, options),
       contentType:
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       filename: exportFilename(pkg, target, "docx"),

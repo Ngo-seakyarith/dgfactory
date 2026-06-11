@@ -52,6 +52,7 @@ create table if not exists public.training_packages (
   tone text,
   syllabus text not null,
   proposal text not null,
+  proposal_content jsonb,
   pricing_inputs jsonb not null default '{}'::jsonb,
   pricing_outputs jsonb not null default '{}'::jsonb,
   knowledge_used jsonb not null default '[]'::jsonb,

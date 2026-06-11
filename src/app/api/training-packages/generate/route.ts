@@ -5,6 +5,7 @@ import type {
   CoursePackageBrainInput,
 } from "@/lib/brain/agents";
 import {
+  normalizeTrainingOutputs,
   normalizeTrainingInput,
   type TrainingPackageOutputs,
 } from "@/lib/training-packages";
@@ -70,7 +71,7 @@ export async function POST(request: Request) {
     });
 
     return NextResponse.json({
-      outputs: result.output,
+      outputs: normalizeTrainingOutputs(result.output, input),
       mode: result.mode,
       model: result.model,
       notice: result.notice,

@@ -6,6 +6,11 @@ import {
   type PricingOutputs,
 } from "@/lib/pricing";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
+import {
+  normalizeProposalContent,
+  proposalContentToMarkdown,
+  type ProposalContent,
+} from "@/lib/proposal-content";
 
 export type TrainingPackageInput = {
   courseTitle: string;
@@ -26,14 +31,18 @@ export type QualityChecklistItem = {
 export type TrainingPackageOutputs = {
   syllabus: string;
   proposal: string;
+  proposalContent?: ProposalContent;
 };
 
-export type PackageOutputKey = keyof TrainingPackageOutputs;
+export type PackageOutputKey = "syllabus" | "proposal";
 
 export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle"> &
-  TrainingPackageOutputs & {
+  {
     id: string;
     title: string;
+    syllabus: string;
+    proposal: string;
+    proposalContent: ProposalContent | null;
     pricingInputs: PricingInputs;
     pricingOutputs: PricingOutputs;
     commercialProposal: string;
@@ -109,6 +118,77 @@ export function createTrainingOutputTemplate(
     ? `Context to weave through the program: ${input.context}`
     : "Context to weave through the program: practical DG Academy examples, executive decision-making, and hands-on AI workflow design.";
 
+  const proposalContent: ProposalContent = {
+    coverTitle: "Customized Training Proposal",
+    courseTitle: input.courseTitle,
+    client: input.client,
+    courseOverview: [
+      `DG Academy will deliver a ${input.duration} training experience for ${input.audience}.`,
+      `The program is designed for ${input.client} and promises to ${input.promise}.`,
+    ],
+    courseObjectives: [
+      "Explain the business case for the training topic in their own operating context.",
+      "Identify high-value use cases and prioritize them with clear criteria.",
+      "Practice the core workflows through guided DG Academy exercises.",
+      "Convert workshop insights into a 30-day implementation plan.",
+    ],
+    expectedLearningOutcomes: [
+      `Shared understanding of ${input.courseTitle} and its business value.`,
+      `Practical workflow prototypes or implementation ideas for ${input.client}.`,
+      "Clear follow-up plan with owners and measures.",
+    ],
+    contentOutlines: [
+      "Executive framing and success criteria",
+      "Core concepts and field examples",
+      "Applied workshop labs",
+      "Implementation planning",
+    ],
+    whoShouldAttend: [input.audience],
+    trainingMethodology: [
+      "Executive briefing",
+      "Practical demonstrations",
+      "Facilitated exercises",
+      "Action-plan readout",
+    ],
+    trainingTools: [
+      "Full syllabus and facilitator flow",
+      "Participant exercises",
+      "Action-plan template",
+    ],
+    trainingEvaluation: [
+      "Participant engagement and practical exercise observation",
+      "Action-plan quality review",
+      "Post-course feedback",
+    ],
+    schedule: {
+      duration: input.duration,
+      date: "TBC",
+      time: "TBC",
+      venue: "TBC",
+      participants: input.audience,
+    },
+    trainer: {
+      name: "DG Academy Facilitator",
+      title: "Senior Training Facilitator",
+      bio: [
+        "DG Academy will assign a facilitator with practical business training experience aligned to the client context.",
+      ],
+    },
+    professionalFee: {
+      included: [
+        "Professional trainer with pre-training consultation",
+        "Training preparation and arrangement",
+        "Training materials",
+        "Certificates of completion",
+        "Pre-training and post-training evaluation",
+      ],
+      totalFee: "Professional fee to be confirmed from Commercial Setup.",
+      clientResponsibilities: ["Training venue", "Meals or refreshments", "Participants"],
+      billingArrangement: "Billing arrangement to be confirmed.",
+      acceptanceText: "Client acknowledgement and acceptance to be confirmed.",
+    },
+  };
+
   return {
     syllabus: `# ${input.courseTitle}
 
@@ -152,29 +232,32 @@ By the end of the program, participants will be able to:
 - Guided labs: 45%
 - Readout, commitments, and next steps: 20%`,
 
-    proposal: `# Client Proposal: ${input.courseTitle}
+    proposal: proposalContentToMarkdown(proposalContent),
+    proposalContent,
+  };
+}
 
-## Executive Summary
-DG Academy will deliver a ${input.duration} training experience for ${input.audience}. The program is designed for ${input.client} and promises to ${input.promise}.
+export function normalizeTrainingOutputs(
+  outputs: Partial<TrainingPackageOutputs>,
+  input: TrainingPackageInput,
+): TrainingPackageOutputs {
+  const fallbackProposal = String(outputs.proposal ?? "").trim();
+  const proposalContent = normalizeProposalContent(
+    outputs.proposalContent,
+    fallbackProposal,
+    {
+      title: input.courseTitle,
+      client: input.client,
+      audience: input.audience,
+      duration: input.duration,
+      promise: input.promise,
+    },
+  );
 
-## Business Need
-Organizations need practical AI capability that moves beyond awareness into repeatable business workflows. This program gives participants a clear operating language, hands-on practice, and an implementation path they can use immediately.
-
-## Program Design
-The experience combines executive briefing, practical demonstrations, facilitated exercises, and a final action-plan readout. The tone will be ${input.tone.toLowerCase()}.
-
-## Deliverables
-- Full syllabus and facilitator flow
-- Client-ready proposal
-
-## Expected Outcomes
-- Shared understanding of the topic and its business value
-- Prioritized opportunity map for ${input.client}
-- Practical workflow prototypes or implementation ideas
-- Clear 30-day follow-up plan with owners and measures
-
-## Next Step
-Confirm audience profile, delivery date, and decision-maker priorities, then finalize the examples and workshop cases.`,
+  return {
+    syllabus: String(outputs.syllabus ?? "").trim(),
+    proposal: fallbackProposal || proposalContentToMarkdown(proposalContent),
+    proposalContent,
   };
 }
 
@@ -237,6 +320,7 @@ export function buildPackageFromParts({
 }): TrainingPackage {
   const normalizedPricingInputs = normalizePricingInputs(pricingInputs);
   const pricingOutputs = calculatePricing(normalizedPricingInputs);
+  const normalizedOutputs = normalizeTrainingOutputs(outputs, input);
 
   return {
     title: input.courseTitle,
@@ -246,8 +330,9 @@ export function buildPackageFromParts({
     promise: input.promise,
     context: input.context,
     tone: input.tone,
-    ...outputs,
+    ...normalizedOutputs,
     commercialProposal: "",
+    proposalContent: normalizedOutputs.proposalContent ?? null,
     deckOutline: "",
     workbook: "",
     followUpEmail: "",

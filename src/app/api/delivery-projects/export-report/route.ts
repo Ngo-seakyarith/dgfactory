@@ -56,6 +56,7 @@ export async function POST(request: Request) {
       tone: "Professional, clear, executive-friendly",
       syllabus: "",
       proposal: project.postTrainingReport,
+      proposalContent: null,
       commercialProposal: "",
       deckOutline: "",
       workbook: "",
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
       updatedAt: project.updatedAt,
       generationMode: "openai",
     };
-    const result = exportTrainingPackage(reportPackage, body.format, "proposal");
+    const result = await exportTrainingPackage(reportPackage, body.format, "proposal");
     const filename = `DGAcademy_${filePart(reportPackage.title)}_${filePart(reportPackage.client)}_PostTrainingReport.${body.format}`;
 
     return new NextResponse(new Uint8Array(result.buffer), {

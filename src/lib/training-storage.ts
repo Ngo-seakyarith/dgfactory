@@ -5,6 +5,10 @@ import type {
 } from "@/lib/knowledge";
 import type { TrainingPackage } from "@/lib/training-packages";
 import {
+  normalizeProposalContent,
+  type ProposalContent,
+} from "@/lib/proposal-content";
+import {
   calculatePricing,
   defaultPricingInputs,
   normalizePricingInputs,
@@ -23,6 +27,7 @@ type PackageRow = {
   tone: string | null;
   syllabus: string;
   proposal: string;
+  proposal_content?: ProposalContent | null;
   pricing_inputs?: Partial<PricingInputs> | null;
   pricing_outputs?: PricingOutputs | null;
   knowledge_used?: KnowledgeSourceNote[] | null;
@@ -43,6 +48,7 @@ function toRow(pkg: TrainingPackage) {
     tone: pkg.tone,
     syllabus: pkg.syllabus,
     proposal: pkg.proposal,
+    proposal_content: pkg.proposalContent,
     pricing_inputs: pkg.pricingInputs,
     pricing_outputs: pkg.pricingOutputs,
     knowledge_used: pkg.knowledgeUsed ?? [],
@@ -67,6 +73,13 @@ function fromRow(row: PackageRow): TrainingPackage {
     tone: row.tone ?? "",
     syllabus: row.syllabus,
     proposal: row.proposal,
+    proposalContent: normalizeProposalContent(row.proposal_content, row.proposal, {
+      title: row.title,
+      client: row.client,
+      audience: row.audience,
+      duration: row.duration,
+      promise: row.promise,
+    }),
     commercialProposal: "",
     deckOutline: "",
     workbook: "",

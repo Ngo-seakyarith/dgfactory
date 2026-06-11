@@ -619,7 +619,7 @@ Workflow sequence:
 
 Commercial Setup pricing assumptions are calculated deterministically before generation and passed into the proposal prompt.
 
-Package generation stores syllabus, proposal, and deterministic pricing inputs/outputs on `training_packages`.
+Package generation stores syllabus, proposal markdown, structured `proposal_content` JSON, and deterministic pricing inputs/outputs on `training_packages`. The structured proposal object is the source for professional DOCX export; markdown is derived for fast browser preview and copy workflows.
 
 Files:
 
@@ -632,6 +632,8 @@ UI behavior:
 - New Package page includes `Use multi-agent generation`, default on.
 - The generation panel shows the Syllabus and Proposal workflow steps.
 - Commercial Setup pricing assumptions feed the proposal prompt and are stored as deterministic pricing inputs/outputs.
+- Proposal generation returns structured sections for overview, objectives, outcomes, content outline, attendance, methodology, tools, evaluation, schedule, trainer, professional fee, billing, and acceptance.
+- Proposal DOCX export uses the `docx` library instead of hand-written Word XML.
 - If a workflow step fails, the UI shows the failed step and a retry button.
 - Package output tabs include `Regenerate this section` for syllabus and proposal.
 - One-shot generation remains available by turning off the multi-agent toggle.

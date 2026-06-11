@@ -105,7 +105,6 @@ async function callOpenAI<TInput>({
   const prompt = await resolveAgentPrompt({ agent, input });
   const completion = await client.chat.completions.create({
     model,
-    temperature: 0.45,
     response_format: {
       type: "json_schema",
       json_schema: normalizeJsonSchema(schema),
