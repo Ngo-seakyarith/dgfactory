@@ -42,7 +42,13 @@ export async function POST(request: Request) {
       );
     }
 
-    const existing = await getTrainingPackage(body.id);
+    let existing: TrainingPackage | null = null;
+    try {
+      existing = await getTrainingPackage(body.id);
+    } catch {
+      existing = null;
+    }
+
     const result = await saveTrainingPackage(body);
     await saveAuditLog({
       actor: auth.user.actor,

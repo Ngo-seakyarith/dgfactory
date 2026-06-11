@@ -58,6 +58,21 @@ function toRow(pkg: TrainingPackage) {
   };
 }
 
+function withoutProposalContent(row: ReturnType<typeof toRow>) {
+  const { proposal_content: _proposalContent, ...rest } = row;
+  return rest;
+}
+
+function isMissingProposalContentColumn(error: { message?: string; code?: string }) {
+  const message = String(error.message ?? "").toLowerCase();
+
+  return (
+    error.code === "PGRST204" ||
+    (message.includes("proposal_content") &&
+      (message.includes("column") || message.includes("schema cache")))
+  );
+}
+
 function fromRow(row: PackageRow): TrainingPackage {
   const pricingInputs = normalizePricingInputs(row.pricing_inputs ?? defaultPricingInputs);
   const pricingOutputs = row.pricing_outputs ?? calculatePricing(pricingInputs);
@@ -142,18 +157,29 @@ export async function saveTrainingPackage(pkg: TrainingPackage) {
     throw new Error("Supabase is required to save training packages.");
   }
 
-  const { data, error } = await supabase
+  const scopedRow = withAppScope(toRow(packageToSave));
+  let result = await supabase
     .from("training_packages")
-    .upsert(withAppScope(toRow(packageToSave)), { onConflict: "id" })
+    .upsert(scopedRow, { onConflict: "id" })
     .select("*")
     .single();
 
-  if (error) {
-    throw new Error(error.message);
+  if (result.error && isMissingProposalContentColumn(result.error)) {
+    result = await supabase
+      .from("training_packages")
+      .upsert(withAppScope(withoutProposalContent(toRow(packageToSave))), {
+        onConflict: "id",
+      })
+      .select("*")
+      .single();
+  }
+
+  if (result.error) {
+    throw new Error(result.error.message);
   }
 
   return {
-    package: fromRow(data as PackageRow),
+    package: fromRow(result.data as PackageRow),
     storage: "supabase" as const,
   };
 }
