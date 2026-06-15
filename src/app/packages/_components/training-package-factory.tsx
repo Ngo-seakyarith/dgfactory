@@ -55,7 +55,6 @@ import {
   type ReviewerType,
 } from "@/lib/evaluations";
 import {
-  applyPricingPreset,
   calculatePricing,
   clientPricingParagraph,
   defaultPricingInputs,
@@ -63,9 +62,7 @@ import {
   formatPercent,
   internalProfitabilityNote,
   normalizePricingInputs,
-  pricingPresets,
   type PricingInputs,
-  type PricingTemplateMode,
 } from "@/lib/pricing";
 
 type QaReviewOutput = {
@@ -118,6 +115,24 @@ const defaultProposalBrief: ProposalBrief = {
   commercialNotes: "",
 };
 
+const blankPackagePricingInputs: PricingInputs = {
+  ...defaultPricingInputs,
+  numberOfParticipants: 0,
+  numberOfTrainingDays: 0,
+  numberOfTrainers: 0,
+  trainerDayRate: 0,
+  venueCost: 0,
+  foodAndBeverageCostPerPerson: 0,
+  materialCostPerPerson: 0,
+  adminCost: 0,
+  marketingCost: 0,
+  travelCost: 0,
+  otherCost: 0,
+  targetProfitMarginPercent: 0,
+  discountPercent: 0,
+  taxPercent: 0,
+};
+
 const proposalBriefLabels: Record<ProposalBriefField, string> = {
   clientBackground: "Client background",
   trainingNeed: "Training need",
@@ -158,7 +173,7 @@ export function PackageForm() {
   const [proposalBrief, setProposalBrief] =
     useState<ProposalBrief>(defaultProposalBrief);
   const [pricingInputs, setPricingInputs] =
-    useState<PricingInputs>(defaultPricingInputs);
+    useState<PricingInputs>(blankPackagePricingInputs);
   const [currentPackage, setCurrentPackage] = useState<TrainingPackage | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -650,26 +665,8 @@ export function CommercialSetup({
       normalizePricingInputs({
         ...value,
         [key]: rawValue === "" ? 0 : Number(rawValue),
-        pricingTemplate: "Custom",
       }),
     );
-  }
-
-  function updateText(key: keyof PricingInputs, rawValue: string | boolean) {
-    const nextValue =
-      key === "pricingTemplate" ? (rawValue as PricingTemplateMode) : rawValue;
-    onChange(
-      normalizePricingInputs({
-        ...value,
-        [key]: nextValue,
-        pricingTemplate:
-          key === "pricingTemplate" ? (nextValue as PricingTemplateMode) : "Custom",
-      }),
-    );
-  }
-
-  function applyPreset(preset: PricingTemplateMode) {
-    onChange(applyPricingPreset(value, preset));
   }
 
   return (
@@ -683,48 +680,20 @@ export function CommercialSetup({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Pricing template">
-            <Select
-              value={value.pricingTemplate}
-              onChange={(event) => applyPreset(event.target.value as PricingTemplateMode)}
-            >
-              {Object.keys(pricingPresets).map((preset) => (
-                <option key={preset}>{preset}</option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Currency">
-            <Input
-              value={value.currency}
-              onChange={(event) => updateText("currency", event.target.value)}
-              placeholder="USD"
-            />
-          </Field>
-          <Field label="Training format">
-            <Select
-              value={value.trainingFormat}
-              onChange={(event) => updateText("trainingFormat", event.target.value)}
-            >
-              <option>In-house</option>
-              <option>Public workshop</option>
-              <option>Online</option>
-              <option>Hybrid</option>
-            </Select>
-          </Field>
-          <NumberField label="Participants" value={value.numberOfParticipants} onChange={(next) => updateNumber("numberOfParticipants", next)} />
-          <NumberField label="Training days" value={value.numberOfTrainingDays} onChange={(next) => updateNumber("numberOfTrainingDays", next)} />
-          <NumberField label="Trainers" value={value.numberOfTrainers} onChange={(next) => updateNumber("numberOfTrainers", next)} />
-          <NumberField label="Trainer day rate" value={value.trainerDayRate} onChange={(next) => updateNumber("trainerDayRate", next)} />
-          <NumberField label="Venue cost" value={value.venueCost} onChange={(next) => updateNumber("venueCost", next)} />
-          <NumberField label="F&B cost per person" value={value.foodAndBeverageCostPerPerson} onChange={(next) => updateNumber("foodAndBeverageCostPerPerson", next)} />
-          <NumberField label="Material cost per person" value={value.materialCostPerPerson} onChange={(next) => updateNumber("materialCostPerPerson", next)} />
-          <NumberField label="Admin cost" value={value.adminCost} onChange={(next) => updateNumber("adminCost", next)} />
-          <NumberField label="Marketing cost" value={value.marketingCost} onChange={(next) => updateNumber("marketingCost", next)} />
-          <NumberField label="Travel cost" value={value.travelCost} onChange={(next) => updateNumber("travelCost", next)} />
-          <NumberField label="Other cost" value={value.otherCost} onChange={(next) => updateNumber("otherCost", next)} />
-          <NumberField label="Target margin %" value={value.targetProfitMarginPercent} onChange={(next) => updateNumber("targetProfitMarginPercent", next)} />
-          <NumberField label="Discount %" value={value.discountPercent} onChange={(next) => updateNumber("discountPercent", next)} />
-          <NumberField label="Tax %" value={value.taxPercent} onChange={(next) => updateNumber("taxPercent", next)} />
+          <NumberField label="Participants" placeholder="Enter participant count" value={value.numberOfParticipants} onChange={(next) => updateNumber("numberOfParticipants", next)} />
+          <NumberField label="Training days" placeholder="Enter training days" value={value.numberOfTrainingDays} onChange={(next) => updateNumber("numberOfTrainingDays", next)} />
+          <NumberField label="Trainers" placeholder="Enter trainer count" value={value.numberOfTrainers} onChange={(next) => updateNumber("numberOfTrainers", next)} />
+          <NumberField label="Trainer day rate" placeholder="Enter trainer day rate" value={value.trainerDayRate} onChange={(next) => updateNumber("trainerDayRate", next)} />
+          <NumberField label="Venue cost" placeholder="Enter venue cost" value={value.venueCost} onChange={(next) => updateNumber("venueCost", next)} />
+          <NumberField label="F&B cost per person" placeholder="Enter food and beverage cost" value={value.foodAndBeverageCostPerPerson} onChange={(next) => updateNumber("foodAndBeverageCostPerPerson", next)} />
+          <NumberField label="Material cost per person" placeholder="Enter material cost" value={value.materialCostPerPerson} onChange={(next) => updateNumber("materialCostPerPerson", next)} />
+          <NumberField label="Admin cost" placeholder="Enter admin cost" value={value.adminCost} onChange={(next) => updateNumber("adminCost", next)} />
+          <NumberField label="Marketing cost" placeholder="Enter marketing cost" value={value.marketingCost} onChange={(next) => updateNumber("marketingCost", next)} />
+          <NumberField label="Travel cost" placeholder="Enter travel cost" value={value.travelCost} onChange={(next) => updateNumber("travelCost", next)} />
+          <NumberField label="Other cost" placeholder="Enter other cost" value={value.otherCost} onChange={(next) => updateNumber("otherCost", next)} />
+          <NumberField label="Target margin %" placeholder="Enter target margin percent" value={value.targetProfitMarginPercent} onChange={(next) => updateNumber("targetProfitMarginPercent", next)} />
+          <NumberField label="Discount %" placeholder="Enter discount percent" value={value.discountPercent} onChange={(next) => updateNumber("discountPercent", next)} />
+          <NumberField label="Tax %" placeholder="Enter tax percent" value={value.taxPercent} onChange={(next) => updateNumber("taxPercent", next)} />
         </div>
 
         {pricingOutputs.warnings.length > 0 ? (
@@ -740,10 +709,12 @@ export function CommercialSetup({
 
 function NumberField({
   label,
+  placeholder,
   value,
   onChange,
 }: {
   label: string;
+  placeholder: string;
   value: number;
   onChange: (value: string) => void;
 }) {
@@ -771,7 +742,7 @@ function NumberField({
       <Input
         type="text"
         inputMode="decimal"
-        placeholder="0"
+        placeholder={placeholder}
         value={isFocused ? draftValue : formattedValue}
         onChange={(event) => handleChange(event.target.value)}
         onFocus={(event) => {

@@ -1,20 +1,5 @@
-export type TrainingFormat =
-  | "In-house"
-  | "Public workshop"
-  | "Online"
-  | "Hybrid";
-
-export type PricingTemplateMode =
-  | "SME Workshop"
-  | "Corporate In-House Training"
-  | "Executive Masterclass"
-  | "Online Cohort"
-  | "Custom";
-
 export type PricingInputs = {
   currency: string;
-  trainingFormat: TrainingFormat;
-  pricingTemplate: PricingTemplateMode;
   numberOfParticipants: number;
   numberOfTrainingDays: number;
   numberOfTrainers: number;
@@ -49,8 +34,6 @@ export type PricingOutputs = {
 
 export const defaultPricingInputs: PricingInputs = {
   currency: "USD",
-  trainingFormat: "In-house",
-  pricingTemplate: "Custom",
   numberOfParticipants: 20,
   numberOfTrainingDays: 1,
   numberOfTrainers: 1,
@@ -67,70 +50,9 @@ export const defaultPricingInputs: PricingInputs = {
   taxPercent: 0,
 };
 
-export const pricingPresets: Record<PricingTemplateMode, Partial<PricingInputs>> = {
-  "SME Workshop": {
-    pricingTemplate: "SME Workshop",
-    trainingFormat: "Public workshop",
-    numberOfParticipants: 25,
-    numberOfTrainingDays: 1,
-    numberOfTrainers: 1,
-    trainerDayRate: 450,
-    venueCost: 250,
-    foodAndBeverageCostPerPerson: 12,
-    materialCostPerPerson: 5,
-    adminCost: 120,
-    marketingCost: 180,
-    targetProfitMarginPercent: 32,
-  },
-  "Corporate In-House Training": {
-    pricingTemplate: "Corporate In-House Training",
-    trainingFormat: "In-house",
-    numberOfParticipants: 30,
-    numberOfTrainingDays: 2,
-    numberOfTrainers: 1,
-    trainerDayRate: 650,
-    venueCost: 0,
-    foodAndBeverageCostPerPerson: 0,
-    materialCostPerPerson: 8,
-    adminCost: 250,
-    travelCost: 150,
-    targetProfitMarginPercent: 40,
-  },
-  "Executive Masterclass": {
-    pricingTemplate: "Executive Masterclass",
-    trainingFormat: "In-house",
-    numberOfParticipants: 15,
-    numberOfTrainingDays: 1,
-    numberOfTrainers: 1,
-    trainerDayRate: 900,
-    venueCost: 350,
-    foodAndBeverageCostPerPerson: 25,
-    materialCostPerPerson: 15,
-    adminCost: 250,
-    targetProfitMarginPercent: 50,
-  },
-  "Online Cohort": {
-    pricingTemplate: "Online Cohort",
-    trainingFormat: "Online",
-    numberOfParticipants: 40,
-    numberOfTrainingDays: 4,
-    numberOfTrainers: 1,
-    trainerDayRate: 350,
-    venueCost: 0,
-    foodAndBeverageCostPerPerson: 0,
-    materialCostPerPerson: 3,
-    adminCost: 180,
-    marketingCost: 250,
-    targetProfitMarginPercent: 45,
-  },
-  Custom: {
-    pricingTemplate: "Custom",
-  },
-};
-
 const numericFields: Array<keyof Omit<
   PricingInputs,
-  "currency" | "trainingFormat" | "pricingTemplate"
+  "currency"
 >> = [
   "numberOfParticipants",
   "numberOfTrainingDays",
@@ -172,20 +94,7 @@ export function normalizePricingInputs(
   return {
     ...normalized,
     currency: String(normalized.currency || "USD").trim() || "USD",
-    trainingFormat: normalized.trainingFormat || "In-house",
-    pricingTemplate: normalized.pricingTemplate || "Custom",
   };
-}
-
-export function applyPricingPreset(
-  current: PricingInputs,
-  preset: PricingTemplateMode,
-) {
-  return normalizePricingInputs({
-    ...current,
-    ...pricingPresets[preset],
-    pricingTemplate: preset,
-  });
 }
 
 export function calculatePricing(
@@ -267,7 +176,6 @@ export function pricingSummaryToMarkdown(
   return [
     "# Pricing Summary",
     "",
-    `Training format: ${inputs.trainingFormat}`,
     `Participants: ${inputs.numberOfParticipants}`,
     `Training days: ${inputs.numberOfTrainingDays}`,
     `Recommended program fee: ${formatMoney(outputs.finalPrice, inputs.currency)}`,
@@ -293,7 +201,7 @@ export function clientPricingParagraph(
   inputs: PricingInputs,
   outputs: PricingOutputs,
 ) {
-  return `The recommended investment for this ${inputs.trainingFormat.toLowerCase()} program is ${formatMoney(
+  return `The recommended investment for this program is ${formatMoney(
     outputs.finalPrice,
     inputs.currency,
   )}, based on ${inputs.numberOfParticipants} participants and ${
@@ -340,7 +248,7 @@ export function buildCommercialProposalSection({
   return `# Commercial Proposal
 
 ## Investment
-DG Academy proposes to deliver ${title} for ${client} as a ${inputs.trainingFormat.toLowerCase()} program.
+DG Academy proposes to deliver ${title} for ${client}.
 
 ## Program Fee
 Recommended program fee: ${formatMoney(outputs.finalPrice, inputs.currency)}
