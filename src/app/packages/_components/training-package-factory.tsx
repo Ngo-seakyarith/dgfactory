@@ -26,6 +26,8 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
@@ -81,18 +83,6 @@ type RegeneratablePackageSection =
   | "syllabus"
   | "proposal";
 
-type WorkflowStepName =
-  | "Syllabus"
-  | "Proposal";
-
-type WorkflowTraceItem = {
-  step: string;
-  agent: string;
-  mode: "openai";
-  model: string;
-  summary: string;
-};
-
 type ProposalBriefField =
   | "clientBackground"
   | "trainingNeed"
@@ -105,11 +95,6 @@ type ProposalBriefField =
   | "commercialNotes";
 
 type ProposalBrief = Record<ProposalBriefField, string>;
-
-const workflowSteps: WorkflowStepName[] = [
-  "Syllabus",
-  "Proposal",
-];
 
 const defaultInput: TrainingPackageInput = {
   courseTitle: "",
@@ -175,10 +160,6 @@ export function PackageForm() {
   const [pricingInputs, setPricingInputs] =
     useState<PricingInputs>(defaultPricingInputs);
   const [currentPackage, setCurrentPackage] = useState<TrainingPackage | null>(null);
-  const [useMultiAgent, setUseMultiAgent] = useState(true);
-  const [workflowId, setWorkflowId] = useState<string | null>(null);
-  const [workflowTrace, setWorkflowTrace] = useState<WorkflowTraceItem[]>([]);
-  const [workflowFailedStep, setWorkflowFailedStep] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -241,8 +222,6 @@ export function PackageForm() {
   async function generatePackage() {
     setError("");
     setNotice("");
-    setWorkflowTrace([]);
-    setWorkflowFailedStep("");
     setIsGenerating(true);
 
     try {
@@ -250,21 +229,17 @@ export function PackageForm() {
         ...form,
         context: buildProposalContext(form.context, proposalBrief),
       };
-      const response = await fetch(useMultiAgent ? "/api/workflows/generate-package" : "/api/generate-package", {
+      const response = await fetch("/api/generate-package", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...generationInput, pricingInputs, useMultiAgent }),
+        body: JSON.stringify({ ...generationInput, pricingInputs }),
       });
 
       const payload = (await response.json()) as {
-        workflowId?: string | null;
         outputs?: TrainingPackageOutputs;
         syllabus?: string;
         proposal?: string;
-        traceSummary?: WorkflowTraceItem[];
         knowledgeUsed?: KnowledgeSourceNote[];
-        state?: { currentStep?: string; error?: string };
-        qaScore?: number;
         mode?: "openai";
         notice?: string;
         error?: string;
@@ -279,8 +254,6 @@ export function PackageForm() {
           : undefined);
 
       if (!response.ok || !outputs) {
-        setWorkflowId(payload.workflowId ?? null);
-        setWorkflowFailedStep(payload.state?.currentStep ?? "");
         throw new Error(payload.error ?? "Generation failed.");
       }
 
@@ -293,14 +266,7 @@ export function PackageForm() {
       });
 
       setCurrentPackage(pkg);
-      setWorkflowId(payload.workflowId ?? null);
-      setWorkflowTrace(payload.traceSummary ?? []);
-      setNotice(
-        payload.notice ??
-          (useMultiAgent
-            ? `Multi-agent workflow completed${payload.qaScore ? ` with QA score ${payload.qaScore}/100` : ""}.`
-            : "Generated with OpenAI."),
-      );
+      setNotice(payload.notice ?? "Generated with OpenAI.");
     } catch (generationError) {
       setError(
         generationError instanceof Error
@@ -353,7 +319,7 @@ export function PackageForm() {
   }
 
   return (
-    <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
+    <div className="space-y-5">
       <div className="space-y-5">
         <Card className="border-white/10 bg-white/[0.04] shadow-executive">
         <CardHeader>
@@ -513,40 +479,20 @@ export function PackageForm() {
               <option>Direct, operational, implementation-focused</option>
             </Select>
           </Field>
+        </CardContent>
+        </Card>
 
-          <label className="flex items-start gap-3 rounded-lg border border-white/10 bg-[#07111f]/55 p-3">
-            <input
-              type="checkbox"
-              checked={useMultiAgent}
-              onChange={(event) => setUseMultiAgent(event.target.checked)}
-              className="mt-1 h-4 w-4 rounded border-white/20 bg-[#07111f]"
-            />
-            <span>
-              <span className="block text-sm font-semibold text-white">
-                Use multi-agent generation
-              </span>
-              <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-                Chief Brain plans, specialists draft the syllabus and proposal.
-                Commercial Setup feeds the proposal fee section.
-              </span>
-            </span>
-          </label>
+        <CommercialSetup
+          value={pricingInputs}
+          onChange={updatePricing}
+          title="Commercial Setup"
+          description="Set pricing assumptions before generation. Numbers are calculated by code, not invented by AI."
+        />
 
+        <div className="space-y-3">
           {error ? (
             <div className="rounded-lg border border-red-300/25 bg-red-400/10 p-3 text-sm leading-6 text-red-100">
               {error}
-              {workflowFailedStep ? (
-                <div className="mt-3">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={generatePackage}
-                  >
-                    Retry workflow
-                  </Button>
-                </div>
-              ) : null}
             </div>
           ) : null}
           {notice ? (
@@ -583,15 +529,7 @@ export function PackageForm() {
               Save Package
             </Button>
           </div>
-        </CardContent>
-        </Card>
-
-        <CommercialSetup
-          value={pricingInputs}
-          onChange={updatePricing}
-          title="Commercial Setup"
-          description="Set pricing assumptions before generation. Numbers are calculated by code, not invented by AI."
-        />
+        </div>
       </div>
 
       <Card className="border-white/10 bg-white/[0.04] shadow-executive">
@@ -606,14 +544,6 @@ export function PackageForm() {
           {currentPackage?.generationMode ? <Badge variant="teal">OpenAI</Badge> : null}
         </CardHeader>
         <CardContent>
-          {useMultiAgent || workflowTrace.length > 0 || workflowFailedStep ? (
-            <WorkflowProgress
-              isGenerating={isGenerating}
-              trace={workflowTrace}
-              failedStep={workflowFailedStep}
-              workflowId={workflowId}
-            />
-          ) : null}
           {currentPackage ? (
             <OutputTabs pkg={currentPackage} onPackageUpdate={setCurrentPackage} />
           ) : (
@@ -629,90 +559,6 @@ export function PackageForm() {
 }
 
 export const TrainingPackageFactory = PackageForm;
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-2">
-      <span className="text-sm font-medium text-white">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function WorkflowProgress({
-  isGenerating,
-  trace,
-  failedStep,
-  workflowId,
-}: {
-  isGenerating: boolean;
-  trace: WorkflowTraceItem[];
-  failedStep: string;
-  workflowId: string | null;
-}) {
-  const visibleStepNames = new Set<string>(workflowSteps);
-  const visibleTrace = trace.filter((item) => visibleStepNames.has(item.step));
-  const completedSteps = new Set(visibleTrace.map((item) => item.step));
-
-  return (
-    <div className="mb-5 rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
-      <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <div className="text-sm font-semibold text-white">
-            Multi-agent workflow
-          </div>
-          <p className="mt-1 text-xs leading-5 text-muted-foreground">
-            {workflowId ? `Workflow ${workflowId}` : "Workflow will start on generation."}
-          </p>
-        </div>
-        <Badge variant={failedStep ? "outline" : isGenerating ? "gold" : trace.length ? "teal" : "outline"}>
-          {failedStep ? `Failed at ${failedStep}` : isGenerating ? "Running" : trace.length ? "Completed" : "Ready"}
-        </Badge>
-      </div>
-      <div className="mt-4 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
-        {workflowSteps.map((step, index) => {
-          const done = completedSteps.has(step);
-          const failed = failedStep === step;
-          return (
-            <div
-              key={step}
-              className={`rounded-lg border p-3 text-sm ${
-                failed
-                  ? "border-red-300/30 bg-red-400/10 text-red-100"
-                  : done
-                    ? "border-teal-300/25 bg-teal-300/10 text-teal-50"
-                    : "border-white/10 bg-white/[0.03] text-muted-foreground"
-              }`}
-            >
-              <div className="text-xs font-mono opacity-70">
-                {String(index + 1).padStart(2, "0")}
-              </div>
-              <div className="mt-1 font-medium">{step}</div>
-            </div>
-          );
-        })}
-      </div>
-      {visibleTrace.length ? (
-        <div className="mt-4 space-y-2">
-          {visibleTrace.slice(-2).map((item) => (
-            <div
-              key={`${item.step}-${item.agent}`}
-              className="rounded-lg border border-white/10 bg-[#07111f]/60 p-3 text-xs leading-5 text-muted-foreground"
-            >
-              <span className="font-semibold text-white">{item.step}</span> by {item.agent}: {item.summary}
-            </div>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  );
-}
 
 export function CopyButton({
   value,
@@ -790,7 +636,7 @@ export function CommercialSetup({
   value,
   onChange,
   title = "Commercial Setup",
-  description = "Pricing assumptions for the client offer and internal margin view.",
+  description = "Pricing assumptions for the client offer.",
 }: {
   value: PricingInputs;
   onChange: (value: PricingInputs) => void;
@@ -881,52 +727,12 @@ export function CommercialSetup({
           <NumberField label="Tax %" value={value.taxPercent} onChange={(next) => updateNumber("taxPercent", next)} />
         </div>
 
-        <label className="flex items-start gap-3 rounded-lg border border-white/10 bg-[#07111f]/55 p-3">
-          <input
-            type="checkbox"
-            checked={value.fundingNoteEnabled}
-            onChange={(event) => updateText("fundingNoteEnabled", event.target.checked)}
-            className="mt-1 h-4 w-4 rounded border-white/20 bg-[#07111f]"
-          />
-          <span>
-            <span className="block text-sm font-semibold text-white">
-              Add SDF / HRD-style funding note
-            </span>
-            <span className="mt-1 block text-xs leading-5 text-muted-foreground">
-              Use when the client may need funding documentation or eligibility language.
-            </span>
-          </span>
-        </label>
-
-        {value.fundingNoteEnabled ? (
-          <Field label="Funding note text">
-            <Textarea
-              value={value.fundingNoteText}
-              onChange={(event) => updateText("fundingNoteText", event.target.value)}
-            />
-          </Field>
-        ) : null}
-
         {pricingOutputs.warnings.length > 0 ? (
           <div className="rounded-lg border border-red-300/25 bg-red-400/10 p-3 text-sm leading-6 text-red-100">
             {pricingOutputs.warnings.join(" ")}
           </div>
         ) : null}
 
-        <div className="grid gap-3 sm:grid-cols-3">
-          <MiniMetric
-            label="Recommended price"
-            value={formatMoney(pricingOutputs.finalPrice, value.currency)}
-          />
-          <MiniMetric
-            label="Per participant"
-            value={formatMoney(pricingOutputs.pricePerParticipant, value.currency)}
-          />
-          <MiniMetric
-            label="Est. margin"
-            value={formatPercent(pricingOutputs.estimatedProfitMargin)}
-          />
-        </div>
       </CardContent>
     </Card>
   );
@@ -941,12 +747,40 @@ function NumberField({
   value: number;
   onChange: (value: string) => void;
 }) {
+  const formattedValue = Number.isFinite(value) && value !== 0 ? String(value) : "";
+  const [draftValue, setDraftValue] = useState(formattedValue);
+  const [isFocused, setIsFocused] = useState(false);
+
+  useEffect(() => {
+    if (!isFocused) {
+      setDraftValue(formattedValue);
+    }
+  }, [formattedValue, isFocused]);
+
+  function handleChange(nextValue: string) {
+    if (!/^-?\d*\.?\d*$/.test(nextValue)) {
+      return;
+    }
+
+    setDraftValue(nextValue);
+    onChange(nextValue);
+  }
+
   return (
     <Field label={label}>
       <Input
-        type="number"
-        value={Number.isFinite(value) ? value : 0}
-        onChange={(event) => onChange(event.target.value)}
+        type="text"
+        inputMode="decimal"
+        placeholder="0"
+        value={isFocused ? draftValue : formattedValue}
+        onChange={(event) => handleChange(event.target.value)}
+        onFocus={(event) => {
+          setIsFocused(true);
+          setDraftValue(formattedValue);
+          event.currentTarget.select();
+        }}
+        onBlur={() => setIsFocused(false)}
+        className="tabular-nums"
       />
     </Field>
   );
@@ -1832,11 +1666,11 @@ export function OutputTabs({
           </div>
           {canViewInternal ? (
           <label className="mt-4 flex items-center gap-2 text-xs font-medium text-[#f7d889]">
-            <input
-              type="checkbox"
+            <Checkbox
               checked={includeInternalNotes}
-              onChange={(event) => setIncludeInternalNotes(event.target.checked)}
-              className="h-4 w-4 rounded border-white/20 bg-[#07111f]"
+              onCheckedChange={(checked) =>
+                setIncludeInternalNotes(checked === true)
+              }
             />
             Include internal notes in export
           </label>
@@ -1893,7 +1727,7 @@ export function EmptyState({
   detail: string;
 }) {
   return (
-    <div className="flex min-h-[31rem] items-center justify-center rounded-lg border border-dashed border-white/15 bg-[#07111f]/45 p-6 text-center">
+    <div className="flex min-h-[12rem] items-center justify-center rounded-lg border border-dashed border-white/15 bg-[#07111f]/45 p-6 text-center">
       <div className="max-w-md">
         <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-teal-300/10 text-teal-100">
           <Sparkles className="h-5 w-5" />

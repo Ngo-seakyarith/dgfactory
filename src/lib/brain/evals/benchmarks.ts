@@ -34,7 +34,7 @@ const seedDatasets: SeedDataset[] = [
     name: "Pricing Narrative",
     description: "Client-facing commercial proposal text using deterministic pricing only.",
     targetAgent: "pricing_narrative",
-    expectedOutputSummary: "Investment, inclusions, exclusions, terms, validity, funding note, and next steps.",
+    expectedOutputSummary: "Investment, inclusions, exclusions, terms, validity, and next steps.",
   },
   {
     id: "44444444-4444-4444-8444-444444444444",

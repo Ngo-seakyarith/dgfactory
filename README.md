@@ -4,6 +4,15 @@ Standalone web app for turning one training idea into a complete DG Academy comm
 
 This app is separate from DG Command OS.
 
+## UI System
+
+- The app uses shadcn-style local primitives in `src/components/ui`.
+- `components.json` is configured for a Next.js `src` app with `new-york` style, CSS variables, and `zinc` base color.
+- Tailwind semantic tokens live in `tailwind.config.ts` and `src/app/globals.css`.
+- New UI should use shared primitives or shadcn CLI additions instead of one-off input styling.
+- Existing `Select` is currently the native-select pattern because app screens use `<option>` children; migrate to Radix shadcn `Select` only when refactoring each caller to the trigger/content/item API.
+- Shared form wrappers should use `Field`, `Label`, `Input`, `Textarea`, `Select`, and `Checkbox` from `src/components/ui`.
+
 ## Features
 
 - Generate full training packages with configured OpenAI credentials
@@ -16,8 +25,7 @@ This app is separate from DG Command OS.
 - Email handoff and Telegram handoff to `@sopheaphin`
 - Client CRM with clients, opportunities, proposal pipeline, follow-up reminders, and package-to-opportunity linking
 - Training Delivery OS for won opportunities, preparation checklists, evaluation capture, post-training report drafts, and report export
-- GPT-5.5 Brain Layer with specialist agent routing, structured outputs, schema checks, and package QA review
-- Multi-agent package workflow with Chief Brain planning, specialist section generation, automatic QA, trace summary, retry support, and section regeneration
+- GPT-5.5 Brain Layer with structured outputs, schema checks, package QA review, and section regeneration
 - DG Academy Knowledge Base with frameworks, proposal language, Cambodia context, exercises, pricing notes, client notes, keyword retrieval, and internal source notes
 - V2.0 Evaluation + Feedback Loop with output scoring, AI rubric evaluation, improvement suggestions, human approval, and a Quality Dashboard
 - V2.2 Prompt and Template Optimization System with versioned prompts, human approval, rollback, and code-defined Brain Layer instructions
@@ -609,13 +617,7 @@ QA Review:
 
 ## V1.7 Multi-Agent Package Workflow
 
-V1.7 turns package generation into a structured workflow instead of one large generation call.
-
-Workflow sequence:
-
-1. Chief Brain creates the package plan.
-2. Course Architect creates the syllabus.
-3. Proposal Agent creates the client proposal.
+V1.7 keeps package generation as a single user action while the Brain Layer handles structured syllabus and proposal creation behind the scenes.
 
 Commercial Setup pricing assumptions are calculated deterministically before generation and passed into the proposal prompt.
 
@@ -623,24 +625,19 @@ Package generation stores syllabus, proposal markdown, structured `proposal_cont
 
 Files:
 
-- `src/lib/brain/workflows/packageWorkflow.ts`
-- `POST /api/workflows/generate-package`
+- `POST /api/generate-package`
 - `POST /api/workflows/regenerate-section`
 
 UI behavior:
 
-- New Package page includes `Use multi-agent generation`, default on.
-- The generation panel shows the Syllabus and Proposal workflow steps.
+- New Package page has one `Generate Training Package` action with no generation-mode selector.
 - Commercial Setup pricing assumptions feed the proposal prompt and are stored as deterministic pricing inputs/outputs.
 - Proposal generation returns structured sections for overview, objectives, outcomes, content outline, attendance, methodology, tools, evaluation, schedule, trainer, professional fee, billing, and acceptance.
 - Proposal DOCX export uses the `docx` library instead of hand-written Word XML.
-- If a workflow step fails, the UI shows the failed step and a retry button.
 - Package output tabs include `Regenerate this section` for syllabus and proposal.
-- One-shot generation remains available by turning off the multi-agent toggle.
 
 State:
 
-- The workflow response records `workflowId`, status, current step, timestamps, errors, agent trace summaries, final output, and QA score.
 - Package persistence happens through the package save APIs after generation.
 
 ## V1.8 DG Academy Knowledge Base
@@ -927,8 +924,9 @@ AI follow-up support:
 trainerCost = numberOfTrainingDays * numberOfTrainers * trainerDayRate
 participantVariableCost = numberOfParticipants * (foodAndBeverageCostPerPerson + materialCostPerPerson)
 totalDirectCost = trainerCost + venueCost + participantVariableCost + adminCost + marketingCost + travelCost + otherCost
-targetProfit = totalDirectCost * targetProfitMarginPercent / 100
-subtotalBeforeDiscount = totalDirectCost + targetProfit
+targetMarginPercent = clamp(targetProfitMarginPercent, 0, 99.99)
+subtotalBeforeDiscount = totalDirectCost / (1 - targetMarginPercent / 100)
+targetProfit = subtotalBeforeDiscount - totalDirectCost
 discountAmount = subtotalBeforeDiscount * discountPercent / 100
 subtotalAfterDiscount = subtotalBeforeDiscount - discountAmount
 taxAmount = subtotalAfterDiscount * taxPercent / 100
@@ -1004,7 +1002,7 @@ If participant count is zero, price per participant is shown as `0`.
 - `GET /api/audit-logs`
 - `GET /api/approvals`
 - `GET/PATCH /api/approvals/[id]`
-- `POST /api/workflows/generate-package`
+- `POST /api/generate-package`
 - `POST /api/workflows/regenerate-section`
 - `GET/POST /api/knowledge-documents`
 - `GET/DELETE /api/knowledge-documents/[id]`

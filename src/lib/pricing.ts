@@ -29,8 +29,6 @@ export type PricingInputs = {
   targetProfitMarginPercent: number;
   discountPercent: number;
   taxPercent: number;
-  fundingNoteEnabled: boolean;
-  fundingNoteText: string;
 };
 
 export type PricingOutputs = {
@@ -67,9 +65,6 @@ export const defaultPricingInputs: PricingInputs = {
   targetProfitMarginPercent: 35,
   discountPercent: 0,
   taxPercent: 0,
-  fundingNoteEnabled: false,
-  fundingNoteText:
-    "Funding eligibility may depend on the client, program scope, participant profile, and current SDF/HRD-style rules. DG Academy can support documentation after the client confirms the applicable scheme.",
 };
 
 export const pricingPresets: Record<PricingTemplateMode, Partial<PricingInputs>> = {
@@ -135,7 +130,7 @@ export const pricingPresets: Record<PricingTemplateMode, Partial<PricingInputs>>
 
 const numericFields: Array<keyof Omit<
   PricingInputs,
-  "currency" | "trainingFormat" | "pricingTemplate" | "fundingNoteEnabled" | "fundingNoteText"
+  "currency" | "trainingFormat" | "pricingTemplate"
 >> = [
   "numberOfParticipants",
   "numberOfTrainingDays",
@@ -179,8 +174,6 @@ export function normalizePricingInputs(
     currency: String(normalized.currency || "USD").trim() || "USD",
     trainingFormat: normalized.trainingFormat || "In-house",
     pricingTemplate: normalized.pricingTemplate || "Custom",
-    fundingNoteEnabled: Boolean(normalized.fundingNoteEnabled),
-    fundingNoteText: String(normalized.fundingNoteText ?? "").trim(),
   };
 }
 
@@ -202,6 +195,9 @@ export function calculatePricing(
   const warnings = numericFields
     .filter((field) => inputs[field] < 0)
     .map((field) => `${field} should not be negative.`);
+  if (inputs.targetProfitMarginPercent >= 100) {
+    warnings.push("targetProfitMarginPercent must be less than 100.");
+  }
 
   const trainerCost =
     inputs.numberOfTrainingDays * inputs.numberOfTrainers * inputs.trainerDayRate;
@@ -216,8 +212,15 @@ export function calculatePricing(
     inputs.marketingCost +
     inputs.travelCost +
     inputs.otherCost;
-  const targetProfit = (totalDirectCost * inputs.targetProfitMarginPercent) / 100;
-  const subtotalBeforeDiscount = totalDirectCost + targetProfit;
+  const targetMarginPercent = Math.min(
+    Math.max(inputs.targetProfitMarginPercent, 0),
+    99.99,
+  );
+  const subtotalBeforeDiscount =
+    totalDirectCost > 0
+      ? totalDirectCost / (1 - targetMarginPercent / 100)
+      : 0;
+  const targetProfit = subtotalBeforeDiscount - totalDirectCost;
   const discountAmount = (subtotalBeforeDiscount * inputs.discountPercent) / 100;
   const subtotalAfterDiscount = subtotalBeforeDiscount - discountAmount;
   const taxAmount = (subtotalAfterDiscount * inputs.taxPercent) / 100;
@@ -333,10 +336,6 @@ export function buildCommercialProposalSection({
     inputs.discountPercent > 0
       ? `A ${formatPercent(inputs.discountPercent)} commercial discount has already been reflected in the program fee.`
       : "No discount has been applied in this version of the offer.";
-  const fundingNote =
-    inputs.fundingNoteEnabled && inputs.fundingNoteText
-      ? `\n\n## Funding Note\n${inputs.fundingNoteText}`
-      : "";
 
   return `# Commercial Proposal
 
@@ -365,7 +364,7 @@ Payment terms to be confirmed in the final agreement.
 This proposal is valid for confirmation within the agreed proposal validity period.
 
 ## Discount Note
-${discountNote}${fundingNote}
+${discountNote}
 
 ## Next Steps
 Confirm participant count, delivery date, venue or online setup, and decision-maker approval so DG Academy can finalize the delivery plan and invoice schedule.`;

@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import {
   regeneratePackageSection,
   type RegeneratablePackageSection,
-} from "@/lib/brain/workflows/packageWorkflow";
+} from "@/lib/brain/regeneratePackageSection";
 import type { TrainingPackageOutputs } from "@/lib/training-packages";
 
 const sections: RegeneratablePackageSection[] = [
