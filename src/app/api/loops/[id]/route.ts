@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { validateLoopRequest } from "@/lib/loops/auth";
 import { getLoopRun } from "@/lib/loops/storage";
+import { requireApproved } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Loop run request failed.";
@@ -11,10 +11,10 @@ export async function GET(
   request: Request,
   context: { params: Promise<{ id: string }> },
 ) {
-  const validation = validateLoopRequest(request);
+  const access = await requireApproved(request);
 
-  if (!validation.ok) {
-    return validation.response;
+  if (!access.ok) {
+    return access.response;
   }
 
   try {

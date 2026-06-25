@@ -53,7 +53,6 @@ export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle"> &
     knowledgeUsed?: KnowledgeSourceNote[];
     createdAt: string;
     updatedAt: string;
-    generationMode?: "openai";
   };
 
 export const packageOutputSections: Array<{
@@ -305,7 +304,6 @@ export function buildPackageFromParts({
   input,
   outputs,
   id = crypto.randomUUID(),
-  generationMode = "openai",
   createdAt = new Date().toISOString(),
   pricingInputs = defaultPricingInputs,
   knowledgeUsed = [],
@@ -313,7 +311,6 @@ export function buildPackageFromParts({
   input: TrainingPackageInput;
   outputs: TrainingPackageOutputs;
   id?: string;
-  generationMode?: "openai";
   createdAt?: string;
   pricingInputs?: PricingInputs;
   knowledgeUsed?: KnowledgeSourceNote[];
@@ -341,7 +338,6 @@ export function buildPackageFromParts({
     pricingOutputs,
     knowledgeUsed,
     id,
-    generationMode,
     createdAt,
     updatedAt: new Date().toISOString(),
   };

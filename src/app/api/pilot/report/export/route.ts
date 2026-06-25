@@ -19,9 +19,9 @@ export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
   const format = body.format as ExportFormat;
 
-  if (format !== "docx" && format !== "pdf") {
+  if (format !== "docx") {
     return NextResponse.json(
-      { error: "Pilot report export supports DOCX or PDF." },
+      { error: "Pilot report export supports DOCX." },
       { status: 400 },
     );
   }
@@ -50,7 +50,6 @@ export async function POST(request: Request) {
     pricingInputs: defaultPricingInputs,
     pricingOutputs: calculatePricing(defaultPricingInputs),
     knowledgeUsed: [],
-    generationMode: "openai",
     createdAt: now,
     updatedAt: now,
   };

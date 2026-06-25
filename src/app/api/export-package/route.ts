@@ -6,12 +6,11 @@ import {
   type ExportFormat,
   type ExportTarget,
 } from "@/lib/export-package";
-import { hasAppAccess } from "@/lib/auth";
 import { requireApproved } from "@/lib/route-guards";
 import { validateClientExportSafety } from "@/lib/security/exportSafety";
 import type { TrainingPackage } from "@/lib/training-packages";
 
-const formats: ExportFormat[] = ["docx", "pptx", "pdf", "txt"];
+const formats: ExportFormat[] = ["docx", "pptx", "md"];
 const targets: ExportTarget[] = [
   "full",
   "proposal",
@@ -35,7 +34,6 @@ export async function POST(request: Request) {
       format?: ExportFormat;
       target?: ExportTarget;
       package?: TrainingPackage;
-      includeInternalNotes?: boolean;
     };
 
     if (!body.format || !formats.includes(body.format)) {
@@ -62,19 +60,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (body.includeInternalNotes) {
-      const internalAuth = await requireApproved(request);
-
-      if (!internalAuth.ok) {
-        return internalAuth.response;
-      }
-    }
-
     const safety = validateClientExportSafety({
       pkg: body.package,
       target,
-      includeInternalNotes: Boolean(body.includeInternalNotes),
-      actorCanApproveInternal: hasAppAccess(exportAuth.user.role),
     });
 
     if (!safety.allowed) {
@@ -102,9 +90,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const result = await exportTrainingPackage(body.package, body.format, target, {
-      includeInternalNotes: Boolean(body.includeInternalNotes),
-    });
+    const result = await exportTrainingPackage(body.package, body.format, target);
 
     await saveAuditLog({
       actor: exportAuth.user.actor,
@@ -115,7 +101,6 @@ export async function POST(request: Request) {
         title: body.package.title,
         format: body.format,
         target,
-        includeInternalNotes: Boolean(body.includeInternalNotes),
         filename: result.filename,
       },
     });

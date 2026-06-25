@@ -1022,7 +1022,7 @@ export function PostTrainingReportGenerator({
     {},
   );
   const [isGenerating, setIsGenerating] = useState<DeliveryDraftKind | "">("");
-  const [isExporting, setIsExporting] = useState<"docx" | "pdf" | "">("");
+  const [isExporting, setIsExporting] = useState<"docx" | "">("");
   const [notice, setNotice] = useState("");
 
   async function generate(kind: DeliveryDraftKind) {
@@ -1068,7 +1068,7 @@ export function PostTrainingReportGenerator({
     }
   }
 
-  async function exportReport(format: "docx" | "pdf") {
+  async function exportReport(format: "docx") {
     setIsExporting(format);
     setNotice("");
 
@@ -1183,19 +1183,6 @@ export function PostTrainingReportGenerator({
               <FileText className="h-4 w-4" />
             )}
             Export Report DOCX
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => exportReport("pdf")}
-            disabled={!reportDraft || Boolean(isExporting)}
-          >
-            {isExporting === "pdf" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <FileText className="h-4 w-4" />
-            )}
-            Export Report PDF
           </Button>
         </div>
       </CardContent>

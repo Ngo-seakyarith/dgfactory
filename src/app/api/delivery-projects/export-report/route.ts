@@ -8,7 +8,7 @@ import { defaultPricingInputs, calculatePricing } from "@/lib/pricing";
 import { normalizeDeliveryProject, type DeliveryProject } from "@/lib/delivery";
 import type { TrainingPackage } from "@/lib/training-packages";
 
-const formats: ExportFormat[] = ["docx", "pdf"];
+const formats: ExportFormat[] = ["docx"];
 
 function filePart(value: string) {
   return (
@@ -30,7 +30,7 @@ export async function POST(request: Request) {
 
     if (!body.format || !formats.includes(body.format)) {
       return NextResponse.json(
-        { error: "Post-training report export supports DOCX and PDF." },
+        { error: "Post-training report export supports DOCX." },
         { status: 400 },
       );
     }
@@ -66,7 +66,6 @@ export async function POST(request: Request) {
       pricingOutputs,
       createdAt: project.createdAt,
       updatedAt: project.updatedAt,
-      generationMode: "openai",
     };
     const result = await exportTrainingPackage(reportPackage, body.format, "proposal");
     const filename = `DGAcademy_${filePart(reportPackage.title)}_${filePart(reportPackage.client)}_PostTrainingReport.${body.format}`;

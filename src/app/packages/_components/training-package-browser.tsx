@@ -11,7 +11,6 @@ import {
   Layers3,
   Plus,
   Search,
-  Sparkles,
   Trash2,
 } from "lucide-react";
 
@@ -26,18 +25,12 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import {
-  CommercialSetup,
   ErrorState,
   LoadingState,
-  TrainingPackageOutputsView,
+  PackageForm,
 } from "@/app/packages/_components/training-package-factory";
 import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 import type { TrainingPackage } from "@/lib/training-packages";
-import {
-  calculatePricing,
-  normalizePricingInputs,
-  type PricingInputs,
-} from "@/lib/pricing";
 import { PackageOpportunityPanel } from "@/app/crm/_components/crm-components";
 import { AdaptiveGrowthPackageLinkPanel } from "@/app/adaptive-growth/_components/adaptive-growth-components";
 
@@ -97,11 +90,10 @@ export function TrainingDashboardClient() {
   const latest = packages.slice(0, 4);
   const generatedCount = packages.length;
   const openMarkets = new Set(packages.map((pkg) => pkg.client).filter(Boolean)).size;
-  const openaiCount = packages.filter((pkg) => pkg.generationMode === "openai").length;
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-2">
         <MetricCard
           icon={Layers3}
           label="Saved Packages"
@@ -113,12 +105,6 @@ export function TrainingDashboardClient() {
           label="Markets Covered"
           value={isLoading ? "..." : openMarkets.toString()}
           detail="Clients or market segments"
-        />
-        <MetricCard
-          icon={Sparkles}
-          label="OpenAI Runs"
-          value={isLoading ? "..." : openaiCount.toString()}
-          detail="Generated with configured AI"
         />
       </section>
 
@@ -213,9 +199,7 @@ export function PackageDetailClient({ id }: { id: string }) {
   const [pkg, setPkg] = useState<TrainingPackage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isSavingCommercial, setIsSavingCommercial] = useState(false);
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
 
   useEffect(() => {
     let active = true;
@@ -300,130 +284,26 @@ export function PackageDetailClient({ id }: { id: string }) {
     }
   }
 
-  function updatePricing(nextInputs: PricingInputs) {
-    setPkg((current) => {
-      if (!current) {
-        return current;
-      }
-
-      const pricingInputs = normalizePricingInputs(nextInputs);
-      const pricingOutputs = calculatePricing(pricingInputs);
-
-      return {
-        ...current,
-        pricingInputs,
-        pricingOutputs,
-        updatedAt: new Date().toISOString(),
-      };
-    });
-  }
-
-  async function saveCommercialSetup() {
-    if (!pkg) {
-      return;
-    }
-
-    setIsSavingCommercial(true);
-    setNotice("");
-
-    try {
-      const response = await fetch("/api/training-packages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(pkg),
-      });
-      const payload = (await response.json()) as {
-        package?: TrainingPackage;
-        storage?: "supabase";
-        error?: string;
-      };
-
-      if (!response.ok || !payload.package) {
-        throw new Error(payload.error ?? "Commercial setup save failed.");
-      }
-
-      setPkg(payload.package);
-      setNotice("Commercial setup saved in Supabase.");
-    } catch (saveError) {
-      setNotice(
-        saveError instanceof Error
-          ? saveError.message
-          : "Commercial setup save failed.",
-      );
-    } finally {
-      setIsSavingCommercial(false);
-    }
-  }
-
   return (
     <div className="space-y-5">
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
-          <div>
-            <div className="mb-3 flex flex-wrap gap-2">
-              <Badge variant="teal">OpenAI generated</Badge>
-              <Badge variant="outline">{pkg.duration}</Badge>
-            </div>
-            <CardTitle className="text-xl leading-tight">{pkg.title}</CardTitle>
-            <CardDescription className="mt-2 max-w-3xl leading-6">
-              {pkg.promise}
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
-              <Link href="/packages/new">
-                <Plus className="h-4 w-4" />
-                New Package
-              </Link>
-            </Button>
-            <Button
-              type="button"
-              variant="destructive"
-              onClick={deletePackage}
-              disabled={isDeleting}
-            >
-              <Trash2 className="h-4 w-4" />
-              {isDeleting ? "Deleting" : "Delete"}
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
-          <InfoBlock label="Audience" value={pkg.audience} />
-          <InfoBlock label="Client or Market" value={pkg.client} />
-          <InfoBlock label="Tone" value={pkg.tone} />
-        </CardContent>
-      </Card>
+      <PackageForm initialPackage={pkg} onPackageSaved={setPkg} />
 
-      <div className="grid gap-5 xl:grid-cols-[0.85fr_1.15fr]">
-        <CommercialSetup
-          value={pkg.pricingInputs}
-          onChange={updatePricing}
-          description="Edit pricing assumptions for this saved package, then save the commercial setup."
-        />
-        <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-          <CardHeader>
-            <CardTitle>Commercial Save</CardTitle>
-            <CardDescription>
-              Pricing changes update the Pricing tab immediately. Save to keep them
-              with this package.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <Button
-              type="button"
-              variant="gold"
-              onClick={saveCommercialSetup}
-              disabled={isSavingCommercial}
-            >
-              {isSavingCommercial ? "Saving..." : "Save Commercial Setup"}
-            </Button>
-            {notice ? (
-              <p className="rounded-lg border border-teal-300/20 bg-teal-300/10 p-3 text-sm leading-6 text-teal-50">
-                {notice}
-              </p>
-            ) : null}
-          </CardContent>
-        </Card>
+      <div className="flex flex-wrap gap-2">
+        <Button asChild variant="outline">
+          <Link href="/packages/new">
+            <Plus className="h-4 w-4" />
+            New Package
+          </Link>
+        </Button>
+        <Button
+          type="button"
+          variant="destructive"
+          onClick={deletePackage}
+          disabled={isDeleting}
+        >
+          <Trash2 className="h-4 w-4" />
+          {isDeleting ? "Deleting" : "Delete"}
+        </Button>
       </div>
 
       <PackageOpportunityPanel pkg={pkg} />
@@ -436,27 +316,6 @@ export function PackageDetailClient({ id }: { id: string }) {
         relatedPackageId={pkg.id}
       />
 
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardContent className="p-5">
-          <TrainingPackageOutputsView
-            pkg={pkg}
-            onPackageUpdate={async (updatedPackage) => {
-              const response = await fetch("/api/training-packages", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(updatedPackage),
-              });
-
-              if (!response.ok) {
-                const payload = (await response.json().catch(() => ({}))) as { error?: string };
-                throw new Error(payload.error ?? "Package update failed.");
-              }
-
-              setPkg(updatedPackage);
-            }}
-          />
-        </CardContent>
-      </Card>
     </div>
   );
 }
@@ -504,7 +363,6 @@ function SavedPackageGrid({
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Badge variant="outline">{pkg.client}</Badge>
                   <Badge variant="outline">{pkg.duration}</Badge>
-                  <Badge variant="teal">OpenAI</Badge>
                 </div>
                 <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock3 className="h-3.5 w-3.5" />
@@ -565,17 +423,6 @@ function FactoryStep({ title, detail }: { title: string; detail: string }) {
     <div className="rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
       <div className="font-semibold text-white">{title}</div>
       <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
-    </div>
-  );
-}
-
-function InfoBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
-      <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-2 text-sm font-medium leading-6 text-white">{value}</div>
     </div>
   );
 }

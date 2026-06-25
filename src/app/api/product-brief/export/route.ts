@@ -5,17 +5,17 @@ import { defaultPricingInputs } from "@/lib/pricing";
 import { buildProductBriefMarkdown } from "@/lib/productization";
 import type { TrainingPackage } from "@/lib/training-packages";
 
-const formats: ExportFormat[] = ["docx", "pdf", "txt"];
+const formats: ExportFormat[] = ["docx", "md"];
 
 export async function POST(request: Request) {
   const body = (await request.json().catch(() => ({}))) as {
-    format?: ExportFormat;
+      format?: ExportFormat;
   };
   const format = body.format ?? "docx";
 
   if (!formats.includes(format)) {
     return NextResponse.json(
-      { error: "Product brief export supports DOCX, PDF, or TXT." },
+      { error: "Product brief export supports DOCX or Markdown." },
       { status: 400 },
     );
   }
@@ -56,7 +56,6 @@ export async function POST(request: Request) {
       warnings: [],
     },
     knowledgeUsed: [],
-    generationMode: "openai",
     createdAt: now,
     updatedAt: now,
   };

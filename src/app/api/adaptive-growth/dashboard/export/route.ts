@@ -15,8 +15,7 @@ export async function GET(request: Request) {
     startDate: url.searchParams.get("startDate") || undefined,
     endDate: url.searchParams.get("endDate") || undefined,
   });
-  const format = url.searchParams.get("format") === "txt" ? "txt" : "pdf";
-  const exported = exportAdaptiveGrowthReport(report, format);
+  const exported = exportAdaptiveGrowthReport(report);
 
   return new NextResponse(exported.buffer, {
     headers: {

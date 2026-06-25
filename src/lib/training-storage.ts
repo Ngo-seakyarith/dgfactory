@@ -31,7 +31,6 @@ type PackageRow = {
   pricing_inputs?: Partial<PricingInputs> | null;
   pricing_outputs?: PricingOutputs | null;
   knowledge_used?: KnowledgeSourceNote[] | null;
-  generation_mode: "openai" | null;
   created_at: string;
   updated_at: string;
 };
@@ -52,7 +51,6 @@ function toRow(pkg: TrainingPackage) {
     pricing_inputs: pkg.pricingInputs,
     pricing_outputs: pkg.pricingOutputs,
     knowledge_used: pkg.knowledgeUsed ?? [],
-    generation_mode: pkg.generationMode ?? "openai",
     created_at: pkg.createdAt,
     updated_at: pkg.updatedAt,
   };
@@ -103,7 +101,6 @@ function fromRow(row: PackageRow): TrainingPackage {
     pricingInputs,
     pricingOutputs,
     knowledgeUsed: Array.isArray(row.knowledge_used) ? row.knowledge_used : [],
-    generationMode: row.generation_mode ?? "openai",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

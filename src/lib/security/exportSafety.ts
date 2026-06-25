@@ -1,4 +1,4 @@
-import { clientPricingParagraph, internalProfitabilityNote } from "@/lib/pricing";
+import { clientPricingParagraph } from "@/lib/pricing";
 import type { ExportTarget } from "@/lib/export-package";
 import type { TrainingPackage } from "@/lib/training-packages";
 
@@ -37,10 +37,7 @@ function textForTarget(pkg: TrainingPackage, target: ExportTarget) {
   }
 
   if (target === "pricing") {
-    return [
-      clientPricingParagraph(pkg.pricingInputs, pkg.pricingOutputs),
-      internalProfitabilityNote(pkg.pricingInputs, pkg.pricingOutputs),
-    ].join("\n");
+    return clientPricingParagraph(pkg.pricingInputs, pkg.pricingOutputs);
   }
 
   if (target === "syllabus") return pkg.syllabus;
@@ -61,23 +58,10 @@ function textForTarget(pkg: TrainingPackage, target: ExportTarget) {
 export function validateClientExportSafety({
   pkg,
   target,
-  includeInternalNotes,
-  actorCanApproveInternal,
 }: {
   pkg: TrainingPackage;
   target: ExportTarget;
-  includeInternalNotes: boolean;
-  actorCanApproveInternal: boolean;
 }): ExportSafetyResult {
-  if (includeInternalNotes && actorCanApproveInternal) {
-    return {
-      allowed: true,
-      issues: [],
-      recommendation:
-        "Approved internal user explicitly selected internal export. Review file before sharing externally.",
-    };
-  }
-
   const text = textForTarget(pkg, target).toLowerCase();
   const issues: ExportSafetyIssue[] = internalTerms
     .filter((term) => text.includes(term))
@@ -106,7 +90,7 @@ export function validateClientExportSafety({
     allowed: issues.filter((issue) => issue.severity !== "Medium").length === 0,
     issues,
     recommendation: issues.length
-      ? "Remove internal margin/notes language or export as an explicit approved internal file only."
+      ? "Remove internal margin/notes language before client export."
       : "No internal export leakage markers detected.",
   };
 }

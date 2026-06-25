@@ -21,7 +21,7 @@ This app is separate from DG Command OS.
 - Commercial Setup with deterministic pricing calculations
 - Client-facing commercial proposal
 - Internal profitability note hidden from client exports by default
-- Export Proposal and Syllabus DOCX/PDF plus TXT package handoff
+- Export Proposal and Syllabus DOCX plus Markdown package handoff
 - Email handoff and Telegram handoff to `@sopheaphin`
 - Client CRM with clients, opportunities, proposal pipeline, follow-up reminders, and package-to-opportunity linking
 - Training Delivery OS for won opportunities, preparation checklists, evaluation capture, post-training report drafts, and report export
@@ -42,7 +42,7 @@ This app is separate from DG Command OS.
 - Fitness Score and Selection Engine for deterministic offer ranking, scale/iterate/park/kill recommendations, and human selection decisions
 - Replication Engine and Learning Genome for turning winning offers into reusable templates, sales language, delivery assets, internal knowledge, and expansion paths
 - Adaptive Growth Loops with internal market sensing, mutation, experiment review, selection review, replication review, genome update, and expansion strategy
-- Adaptive Growth Dashboard Final with executive adaptation velocity, offer fitness, experiment funnel, learning genome, expansion map, business loop status, improvement status, deterministic Adaptive Growth Score, Brain Layer recommendations, and PDF report export
+- Adaptive Growth Dashboard Final with executive adaptation velocity, offer fitness, experiment funnel, learning genome, expansion map, business loop status, improvement status, deterministic Adaptive Growth Score, Brain Layer recommendations, and Markdown report export
 - Business + Software Improvement Integration for converting growth, QA, security, eval, and user learnings into approved Codex-ready prompts
 
 ## Future Agentic Roadmap
@@ -73,7 +73,6 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=
 OPENAI_API_KEY=
 AI_BRAIN_MODEL=gpt-5.5
-LOOP_API_KEY=
 DG_REQUIRE_AUTH=false
 DG_TRUST_ROLE_HEADERS=false
 DG_DEV_ROLE_SESSION=true
@@ -85,7 +84,7 @@ Required production keys:
 - Missing or invalid OpenAI credentials cause AI generation routes to fail explicitly.
 - `AI_BRAIN_MODEL` controls the intended Brain Layer model and all OpenAI-backed generation. V3.6 defaults to `gpt-5.5`.
 - Missing Supabase server configuration causes persistence routes to fail explicitly. Server persistence requires `SUPABASE_SECRET_KEY`; browser auth requires `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
-- `LOOP_API_KEY` is required for every `/api/loops/*` endpoint.
+- `/api/loops/*` uses the normal approved internal app access gate.
 - `DG_REQUIRE_AUTH=true` requires a Supabase Auth session for protected app routes; local development defaults to `Approved` when false.
 - Production sign-in uses Google OAuth only. Configure Google in Supabase Auth providers and add `/auth/callback` to the allowed redirect URLs.
 - `DG_TRUST_ROLE_HEADERS=true` allows trusted infrastructure to pass `x-dg-role` and `x-dg-actor`. Keep it `false` unless a server-side gateway is enforcing identity.
@@ -166,7 +165,7 @@ Pilot workspace:
 - Pilot issues are stored in `pilot_issues` with severity, status, related page, related package, and related opportunity fields.
 - Feature feedback is stored in `pilot_feedback` from the dashboard, package detail, proposal export, pipeline, delivery project, and pilot pages.
 - The `pilot_weekly_review` loop summarizes pilot usage, blockers, quality issues, next actions, and recommended Codex tasks.
-- Pilot reports can be copied or exported as simple DOCX/PDF files for internal review.
+- Pilot reports can be copied or exported as DOCX files for internal review.
 
 30-day pilot process:
 
@@ -284,7 +283,7 @@ Product routes:
 
 - `/product` presents the offer, problem, solution, features, use cases, implementation process, and product brief export.
 - `/roi-calculator` estimates proposal production time saved, staff cost saved, revenue supported, and a copyable ROI summary.
-- `POST /api/product-brief/export` exports the DG Capability Factory product brief as DOCX, PDF, or TXT.
+- `POST /api/product-brief/export` exports the DG Capability Factory product brief as DOCX or Markdown.
 
 Commercial packaging:
 
@@ -381,8 +380,8 @@ AI recommendations:
 
 Export:
 
-- `GET /api/adaptive-growth/dashboard/export?format=pdf` exports a simple Adaptive Growth Report PDF.
-- `GET /api/adaptive-growth/dashboard/export?format=txt` exports the same report as text.
+- `GET /api/adaptive-growth/dashboard/export?format=md` exports an Adaptive Growth Report Markdown file.
+- `GET /api/adaptive-growth/dashboard/export?format=md` exports the same report as Markdown.
 
 ## Micro-Offer Mutation Factory
 
@@ -776,7 +775,6 @@ Loop types:
 Files:
 
 - `src/lib/loops/types.ts`
-- `src/lib/loops/auth.ts`
 - `src/lib/loops/storage.ts`
 - `src/lib/loops/runner.ts`
 - `src/components/loop-components.tsx`
@@ -789,10 +787,8 @@ Endpoints:
 
 Authentication:
 
-- Set `LOOP_API_KEY`.
-- Send the key as `Authorization: Bearer <key>` or `x-loop-api-key`.
-- The `/loops` page lets an internal operator enter the key manually for local
-  testing and controlled internal use.
+- Loop routes use normal approved internal app access.
+- The `/loops` page lets an approved internal operator run loops directly.
 
 Safety:
 
@@ -862,7 +858,7 @@ Delivery workflow:
 - Use the default checklist for confirmation, materials, logistics, trainer preparation, attendance, evaluation, certificates, reporting, and follow-up.
 - Capture trainer notes and evaluation data.
 - Generate draft trainer checklist, participant email, training-day agenda, and post-training report.
-- Export the post-training report as DOCX or PDF.
+- Export the post-training report as DOCX.
 
 Safety:
 
@@ -1034,7 +1030,6 @@ npm run build
 3. Add environment variables:
    - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
    - AI: `OPENAI_API_KEY`, `AI_BRAIN_MODEL`
-   - Loops: `LOOP_API_KEY`
    - Internal auth: `DG_REQUIRE_AUTH=true`, `DG_TRUST_ROLE_HEADERS=false`, `DG_DEV_ROLE_SESSION=false`, `DG_DEFAULT_ACTOR`
    - Public URL: `NEXT_PUBLIC_APP_URL` for generated portal links when request origin is unavailable
 4. Apply `supabase/schema.sql` to the target Supabase project.
@@ -1046,7 +1041,7 @@ npm run build
 - Set `DG_REQUIRE_AUTH=true` in production.
 - Keep `DG_TRUST_ROLE_HEADERS=false` unless a trusted identity gateway is installed.
 - Keep `DG_DEV_ROLE_SESSION=false` in production once Supabase Auth is active.
-- Keep `SUPABASE_SECRET_KEY`, `OPENAI_API_KEY`, and `LOOP_API_KEY` server-only.
+- Keep `SUPABASE_SECRET_KEY` and `OPENAI_API_KEY` server-only.
 - Confirm prompt template routes require approved internal access.
 - Confirm client exports do not include internal notes unless an Approved user explicitly selects them.
 - Review `/approvals` before any external sending, export handoff, deployment, deletion, payment, or production database schema change.
@@ -1057,13 +1052,13 @@ npm run build
 
 - If generation fails, check `OPENAI_API_KEY`, `AI_BRAIN_MODEL`, and the route error message.
 - If Supabase is missing, persistence routes fail until Supabase credentials are configured.
-- If `/api/loops/*` returns 401, check `LOOP_API_KEY`.
+- If `/api/loops/*` returns 401 or 403, check the signed-in user's approved app access.
 - If `/admin/prompts` returns 403, set Approved access in `/settings` or approve the user's Supabase membership.
 - If `next build` fails with a stale `.next` cache error, remove this app's `.next` folder and rebuild.
 
 ## Known Limitations
 
-- DOCX/PPTX/PDF exporters are dependency-free and clean, but simple.
+- DOCX/PPTX/Markdown exporters are dependency-free and clean.
 - Supabase must be configured for persistent database storage.
 - Email and Telegram handoff open customer channels but do not attach generated files automatically yet.
 - Certificate generation is not implemented yet.
@@ -1074,7 +1069,7 @@ npm run build
 - V2.2 prompt template activation changes model behavior at runtime, but only after a human approves a draft. Production teams should review active prompts before client-critical generation.
 - V2.3 approval records do not execute external actions; they are a control surface for human review before a separate approved operation.
 - V3.0 auth uses Supabase Auth memberships when `DG_REQUIRE_AUTH=true`; local role cookies are development-only.
-- V3.1 pilot report DOCX/PDF exports are internal and simple; review them before sharing outside DG Academy.
+- V3.1 pilot report DOCX exports are internal; review them before sharing outside DG Academy.
 - V3.2 eval scoring is lightweight and deterministic-first. Treat it as regression signal, not a substitute for Sopheap or trainer review.
 - V3.3 red-team checks are deterministic internal guardrails. They help find obvious risks but do not replace a full external security review.
 - V3.4 client portal token links are suitable for the internal MVP, but broad external rollout should add full Supabase Auth/RLS policies, rate limiting, and production monitoring.

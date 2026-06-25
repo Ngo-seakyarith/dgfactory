@@ -56,7 +56,6 @@ create table if not exists public.training_packages (
   pricing_inputs jsonb not null default '{}'::jsonb,
   pricing_outputs jsonb not null default '{}'::jsonb,
   knowledge_used jsonb not null default '[]'::jsonb,
-  generation_mode text default 'openai' check (generation_mode in ('openai')),
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

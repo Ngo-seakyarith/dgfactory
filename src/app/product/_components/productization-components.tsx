@@ -5,7 +5,6 @@ import {
   Calculator,
   Clipboard,
   Download,
-  FileText,
   Loader2,
   Sparkles,
 } from "lucide-react";
@@ -31,7 +30,7 @@ export function ProductBriefExportButtons() {
   const [isExporting, setIsExporting] = useState("");
   const [notice, setNotice] = useState("");
 
-  async function exportBrief(format: "docx" | "pdf") {
+  async function exportBrief(format: "docx" | "md") {
     setIsExporting(format);
     setNotice("");
 
@@ -81,13 +80,13 @@ export function ProductBriefExportButtons() {
           )}
           Product Brief DOCX
         </Button>
-        <Button type="button" variant="outline" onClick={() => exportBrief("pdf")}>
-          {isExporting === "pdf" ? (
+        <Button type="button" variant="outline" onClick={() => exportBrief("md")}>
+          {isExporting === "md" ? (
             <Loader2 className="h-4 w-4 animate-spin" />
           ) : (
-            <FileText className="h-4 w-4" />
+            <Download className="h-4 w-4" />
           )}
-          Product Brief PDF
+          Product Brief MD
         </Button>
       </div>
       {notice ? <p className="text-sm text-teal-50">{notice}</p> : null}

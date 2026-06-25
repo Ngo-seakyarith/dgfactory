@@ -7,13 +7,10 @@ import {
   Check,
   Clipboard,
   Calculator,
-  FileDown,
   FileText,
   Loader2,
-  Mail,
   MessageSquareText,
   Save,
-  Send,
   Sparkles,
 } from "lucide-react";
 
@@ -26,12 +23,10 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Checkbox } from "@/components/ui/checkbox";
 import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 import {
   buildPackageFromParts,
   fullPackageToMarkdown,
@@ -43,7 +38,6 @@ import {
   type TrainingPackageOutputs,
 } from "@/lib/training-packages";
 import type { ExportFormat, ExportTarget } from "@/lib/export-package";
-import { hasAppAccess, type UserRole } from "@/lib/auth";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import {
   outputEvaluationTypes,
@@ -166,15 +160,36 @@ function buildProposalContext(baseContext: string, proposalBrief: ProposalBrief)
     .join("\n\n");
 }
 
-export function PackageForm() {
+export function PackageForm({
+  initialPackage,
+  onPackageSaved,
+}: {
+  initialPackage?: TrainingPackage;
+  onPackageSaved?: (pkg: TrainingPackage) => void;
+}) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [form, setForm] = useState<TrainingPackageInput>(defaultInput);
+  const [form, setForm] = useState<TrainingPackageInput>(() =>
+    initialPackage
+      ? {
+          courseTitle: initialPackage.title,
+          audience: initialPackage.audience,
+          duration: initialPackage.duration,
+          client: initialPackage.client,
+          promise: initialPackage.promise,
+          context: initialPackage.context,
+          tone: initialPackage.tone || defaultInput.tone,
+        }
+      : defaultInput,
+  );
   const [proposalBrief, setProposalBrief] =
     useState<ProposalBrief>(defaultProposalBrief);
   const [pricingInputs, setPricingInputs] =
-    useState<PricingInputs>(blankPackagePricingInputs);
-  const [currentPackage, setCurrentPackage] = useState<TrainingPackage | null>(null);
+    useState<PricingInputs>(
+      initialPackage?.pricingInputs ?? blankPackagePricingInputs,
+    );
+  const [currentPackage, setCurrentPackage] =
+    useState<TrainingPackage | null>(initialPackage ?? null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
@@ -275,12 +290,18 @@ export function PackageForm() {
       const pkg = buildPackageFromParts({
         input: generationInput,
         outputs,
-        generationMode: "openai",
+        id: initialPackage?.id ?? currentPackage?.id,
+        createdAt: initialPackage?.createdAt ?? currentPackage?.createdAt,
         pricingInputs,
-        knowledgeUsed: payload.knowledgeUsed ?? [],
+        knowledgeUsed:
+          payload.knowledgeUsed ??
+          currentPackage?.knowledgeUsed ??
+          initialPackage?.knowledgeUsed ??
+          [],
       });
 
       setCurrentPackage(pkg);
+      onPackageSaved?.(pkg);
       setNotice(payload.notice ?? "Generated with OpenAI.");
     } catch (generationError) {
       setError(
@@ -324,6 +345,7 @@ export function PackageForm() {
       }
 
       setCurrentPackage(payload.package);
+      onPackageSaved?.(payload.package);
       setNotice("Saved in Supabase.");
       router.push(`/packages/${payload.package.id}`);
     } catch (saveError) {
@@ -556,7 +578,6 @@ export function PackageForm() {
               packaging.
             </CardDescription>
           </div>
-          {currentPackage?.generationMode ? <Badge variant="teal">OpenAI</Badge> : null}
         </CardHeader>
         <CardContent>
           {currentPackage ? (
@@ -1326,16 +1347,12 @@ export function OutputTabs({
     packageOutputSections[0].key,
   );
   const [exportNotice, setExportNotice] = useState("");
-  const [shareNotice, setShareNotice] = useState("");
-  const [includeInternalNotes, setIncludeInternalNotes] = useState(false);
   const [qaReview, setQaReview] = useState<QaReviewOutput | null>(null);
   const [qaNotice, setQaNotice] = useState("");
   const [isRunningQa, setIsRunningQa] = useState(false);
   const [isRegenerating, setIsRegenerating] =
     useState<RegeneratablePackageSection | "">("");
   const [regenerateNotice, setRegenerateNotice] = useState("");
-  const [role, setRole] = useState<UserRole>("Pending");
-  const canViewInternal = hasAppAccess(role);
 
   const activeSection = useMemo(
     () => sections.find((section) => section.key === activeKey)!,
@@ -1345,23 +1362,6 @@ export function OutputTabs({
   const qaReviewText = qaReview ? qaReviewToMarkdown(qaReview) : "";
   const activeText = outputToText(pkg, activeSection.key as PackageOutputKey);
   const activeRegeneratableSection = regeneratableSectionForKey(activeSection.key);
-  const emailHref = `mailto:?subject=${encodeURIComponent(`DG Academy Training Package: ${pkg.title}`)}&body=${encodeURIComponent(fullPackage)}`;
-
-  useEffect(() => {
-    async function loadSession() {
-      try {
-        const response = await fetch("/api/auth/session");
-        const payload = (await response.json()) as { user?: { role?: UserRole } };
-        if (payload.user?.role) {
-          setRole(payload.user.role);
-        }
-      } catch {
-        setRole("Pending");
-      }
-    }
-
-    void loadSession();
-  }, []);
 
   async function exportPackage(format: ExportFormat, target: ExportTarget = "full") {
     setExportNotice(`Preparing ${format.toUpperCase()} export...`);
@@ -1372,7 +1372,6 @@ export function OutputTabs({
         format,
         target,
         package: pkg,
-        includeInternalNotes,
       }),
     });
 
@@ -1418,22 +1417,7 @@ export function OutputTabs({
       icon: FileText,
       disabled: !pkg.syllabus.trim(),
     },
-    {
-      label: "Export Proposal PDF",
-      format: "pdf",
-      target: "proposal",
-      icon: FileDown,
-      disabled: !pkg.proposal.trim(),
-    },
   ];
-
-  async function sendToTelegramOperator() {
-    await navigator.clipboard.writeText(fullPackage);
-    setShareNotice(
-      "Package copied. Telegram is opening @sopheaphin; paste the copied package there to send it to customers.",
-    );
-    window.open("https://t.me/sopheaphin", "_blank", "noopener,noreferrer");
-  }
 
   async function runQaReview() {
     setIsRunningQa(true);
@@ -1562,7 +1546,7 @@ export function OutputTabs({
           <div className="flex flex-wrap gap-2">
             <CopyButton
               value={activeText}
-              label={`Copy ${activeSection.label}`}
+              label={`Copy ${activeSection.label} MD`}
             />
             {activeRegeneratableSection ? (
               <Button
@@ -1599,54 +1583,7 @@ export function OutputTabs({
 
       <KnowledgeUsedPanel knowledgeUsed={pkg.knowledgeUsed ?? []} />
 
-      <div className="grid gap-3 lg:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-lg border border-teal-300/20 bg-teal-300/10 p-4">
-          <div>
-            <div className="text-sm font-semibold text-teal-50">Customer handoff</div>
-            <p className="mt-1 text-xs leading-5 text-teal-50/75">
-              Send the full package by email, download a text file, or open Telegram to @sopheaphin.
-            </p>
-          </div>
-          <div className="mt-4 flex flex-wrap gap-2">
-            <Button asChild type="button" variant="outline" size="sm">
-              <a href={emailHref}>
-                <Mail className="h-4 w-4" />
-                Email Customer
-              </a>
-            </Button>
-            <Button type="button" variant="outline" size="sm" onClick={() => exportPackage("txt", "full")}>
-              <FileDown className="h-4 w-4" />
-              Download TXT
-            </Button>
-            <Button type="button" variant="gold" size="sm" onClick={sendToTelegramOperator}>
-              <Send className="h-4 w-4" />
-              Telegram @sopheaphin
-            </Button>
-          </div>
-          {shareNotice ? (
-            <p className="mt-3 text-xs font-medium text-teal-50">{shareNotice}</p>
-          ) : null}
-        </div>
-
-        <div className="rounded-lg border border-[#d7a842]/25 bg-[#d7a842]/10 p-4">
-          <div>
-            <div className="text-sm font-semibold text-[#f7d889]">V1.2 export engine</div>
-            <p className="mt-1 text-xs leading-5 text-[#f7d889]/80">
-              Download client-ready files with DG Academy headers and clear names.
-            </p>
-          </div>
-          {canViewInternal ? (
-          <label className="mt-4 flex items-center gap-2 text-xs font-medium text-[#f7d889]">
-            <Checkbox
-              checked={includeInternalNotes}
-              onCheckedChange={(checked) =>
-                setIncludeInternalNotes(checked === true)
-              }
-            />
-            Include internal notes in export
-          </label>
-          ) : null}
-          <div className="mt-4 flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2">
             {exportActions.map((action) => {
               const Icon = action.icon;
               return (
@@ -1664,18 +1601,9 @@ export function OutputTabs({
                 </Button>
               );
             })}
-          </div>
           {exportNotice ? (
-            <p className="mt-3 text-xs font-medium text-[#f7d889]">{exportNotice}</p>
+            <p className="basis-full text-xs font-medium text-[#f7d889]">{exportNotice}</p>
           ) : null}
-          <div className="mt-4">
-            <PilotFeedbackButton
-              relatedPage={`/packages/${pkg.id}`}
-              relatedFeature="Proposal export"
-              relatedPackageId={pkg.id}
-            />
-          </div>
-        </div>
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">

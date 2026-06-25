@@ -168,7 +168,7 @@ export default function PilotPage() {
     setNotice("Pilot report copied.");
   }
 
-  async function exportPilotReport(format: "docx" | "pdf") {
+  async function exportPilotReport(format: "docx") {
     setNotice(`Preparing ${format.toUpperCase()} pilot report...`);
 
     try {
@@ -453,10 +453,6 @@ export default function PilotPage() {
             <Button type="button" variant="outline" onClick={() => exportPilotReport("docx")}>
               <FileText className="h-4 w-4" />
               Export DOCX
-            </Button>
-            <Button type="button" variant="outline" onClick={() => exportPilotReport("pdf")}>
-              <FileText className="h-4 w-4" />
-              Export PDF
             </Button>
           </div>
         </CardHeader>

@@ -5,7 +5,6 @@ const publicPrefixes = [
   "/auth/callback",
   "/client-portal",
   "/api/auth",
-  "/api/loops",
   "/_next",
 ];
 

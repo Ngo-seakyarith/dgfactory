@@ -192,9 +192,9 @@ export function AdaptiveGrowthExecutiveDashboard() {
             Copy Report
           </Button>
           <Button asChild variant="outline">
-            <a href={`/api/adaptive-growth/dashboard/export?${query}&format=pdf`}>
+            <a href={`/api/adaptive-growth/dashboard/export?${query}&format=md`}>
               <Download className="h-4 w-4" />
-              Export PDF
+              Export MD
             </a>
           </Button>
           {copyStatus ? <p className="text-sm text-teal-50">{copyStatus}</p> : null}

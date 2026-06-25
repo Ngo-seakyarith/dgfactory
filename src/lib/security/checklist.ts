@@ -79,14 +79,14 @@ export const securityChecklistSections = [
   {
     category: "Secret handling",
     checks: [
-      "OpenAI, Supabase secret, and loop keys are never committed.",
+      "OpenAI and Supabase secret keys are never committed.",
       "Pasted or exposed secrets are rotated before production use.",
     ],
   },
   {
     category: "File export safety",
     checks: [
-      "DOCX/PPTX/PDF/TXT export routes are server-side.",
+      "DOCX/PPTX/Markdown export routes are server-side.",
       "Risky export content is blocked or requires explicit approved internal export.",
     ],
   },

@@ -63,7 +63,7 @@ export const pilotEndDate = "2026-06-04";
 
 export const defaultPilotGoalInputs: Array<Pick<PilotGoal, "title" | "targetNumber" | "notes">> = [
   { title: "Create 5 real training packages", targetNumber: 5, notes: "Use real DG Academy proposal ideas." },
-  { title: "Export 3 client-ready proposals", targetNumber: 3, notes: "Count proposal DOCX/PDF exports." },
+  { title: "Export 3 client-ready proposals", targetNumber: 3, notes: "Count proposal DOCX exports." },
   { title: "Create 3 pricing plans", targetNumber: 3, notes: "Count packages with calculated pricing outputs." },
   { title: "Create 1 delivery project", targetNumber: 1, notes: "Use a won or pilot opportunity." },
   { title: "Run 5 QA reviews", targetNumber: 5, notes: "Count AI QA or saved output evaluations." },

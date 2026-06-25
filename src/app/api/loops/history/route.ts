@@ -1,18 +1,18 @@
 import { NextResponse } from "next/server";
 
-import { validateLoopRequest } from "@/lib/loops/auth";
 import { listLoopRuns } from "@/lib/loops/storage";
 import { isLoopType } from "@/lib/loops/types";
+import { requireApproved } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {
   return error instanceof Error ? error.message : "Loop history request failed.";
 }
 
 export async function GET(request: Request) {
-  const validation = validateLoopRequest(request);
+  const access = await requireApproved(request);
 
-  if (!validation.ok) {
-    return validation.response;
+  if (!access.ok) {
+    return access.response;
   }
 
   try {

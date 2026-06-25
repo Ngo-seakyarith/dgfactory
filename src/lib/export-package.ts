@@ -18,7 +18,6 @@ import {
   type TrainingPackage,
 } from "@/lib/training-packages";
 import {
-  internalProfitabilityNote,
   pricingSummaryToMarkdown,
 } from "@/lib/pricing";
 import {
@@ -26,7 +25,7 @@ import {
   type ProposalContent,
 } from "@/lib/proposal-content";
 
-export type ExportFormat = "docx" | "pptx" | "pdf" | "txt";
+export type ExportFormat = "docx" | "pptx" | "md";
 export type ExportTarget =
   | "full"
   | "proposal"
@@ -46,10 +45,6 @@ type ExportResult = {
 type DocumentSection = {
   title: string;
   body: string;
-};
-
-type ExportOptions = {
-  includeInternalNotes?: boolean;
 };
 
 function filePart(value: string) {
@@ -93,10 +88,6 @@ function xmlEscape(value: string) {
     .replace(/'/g, "&apos;");
 }
 
-function pdfEscape(value: string) {
-  return value.replace(/\\/g, "\\\\").replace(/\(/g, "\\(").replace(/\)/g, "\\)");
-}
-
 function wrapText(value: string, maxLength = 92) {
   const words = value.split(/\s+/);
   const lines: string[] = [];
@@ -131,13 +122,8 @@ function markdownToLines(value: string) {
 function contentForTarget(
   pkg: TrainingPackage,
   target: ExportTarget,
-  options: ExportOptions = {},
 ) {
   const pricingSummary = pricingSummaryToMarkdown(pkg.pricingInputs, pkg.pricingOutputs);
-  const internalNote = internalProfitabilityNote(
-    pkg.pricingInputs,
-    pkg.pricingOutputs,
-  );
   const summary = [
     `# ${pkg.title}`,
     "",
@@ -174,7 +160,6 @@ function contentForTarget(
       "",
       "## Client-Facing Commercial Proposal",
       pkg.commercialProposal,
-      options.includeInternalNotes ? `\n## Internal Profitability Note\n${internalNote}` : "",
     ]
       .filter(Boolean)
       .join("\n"),
@@ -477,9 +462,8 @@ function proposalDocxChildren(content: ProposalContent) {
 async function createDocx(
   pkg: TrainingPackage,
   target: ExportTarget,
-  options: ExportOptions = {},
 ) {
-  const body = contentForTarget(pkg, target, options);
+  const body = contentForTarget(pkg, target);
   const children =
     target === "proposal" && pkg.proposalContent
       ? proposalDocxChildren(
@@ -672,95 +656,22 @@ function createPptx(pkg: TrainingPackage) {
   ]);
 }
 
-function createPdf(
-  pkg: TrainingPackage,
-  target: ExportTarget,
-  options: ExportOptions = {},
-) {
-  const heading = [
-    `DG Academy - ${docTitle(target)}`,
-    `Course: ${pkg.title}`,
-    `Client: ${pkg.client}`,
-    `Date generated: ${new Date().toLocaleDateString("en-US")}`,
-    "",
-  ];
-  const allLines = [...heading, ...markdownToLines(contentForTarget(pkg, target, options))].flatMap(
-    (line) => wrapText(line, 86),
-  );
-  const pages: string[][] = [];
-  for (let index = 0; index < allLines.length; index += 44) {
-    pages.push(allLines.slice(index, index + 44));
-  }
-
-  const objects: string[] = [];
-  objects.push("<< /Type /Catalog /Pages 2 0 R >>");
-  objects.push(
-    `<< /Type /Pages /Kids [${pages
-      .map((_, index) => `${3 + index * 2} 0 R`)
-      .join(" ")}] /Count ${pages.length} >>`,
-  );
-
-  pages.forEach((lines, index) => {
-    const pageObject = 3 + index * 2;
-    const contentObject = pageObject + 1;
-    const stream = [
-      "BT",
-      "/F1 10 Tf",
-      "50 760 Td",
-      ...lines.flatMap((line, lineIndex) => [
-        lineIndex === 0 ? "" : "0 -16 Td",
-        `(${pdfEscape(line)}) Tj`,
-      ]),
-      "ET",
-    ]
-      .filter(Boolean)
-      .join("\n");
-
-    objects.push(
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Resources << /Font << /F1 ${3 + pages.length * 2} 0 R >> >> /Contents ${contentObject} 0 R >>`,
-    );
-    objects.push(`<< /Length ${Buffer.byteLength(stream)} >>\nstream\n${stream}\nendstream`);
-  });
-
-  objects.push("<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>");
-
-  const parts = ["%PDF-1.4\n"];
-  const offsets: number[] = [0];
-
-  objects.forEach((object, index) => {
-    offsets.push(Buffer.byteLength(parts.join("")));
-    parts.push(`${index + 1} 0 obj\n${object}\nendobj\n`);
-  });
-
-  const xrefOffset = Buffer.byteLength(parts.join(""));
-  parts.push(`xref\n0 ${objects.length + 1}\n0000000000 65535 f \n`);
-  offsets.slice(1).forEach((offset) => {
-    parts.push(`${String(offset).padStart(10, "0")} 00000 n \n`);
-  });
-  parts.push(
-    `trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`,
-  );
-
-  return Buffer.from(parts.join(""), "utf8");
-}
-
 export async function exportTrainingPackage(
   pkg: TrainingPackage,
   format: ExportFormat,
   target: ExportTarget = "full",
-  options: ExportOptions = {},
 ): Promise<ExportResult> {
-  if (format === "txt") {
+  if (format === "md") {
     return {
-      buffer: Buffer.from(contentForTarget(pkg, target, options), "utf8"),
-      contentType: "text/plain; charset=utf-8",
-      filename: exportFilename(pkg, target, "txt"),
+      buffer: Buffer.from(contentForTarget(pkg, target), "utf8"),
+      contentType: "text/markdown; charset=utf-8",
+      filename: exportFilename(pkg, target, "md"),
     };
   }
 
   if (format === "docx") {
     return {
-      buffer: await createDocx(pkg, target, options),
+      buffer: await createDocx(pkg, target),
       contentType:
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
       filename: exportFilename(pkg, target, "docx"),
@@ -776,9 +687,5 @@ export async function exportTrainingPackage(
     };
   }
 
-  return {
-    buffer: createPdf(pkg, target, options),
-    contentType: "application/pdf",
-    filename: exportFilename(pkg, target, "pdf"),
-  };
+  throw new Error("Unsupported export format.");
 }

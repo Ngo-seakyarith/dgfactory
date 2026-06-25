@@ -12,7 +12,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { loopTypeLabel, loopTypes, type LoopRun, type LoopType } from "@/lib/loops/types";
@@ -76,7 +75,6 @@ function getOutputList(output: Record<string, unknown>, key: string) {
 }
 
 export default function LoopConsole() {
-  const [apiKey, setApiKey] = useState("");
   const [loopType, setLoopType] = useState<LoopType>("weekly_pipeline_review");
   const [runs, setRuns] = useState<LoopRun[]>([]);
   const [selectedRun, setSelectedRun] = useState<LoopRun | null>(null);
@@ -96,26 +94,12 @@ export default function LoopConsole() {
     ? getOutputList(selectedRun.output, "createdApprovalRequests")
     : [];
 
-  function authHeaders() {
-    return {
-      "Content-Type": "application/json",
-      "x-loop-api-key": apiKey.trim(),
-    };
-  }
-
   async function loadHistory() {
-    if (!apiKey.trim()) {
-      setNotice("Enter LOOP_API_KEY to load loop history.");
-      return;
-    }
-
     setIsLoading(true);
     setNotice("");
 
     try {
-      const response = await fetch("/api/loops/history", {
-        headers: authHeaders(),
-      });
+      const response = await fetch("/api/loops/history");
       const payload = (await response.json()) as LoopPayload;
 
       if (!response.ok || !payload.runs) {
@@ -133,11 +117,6 @@ export default function LoopConsole() {
   }
 
   async function runLoop() {
-    if (!apiKey.trim()) {
-      setNotice("Enter LOOP_API_KEY before running a loop.");
-      return;
-    }
-
     setIsRunning(true);
     setNotice("");
 
@@ -145,7 +124,9 @@ export default function LoopConsole() {
       const input = inputJson.trim() ? JSON.parse(inputJson) : {};
       const response = await fetch("/api/loops/run", {
         method: "POST",
-        headers: authHeaders(),
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({ loopType, input }),
       });
       const payload = (await response.json()) as LoopPayload;
@@ -266,21 +247,10 @@ export default function LoopConsole() {
           <CardHeader>
             <CardTitle>Run Loop</CardTitle>
             <CardDescription>
-              Use the loop key configured on the server.
+              Run draft-only internal loops with your approved app access.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-200">
-                Loop API key
-              </label>
-              <Input
-                type="password"
-                value={apiKey}
-                onChange={(event) => setApiKey(event.target.value)}
-                placeholder="LOOP_API_KEY"
-              />
-            </div>
             <div className="space-y-2">
               <label className="text-sm font-medium text-slate-200">
                 Loop type
