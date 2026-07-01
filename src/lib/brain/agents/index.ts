@@ -3,14 +3,6 @@ import type {
   TrainingPackageOutputs,
 } from "@/lib/training-packages";
 import {
-  calculatePricing,
-  defaultPricingInputs,
-  normalizePricingInputs,
-  pricingSummaryToMarkdown,
-  type PricingInputs,
-  type PricingOutputs,
-} from "@/lib/pricing";
-import {
   adaptiveGrowthRecommendationsOutputSchema,
   deliveryDraftOutputSchema,
   followUpOutputSchema,
@@ -68,8 +60,6 @@ export type TextAgentOutput = {
 };
 
 export type CoursePackageBrainInput = TrainingPackageInput & {
-  pricingInputs?: Partial<PricingInputs>;
-  pricingOutputs?: PricingOutputs;
   pricingSummary?: string;
 };
 
@@ -456,7 +446,7 @@ export const improvementOpportunityAgent: BrainAgentDefinition<
   name: "improvementOpportunityAgent",
   role: "Business and software improvement translator",
   instructions:
-    "Convert feedback, loop results, eval failures, security findings, and growth lessons into one structured Codex-ready improvement opportunity. Keep it small, testable, and safety-aware. Do not approve, merge, deploy, or execute code changes.",
+    "Convert feedback, loop results, eval failures, and growth lessons into one structured Codex-ready improvement opportunity. Keep it small, testable, and safety-aware. Do not approve, merge, deploy, or execute code changes.",
   inputSchema: improvementOpportunityInputSchema,
   outputSchema: improvementOpportunityOutputSchema,
 };
@@ -577,18 +567,11 @@ export const brainAgents = [
 ];
 
 export function buildCoursePackagePrompt(input: CoursePackageBrainInput) {
-  const pricingInputs = normalizePricingInputs(input.pricingInputs ?? defaultPricingInputs);
-  const pricingOutputs = input.pricingOutputs ?? calculatePricing(pricingInputs);
-  const pricingSummary =
-    input.pricingSummary ?? pricingSummaryToMarkdown(pricingInputs, pricingOutputs);
-
   return {
     task: "Create a complete sellable training package.",
     input,
     deterministicPricing: {
-      inputs: pricingInputs,
-      outputs: pricingOutputs,
-      summary: pricingSummary,
+      summary: input.pricingSummary,
     },
     requirements: [
       "Use markdown for each output.",

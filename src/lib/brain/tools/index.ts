@@ -1,7 +1,7 @@
 import {
   calculatePricing,
+  clientPricingSummaryToMarkdown,
   normalizePricingInputs,
-  pricingSummaryToMarkdown,
   type PricingInputs,
 } from "@/lib/pricing";
 
@@ -12,8 +12,6 @@ export function buildDeterministicPricingFacts(
   const outputs = calculatePricing(inputs);
 
   return {
-    inputs,
-    outputs,
-    summary: pricingSummaryToMarkdown(inputs, outputs),
+    summary: clientPricingSummaryToMarkdown(inputs, outputs),
   };
 }

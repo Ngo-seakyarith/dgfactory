@@ -27,7 +27,6 @@ const navItems = [
   ["Knowledge", "/knowledge"],
   ["Quality", "/quality"],
   ["Evals", "/evals"],
-  ["Security", "/security"],
   ["Approvals", "/approvals"],
   ["Loops", "/loops"],
   ["Improvements", "/improvements"],

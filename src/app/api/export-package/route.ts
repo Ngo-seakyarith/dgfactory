@@ -7,7 +7,6 @@ import {
   type ExportTarget,
 } from "@/lib/export-package";
 import { requireApproved } from "@/lib/route-guards";
-import { validateClientExportSafety } from "@/lib/security/exportSafety";
 import type { TrainingPackage } from "@/lib/training-packages";
 
 const formats: ExportFormat[] = ["docx", "pptx", "md"];
@@ -57,36 +56,6 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: "PPTX export is available for slide deck outlines only." },
         { status: 400 },
-      );
-    }
-
-    const safety = validateClientExportSafety({
-      pkg: body.package,
-      target,
-    });
-
-    if (!safety.allowed) {
-      await saveAuditLog({
-        actor: exportAuth.user.actor,
-        action: "export_blocked_security",
-        entityType: "training_package",
-        entityId: body.package.id,
-        metadata: {
-          title: body.package.title,
-          format: body.format,
-          target,
-          issues: safety.issues,
-        },
-      });
-
-      return NextResponse.json(
-        {
-          error:
-            "Export blocked by security validator. Internal margin or notes may be present.",
-          issues: safety.issues,
-          recommendation: safety.recommendation,
-        },
-        { status: 409 },
       );
     }
 

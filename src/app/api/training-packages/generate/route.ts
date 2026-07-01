@@ -11,8 +11,8 @@ import {
 } from "@/lib/training-packages";
 import {
   calculatePricing,
+  clientPricingSummaryToMarkdown,
   normalizePricingInputs,
-  pricingSummaryToMarkdown,
   type PricingInputs,
 } from "@/lib/pricing";
 import {
@@ -60,9 +60,7 @@ export async function POST(request: Request) {
     const brainInput: CoursePackageBrainInput = {
       ...input,
       context: [input.context, knowledgeContext].filter(Boolean).join("\n\n"),
-      pricingInputs,
-      pricingOutputs,
-      pricingSummary: pricingSummaryToMarkdown(pricingInputs, pricingOutputs),
+      pricingSummary: clientPricingSummaryToMarkdown(pricingInputs, pricingOutputs),
     };
     const result = await routeBrainTask<CoursePackageBrainInput, TrainingPackageOutputs>({
       taskType: "course_package",

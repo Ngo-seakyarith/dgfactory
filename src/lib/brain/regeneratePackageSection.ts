@@ -27,8 +27,17 @@ export async function regeneratePackageSection({
   currentPackage: TrainingPackageOutputs;
 }) {
   const pricingFacts = buildDeterministicPricingFacts(packageInput.pricingInputs);
+  const clientPackageInput: TrainingPackageInput = {
+    courseTitle: packageInput.courseTitle,
+    audience: packageInput.audience,
+    duration: packageInput.duration,
+    client: packageInput.client,
+    promise: packageInput.promise,
+    context: packageInput.context,
+    tone: packageInput.tone,
+  };
   const baseContext = {
-    input: packageInput,
+    input: clientPackageInput,
     currentPackage,
     deterministicPricing: pricingFacts,
     instruction: `Regenerate only ${section}. Keep the rest of the package conceptually aligned.`,
@@ -48,8 +57,6 @@ export async function regeneratePackageSection({
         promise: packageInput.promise,
         context: packageInput.context,
         tone: packageInput.tone,
-        pricingInputs: pricingFacts.inputs,
-        pricingOutputs: pricingFacts.outputs,
         pricingSummary: pricingFacts.summary,
       },
     });

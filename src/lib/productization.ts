@@ -108,7 +108,7 @@ DG Capability Factory packages DG Academy's training production workflow into a 
 - Training Delivery OS for preparation, execution, evaluation, certificates, and reporting.
 - Knowledge base for organization-specific frameworks, examples, and SOPs.
 - Client portal for secure proposal and delivery review.
-- Governance, approvals, audit logs, red-team checks, and eval benchmarks.
+- Approvals, audit logs, quality checks, and eval benchmarks.
 
 ## Use Cases
 - Internal learning and development teams standardizing training production.
@@ -121,12 +121,12 @@ DG Capability Factory packages DG Academy's training production workflow into a 
 2. Workspace setup, roles, and data model configuration.
 3. Knowledge base import and prompt/template calibration.
 4. Pilot with 3-5 real proposals and one delivery project.
-5. Evaluation, governance review, and production rollout.
+5. Evaluation review and production rollout.
 
 ## Commercial Packages
 - Starter: internal training package generator.
 - Professional: CRM, delivery OS, knowledge base, exports, and quality dashboard.
-- Enterprise: agentic workflows, custom knowledge base, evaluations, and governance controls.
+- Enterprise: agentic workflows, custom knowledge base, evaluations, and advanced controls.
 
 ## Call to Action
 Book a DG Academy demonstration to see how DG Capability Factory can support your organization's training operations, AI capability rollout, and proposal-to-delivery workflow.`;

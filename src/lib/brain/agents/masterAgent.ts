@@ -96,8 +96,8 @@ function agentsForWorkflow(workflow: MasterAgentWorkflow) {
 function toolsForWorkflow(workflow: MasterAgentWorkflow) {
   const common = ["schemaValidation", "approvalRules", "auditLogging"];
   const map: Record<MasterAgentWorkflow, string[]> = {
-    create_training_package: ["pricingCalculator", "knowledgeRetrieval", "exportSafety", ...common],
-    generate_proposal: ["exportSafety", "knowledgeRetrieval", ...common],
+    create_training_package: ["pricingCalculator", "knowledgeRetrieval", ...common],
+    generate_proposal: ["knowledgeRetrieval", ...common],
     generate_pricing_narrative: ["pricingCalculator", "marginProtection", ...common],
     create_offer_variants: ["knowledgeRetrieval", "failedPatternSearch", ...common],
     evaluate_offer_fitness: ["calculateOfferFitness", "missingDataWarnings", ...common],
@@ -106,7 +106,7 @@ function toolsForWorkflow(workflow: MasterAgentWorkflow) {
     create_codex_improvement_task: ["improvementPromptBuilder", ...common],
     run_qa_review: ["qaRubrics", ...common],
     create_follow_up_draft: ["externalSendingBlock", ...common],
-    create_delivery_report: ["evaluationSummary", "exportSafety", ...common],
+    create_delivery_report: ["evaluationSummary", ...common],
   };
 
   return map[workflow];

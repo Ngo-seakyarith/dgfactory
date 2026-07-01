@@ -197,6 +197,30 @@ export function pricingSummaryToMarkdown(
   ].join("\n");
 }
 
+export function clientPricingSummaryToMarkdown(
+  inputs: PricingInputs,
+  outputs: PricingOutputs,
+) {
+  return [
+    "# Client-Facing Pricing Facts",
+    "",
+    `Participants: ${inputs.numberOfParticipants}`,
+    `Training days: ${inputs.numberOfTrainingDays}`,
+    `Recommended program fee: ${formatMoney(outputs.finalPrice, inputs.currency)}`,
+    `Price per participant: ${formatMoney(outputs.pricePerParticipant, inputs.currency)}`,
+    outputs.discountAmount > 0
+      ? `Discount included: ${formatMoney(outputs.discountAmount, inputs.currency)}`
+      : "",
+    outputs.taxAmount > 0
+      ? `Tax/VAT included: ${formatMoney(outputs.taxAmount, inputs.currency)}`
+      : "",
+    "",
+    clientPricingParagraph(inputs, outputs),
+  ]
+    .filter(Boolean)
+    .join("\n");
+}
+
 export function clientPricingParagraph(
   inputs: PricingInputs,
   outputs: PricingOutputs,

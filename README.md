@@ -33,7 +33,6 @@ This app is separate from DG Command OS.
 - V3.0 Production Hardening with internal access gates, audit logs, launch dashboard, and error boundaries
 - V3.1 Internal Pilot Launch System with 30-day pilot dashboard, goals, issues, feedback capture, pilot reports, and pilot weekly loop
 - V3.2 Agent Reliability and Evaluation Benchmarks with eval datasets, runs, results, regression risks, trace summaries, and smoke checks
-- V3.3 Security Red Team and Governance Audit with export safety blocking, approval validation, RLS guidance, and security reports
 - V3.4 Client Portal with hashed token access, published client-safe documents, feedback capture, revocation, expiry, and audit logging
 - V3.5 Productization Package with `/product`, offer positioning, ROI calculator, and product brief export
 - V3.6 Enterprise Agentic Hardening with GPT-5.5 default model config, Brain status, Master Agent routing, adaptive specialist agents, concrete RLS policies, Supabase Auth path, approval rules, and autonomy settings
@@ -43,14 +42,14 @@ This app is separate from DG Command OS.
 - Replication Engine and Learning Genome for turning winning offers into reusable templates, sales language, delivery assets, internal knowledge, and expansion paths
 - Adaptive Growth Loops with internal market sensing, mutation, experiment review, selection review, replication review, genome update, and expansion strategy
 - Adaptive Growth Dashboard Final with executive adaptation velocity, offer fitness, experiment funnel, learning genome, expansion map, business loop status, improvement status, deterministic Adaptive Growth Score, Brain Layer recommendations, and Markdown report export
-- Business + Software Improvement Integration for converting growth, QA, security, eval, and user learnings into approved Codex-ready prompts
+- Business + Software Improvement Integration for converting growth, QA, eval, and user learnings into approved Codex-ready prompts
 
 ## Future Agentic Roadmap
 
 DG Academy AI Training Production Factory is designed to evolve into DG Academy Capability Factory:
 
 - GPT-5.5 Brain Layer for planning, drafting, routing, and evaluation.
-- Specialist agents for learning design, commercial review, governance, delivery readiness, export QA, and evaluation.
+- Specialist agents for learning design, commercial review, delivery readiness, export QA, and evaluation.
 - Deterministic tools for pricing, storage, export, and leak checks.
 - Codex builder workflow for human-approved product and engineering increments.
 
@@ -141,7 +140,7 @@ Adaptive Growth hardening:
 - `src/lib/brain/workflows/adaptiveGrowthWorkflow.ts` wraps deterministic Adaptive Growth services with agent-supported recommendations.
 - Fitness scoring still comes from `src/lib/adaptive-growth/fitness.ts`, not AI.
 
-Security foundation:
+Access foundation:
 
 - `supabase/schema.sql` includes `profiles.access_status` for simple `Pending` / `Approved` app access.
 - `src/lib/auth-production.ts` resolves Supabase Auth users through their profile access status.
@@ -210,33 +209,6 @@ Codex release rule:
 - When changing Brain Layer prompts, prompt templates, agent routing, or eval logic, run manual Brain Layer smoke checks.
 - Do not approve prompt/template changes for release if smoke evals fail.
 
-## V3.3 Security Red Team and Governance Audit
-
-V3.3 adds internal security checks for wider deployment readiness.
-
-Security workspace:
-
-- `/security` shows authentication, app access, Supabase RLS, export safety, margin protection, prompt injection, automation, approval, audit logging, environment, secret, file export, and knowledge visibility checks.
-- `POST /api/security/run-red-team` runs deterministic red-team scenarios and records audit results.
-- `GET /api/security` loads the latest security audit and report.
-- Security reports include executive summary, passed checks, failed checks, critical risks, recommended fixes, and go/no-go recommendation.
-
-Validators:
-
-- Export safety validator scans client-facing exports for internal margin, direct cost, internal notes, and internal knowledge markers.
-- approval safety validator checks authentication, command type, risk level, external-action language, and approval requirements.
-
-Red-team scenarios cover:
-
-- Internal margin exposure.
-- Internal notes in client proposals.
-- Malicious knowledge prompt injection.
-- Unauthenticated approval requests.
-- Pending prompt approval attempt.
-- Pending internal margin access attempt.
-- Internal-only knowledge in client-safe export.
-- Confidential notes in follow-up email.
-
 ## V3.4 Client Portal
 
 V3.4 adds a secure client-facing portal for proposal and delivery review.
@@ -258,7 +230,7 @@ Internal management:
 - Revoke portal access when the link should no longer work.
 - Copy the suggested email text. The app does not send email automatically.
 
-Security behavior:
+Client portal behavior:
 
 - Portal tokens are generated with strong random bytes and stored only as SHA-256 hashes.
 - Portal pages show only `Published` and `Client Visible` items.
@@ -289,7 +261,7 @@ Commercial packaging:
 
 - Starter: internal training package generator.
 - Professional: CRM, delivery, knowledge base, exports, quality, and client portal.
-- Enterprise: agentic workflows, approval-gated automation, evals, security governance, and custom knowledge base.
+- Enterprise: agentic workflows, approval-gated automation, evals, and custom knowledge base.
 - Final pricing remains subject to DG Academy commercial approval.
 
 ## Adaptive Growth OS Foundation
@@ -829,7 +801,6 @@ The app stores:
 - Pilot feedback records
 - Eval datasets, examples, runs, and results
 - Agent trace summaries
-- Security audits and audit items
 
 ## V1.5 Training Delivery OS
 
@@ -940,7 +911,6 @@ If participant count is zero, price per participant is shown as `0`.
 - `/adaptive-growth/dashboard`
 - `/pilot`
 - `/evals`
-- `/security`
 - `/packages/new`
 - `/packages`
 - `/packages/[id]`
@@ -990,8 +960,6 @@ If participant count is zero, price per participant is shown as `0`.
 - `POST /api/pilot/report/export`
 - `GET/POST /api/evals`
 - `POST /api/evals/run`
-- `GET /api/security`
-- `POST /api/security/run-red-team`
 - `GET /api/auth/session`
 - `POST /api/auth/session`
 - `DELETE /api/auth/session`
@@ -1034,19 +1002,18 @@ npm run build
    - Public URL: `NEXT_PUBLIC_APP_URL` for generated portal links when request origin is unavailable
 4. Apply `supabase/schema.sql` to the target Supabase project.
 5. Deploy.
-6. Open `/settings`, verify Brain Model Status and autonomy settings, then verify `/dashboard`, `/pilot`, `/evals`, `/security`, `/packages/new`, `/clients`, `/pipeline`, `/delivery`, `/quality`, `/approvals`, `/loops`, and `/admin/prompts`.
+6. Open `/settings`, verify Brain Model Status and autonomy settings, then verify `/dashboard`, `/pilot`, `/evals`, `/packages/new`, `/clients`, `/pipeline`, `/delivery`, `/quality`, `/approvals`, `/loops`, and `/admin/prompts`.
 
-## Security Checklist
+## Launch Checklist
 
 - Set `DG_REQUIRE_AUTH=true` in production.
 - Keep `DG_TRUST_ROLE_HEADERS=false` unless a trusted identity gateway is installed.
 - Keep `DG_DEV_ROLE_SESSION=false` in production once Supabase Auth is active.
 - Keep `SUPABASE_SECRET_KEY` and `OPENAI_API_KEY` server-only.
 - Confirm prompt template routes require approved internal access.
-- Confirm client exports do not include internal notes unless an Approved user explicitly selects them.
+- Confirm client exports do not include internal notes or margin language.
 - Review `/approvals` before any external sending, export handoff, deployment, deletion, payment, or production database schema change.
 - Review `/api/audit-logs` as an Approved user after launch testing.
-- Run `/security` red-team checks before wider team rollout or client-facing export changes.
 
 ## Troubleshooting
 
@@ -1060,7 +1027,6 @@ npm run build
 
 - DOCX/PPTX/Markdown exporters are dependency-free and clean.
 - Supabase must be configured for persistent database storage.
-- Email and Telegram handoff open customer channels but do not attach generated files automatically yet.
 - Certificate generation is not implemented yet.
 - Delivery AI drafts use provided project and evaluation data, but still require human review before client delivery.
 - Workflow state is returned with generation responses; saved packages persist through Supabase.
@@ -1071,6 +1037,5 @@ npm run build
 - V3.0 auth uses Supabase Auth memberships when `DG_REQUIRE_AUTH=true`; local role cookies are development-only.
 - V3.1 pilot report DOCX exports are internal; review them before sharing outside DG Academy.
 - V3.2 eval scoring is lightweight and deterministic-first. Treat it as regression signal, not a substitute for Sopheap or trainer review.
-- V3.3 red-team checks are deterministic internal guardrails. They help find obvious risks but do not replace a full external security review.
 - V3.4 client portal token links are suitable for the internal MVP, but broad external rollout should add full Supabase Auth/RLS policies, rate limiting, and production monitoring.
 - V3.5 client pricing must be reviewed and approved by DG Academy before use.

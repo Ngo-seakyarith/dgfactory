@@ -69,7 +69,7 @@ const processSteps = [
   "Configure workspace roles, Supabase storage, and branded templates.",
   "Import frameworks, SOPs, proposal language, and client-safe knowledge.",
   "Run a 30-day pilot with real packages, proposals, and delivery work.",
-  "Review quality metrics, security checks, and adoption evidence before rollout.",
+  "Review quality metrics and adoption evidence before rollout.",
 ];
 
 const packages = [
@@ -87,9 +87,9 @@ const packages = [
   },
   {
     name: "Enterprise",
-    scope: "Agentic workflows, evals, and governance",
+    scope: "Agentic workflows, evals, and advanced controls",
     price: "Pricing placeholder",
-    includes: ["Multi-agent workflow", "Orchestrator", "Evals", "Red-team checks"],
+    includes: ["Multi-agent workflow", "Orchestrator", "Evals", "Advanced controls"],
   },
 ];
 
@@ -146,7 +146,7 @@ export default function ProductPage() {
           <CardHeader>
             <CardTitle>Solution</CardTitle>
             <CardDescription>
-              One guided system for proposal, delivery, quality, and governance.
+              One guided system for proposal, delivery, quality, and improvement.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-3 text-sm leading-7 text-teal-50/90">
