@@ -1,11 +1,13 @@
 -- Auth and app access.
 
+create type public.user_access_status as enum ('Pending', 'Approved');
+
 create table if not exists public.profiles (
   id uuid primary key references auth.users(id) on delete cascade,
   full_name text,
   email text,
   avatar_url text,
-  access_status text not null default 'Pending' check (access_status in ('Pending', 'Approved')),
+  access_status public.user_access_status not null default 'Pending',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );

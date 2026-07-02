@@ -31,7 +31,6 @@ export type AdaptiveGrowthWorkflowInput = {
   experiment?: Partial<GrowthExperiment> | null;
   metrics?: Partial<ExperimentMetrics> | null;
   proposedAction?: string;
-  autonomyLevel?: string;
 };
 
 export type AdaptiveGrowthWorkflowResult = {
@@ -113,7 +112,6 @@ export async function runAdaptiveGrowthWorkflow(
         workflow: input.workflow,
         proposedAction: input.proposedAction,
       },
-      autonomyLevel: input.autonomyLevel,
     },
   });
   const deterministicResult = deterministicResultFor(input);

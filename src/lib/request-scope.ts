@@ -2,7 +2,7 @@ import type { AuthUser } from "@/lib/auth";
 
 let requestAuthUser: AuthUser | null = null;
 
-export function setRequestAuthUser(user: AuthUser) {
+export function setRequestAuthUser(user: AuthUser | null) {
   requestAuthUser = user;
 }
 

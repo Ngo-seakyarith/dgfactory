@@ -12,7 +12,6 @@ export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-dg-pathname", request.nextUrl.pathname);
 
-  const authRequired = process.env.DG_REQUIRE_AUTH === "true";
   const isPublic = publicPrefixes.some((prefix) =>
     request.nextUrl.pathname.startsWith(prefix),
   );
@@ -22,12 +21,7 @@ export function middleware(request: NextRequest) {
     request.cookies
       .getAll()
       .some((cookie) => cookie.name.startsWith("sb-") && cookie.name.includes("auth-token"));
-  const hasDevRole =
-    !authRequired &&
-    process.env.DG_DEV_ROLE_SESSION === "true" &&
-    request.cookies.has("dg_role");
-
-  if (authRequired && !isPublic && !hasSupabaseToken && !hasDevRole) {
+  if (!isPublic && !hasSupabaseToken) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", request.nextUrl.pathname);

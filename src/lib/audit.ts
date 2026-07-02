@@ -46,9 +46,15 @@ export function redactMetadata(metadata: Record<string, unknown> = {}) {
 }
 
 export function normalizeAuditLog(input: Partial<AuditLog>): AuditLog {
+  const actor = String(input.actor ?? "").trim();
+
+  if (!actor) {
+    throw new Error("A signed-in audit actor is required.");
+  }
+
   return {
     id: input.id || crypto.randomUUID(),
-    actor: String(input.actor ?? "DG Academy Operator").trim(),
+    actor,
     action: String(input.action ?? "unknown").trim(),
     entityType: String(input.entityType ?? "system").trim(),
     entityId: String(input.entityId ?? "").trim(),

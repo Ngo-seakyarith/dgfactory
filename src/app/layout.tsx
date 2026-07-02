@@ -5,6 +5,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 
 import "./globals.css";
+import { AccountButton } from "@/components/account-button";
 import { hasAppAccess } from "@/lib/auth";
 import { getAuthenticatedCookieUser } from "@/lib/auth-production";
 import { setRequestAuthUser } from "@/lib/request-scope";
@@ -32,7 +33,6 @@ const navItems = [
   ["Improvements", "/improvements"],
   ["New Package", "/packages/new"],
   ["Saved Packages", "/packages"],
-  ["Settings", "/settings"],
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -44,20 +44,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const isClientPortal = pathname.startsWith("/client-portal");
   const isAccessStatusPage =
     pathname.startsWith("/login") ||
-    pathname === "/settings" ||
     pathname.startsWith("/unauthorized");
 
-  if (!isClientPortal && !isAccessStatusPage && !hasAppAccess(user.role)) {
+  if (!isClientPortal && !isAccessStatusPage && !user) {
+    redirect("/login");
+  }
+
+  if (!isClientPortal && !isAccessStatusPage && user && !hasAppAccess(user.role)) {
     redirect("/unauthorized");
   }
 
-  const resolvedNavItems = hasAppAccess(user.role)
+  const resolvedNavItems = user && hasAppAccess(user.role)
     ? [
         ...navItems.slice(0, 8),
         ["Prompts", "/admin/prompts"],
         ...navItems.slice(8),
       ]
-    : navItems;
+    : [];
 
   return (
     <html lang="en" className="dark">
@@ -74,17 +77,20 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                     AI Training Production Factory
                   </div>
                 </Link>
-                <nav className="flex flex-wrap gap-2">
-                  {resolvedNavItems.map(([label, href]) => (
-                    <Link
-                      key={href}
-                      href={href}
-                      className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-teal-300/40 hover:text-white"
-                    >
-                      {label}
-                    </Link>
-                  ))}
-                </nav>
+                <div className="flex flex-wrap items-center justify-end gap-2">
+                  <nav className="flex flex-wrap gap-2">
+                    {resolvedNavItems.map(([label, href]) => (
+                      <Link
+                        key={href}
+                        href={href}
+                        className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-sm font-medium text-slate-200 transition hover:border-teal-300/40 hover:text-white"
+                      >
+                        {label}
+                      </Link>
+                    ))}
+                  </nav>
+                  <AccountButton isAuthenticated={Boolean(user?.userId)} />
+                </div>
               </div>
             </header>
           )}

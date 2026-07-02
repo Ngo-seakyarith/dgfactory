@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
-import { getAuthenticatedRequestUser } from "@/lib/auth-production";
 import { listPilotFeedback, savePilotFeedback } from "@/lib/pilot-storage";
 import { requireApproved } from "@/lib/route-guards";
 
@@ -16,7 +15,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
-  const user = await getAuthenticatedRequestUser(request);
+  const user = auth.user;
   const body = await request.json().catch(() => ({}));
 
   const result = await savePilotFeedback({

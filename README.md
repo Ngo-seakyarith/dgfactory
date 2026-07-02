@@ -35,7 +35,7 @@ This app is separate from DG Command OS.
 - V3.2 Agent Reliability and Evaluation Benchmarks with eval datasets, runs, results, regression risks, trace summaries, and smoke checks
 - V3.4 Client Portal with hashed token access, published client-safe documents, feedback capture, revocation, expiry, and audit logging
 - V3.5 Productization Package with `/product`, offer positioning, ROI calculator, and product brief export
-- V3.6 Enterprise Agentic Hardening with GPT-5.5 default model config, Brain status, Master Agent routing, adaptive specialist agents, concrete RLS policies, Supabase Auth path, approval rules, and autonomy settings
+- V3.6 Enterprise Agentic Hardening with GPT-5.5 default model config, Master Agent routing, adaptive specialist agents, concrete RLS policies, Supabase Auth path, and approval rules
 - Adaptive Growth OS Foundation with market signals, offer variants, experiments, metrics, selection decisions, learning genome, and offer-to-package handoff
 - Micro-Offer Mutation Factory for generating, comparing, editing, and saving multiple testable offer variants from one market signal or business idea
 - Fitness Score and Selection Engine for deterministic offer ranking, scale/iterate/park/kill recommendations, and human selection decisions
@@ -72,10 +72,6 @@ NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=
 OPENAI_API_KEY=
 AI_BRAIN_MODEL=gpt-5.5
-DG_REQUIRE_AUTH=false
-DG_TRUST_ROLE_HEADERS=false
-DG_DEV_ROLE_SESSION=true
-DG_DEFAULT_ACTOR=DG Academy Operator
 ```
 
 Required production keys:
@@ -84,10 +80,8 @@ Required production keys:
 - `AI_BRAIN_MODEL` controls the intended Brain Layer model and all OpenAI-backed generation. V3.6 defaults to `gpt-5.5`.
 - Missing Supabase server configuration causes persistence routes to fail explicitly. Server persistence requires `SUPABASE_SECRET_KEY`; browser auth requires `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 - `/api/loops/*` uses the normal approved internal app access gate.
-- `DG_REQUIRE_AUTH=true` requires a Supabase Auth session for protected app routes; local development defaults to `Approved` when false.
 - Production sign-in uses Google OAuth only. Configure Google in Supabase Auth providers and add `/auth/callback` to the allowed redirect URLs.
-- `DG_TRUST_ROLE_HEADERS=true` allows trusted infrastructure to pass `x-dg-role` and `x-dg-actor`. Keep it `false` unless a server-side gateway is enforcing identity.
-- `DG_DEV_ROLE_SESSION=true` keeps local access switching available while `DG_REQUIRE_AUTH=false`. Production access comes from `profiles.access_status`.
+- Production access comes from `profiles.access_status` after Google sign-in.
 
 ## V3.0 Production Hardening
 
@@ -100,9 +94,8 @@ Access states:
 
 Auth model:
 
-- Internal access session lives in secure-by-default route cookies set from `/settings`.
 - Server routes can also accept `x-dg-role` and `x-dg-actor` for controlled internal automation.
-- For production, set `DG_REQUIRE_AUTH=true`, `DG_DEV_ROLE_SESSION=false`, enable Google OAuth in Supabase, and approve users by setting `profiles.access_status` to `Approved`.
+- Enable Google OAuth in Supabase and approve users by setting `profiles.access_status` to `Approved`.
 - The local access selector is only for development when production auth is disabled.
 
 Protection:
@@ -127,7 +120,6 @@ Brain model:
 - `src/lib/brain/modelConfig.ts` centralizes model configuration.
 - `AI_BRAIN_MODEL` now defaults to `gpt-5.5`.
 - `/api/brain/status` reports intended model, actual model, API key status, last successful model, and runtime status.
-- `/settings/ai` and `/settings` show Brain Model Status.
 
 Master Agent:
 
@@ -144,14 +136,13 @@ Access foundation:
 
 - `supabase/schema.sql` includes `profiles.access_status` for simple `Pending` / `Approved` app access.
 - `src/lib/auth-production.ts` resolves Supabase Auth users through their profile access status.
-- `src/middleware.ts` protects app routes when `DG_REQUIRE_AUTH=true`.
+- `src/middleware.ts` always protects internal app routes with Supabase Auth.
 - `/login` and `/unauthorized` support the production auth transition.
 
-Approval and autonomy:
+Approval controls:
 
 - `src/lib/safety/approvalRules.ts` and `src/lib/safety/riskClassifier.ts` classify risky actions.
 - External sending, publishing client portal items, internal-note exports, lifecycle changes to Scaling/Productized/Killed, prompt approval, production deployment, production database schema changes, deletion, and internal margin/knowledge exposure require approval.
-- `/settings/autonomy` configures `manual`, `assisted`, `supervised`, and `bounded_auto` modes. Risky actions still require approval at every level.
 
 ## V3.1 Internal Pilot Launch System
 
@@ -168,7 +159,7 @@ Pilot workspace:
 
 30-day pilot process:
 
-1. Start with `DG_REQUIRE_AUTH=true`, an Approved session, and `supabase/schema.sql` applied.
+1. Start with an Approved Supabase session and `supabase/schema.sql` applied.
 2. Use real DG Academy opportunities and packages, but keep confidential client data minimized.
 3. Review `/pilot` weekly with the team and run `pilot_weekly_review` from `/loops`.
 4. Log confusing screens, export problems, pricing concerns, and missing workflow steps as pilot issues.
@@ -914,7 +905,6 @@ If participant count is zero, price per participant is shown as `0`.
 - `/packages/new`
 - `/packages`
 - `/packages/[id]`
-- `/settings`
 - `/clients`
 - `/clients/new`
 - `/clients/[id]`
@@ -981,7 +971,6 @@ If participant count is zero, price per participant is shown as `0`.
 - `POST /api/adaptive-growth/dashboard/recommendations`
 - `GET /api/adaptive-growth/dashboard/export`
 - `GET /api/brain/status`
-- `GET/POST /api/settings/autonomy`
 
 ## Quality Checks
 
@@ -998,17 +987,14 @@ npm run build
 3. Add environment variables:
    - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
    - AI: `OPENAI_API_KEY`, `AI_BRAIN_MODEL`
-   - Internal auth: `DG_REQUIRE_AUTH=true`, `DG_TRUST_ROLE_HEADERS=false`, `DG_DEV_ROLE_SESSION=false`, `DG_DEFAULT_ACTOR`
+   - Internal auth: Google OAuth through Supabase Auth
    - Public URL: `NEXT_PUBLIC_APP_URL` for generated portal links when request origin is unavailable
 4. Apply `supabase/schema.sql` to the target Supabase project.
 5. Deploy.
-6. Open `/settings`, verify Brain Model Status and autonomy settings, then verify `/dashboard`, `/pilot`, `/evals`, `/packages/new`, `/clients`, `/pipeline`, `/delivery`, `/quality`, `/approvals`, `/loops`, and `/admin/prompts`.
+6. Sign in through `/login`, then verify `/dashboard`, `/pilot`, `/evals`, `/packages/new`, `/clients`, `/pipeline`, `/delivery`, `/quality`, `/approvals`, `/loops`, and `/admin/prompts`.
 
 ## Launch Checklist
 
-- Set `DG_REQUIRE_AUTH=true` in production.
-- Keep `DG_TRUST_ROLE_HEADERS=false` unless a trusted identity gateway is installed.
-- Keep `DG_DEV_ROLE_SESSION=false` in production once Supabase Auth is active.
 - Keep `SUPABASE_SECRET_KEY` and `OPENAI_API_KEY` server-only.
 - Confirm prompt template routes require approved internal access.
 - Confirm client exports do not include internal notes or margin language.
@@ -1020,7 +1006,7 @@ npm run build
 - If generation fails, check `OPENAI_API_KEY`, `AI_BRAIN_MODEL`, and the route error message.
 - If Supabase is missing, persistence routes fail until Supabase credentials are configured.
 - If `/api/loops/*` returns 401 or 403, check the signed-in user's approved app access.
-- If `/admin/prompts` returns 403, set Approved access in `/settings` or approve the user's Supabase membership.
+- If `/admin/prompts` returns 403, approve the user's Supabase profile.
 - If `next build` fails with a stale `.next` cache error, remove this app's `.next` folder and rebuild.
 
 ## Known Limitations
@@ -1034,7 +1020,7 @@ npm run build
 - V2.0 improvement suggestions are advisory records. A human must approve and Codex must implement prompt/template changes separately.
 - V2.2 prompt template activation changes model behavior at runtime, but only after a human approves a draft. Production teams should review active prompts before client-critical generation.
 - V2.3 approval records do not execute external actions; they are a control surface for human review before a separate approved operation.
-- V3.0 auth uses Supabase Auth memberships when `DG_REQUIRE_AUTH=true`; local role cookies are development-only.
+- Authentication always uses Google OAuth through Supabase Auth, with access controlled by `profiles.access_status`.
 - V3.1 pilot report DOCX exports are internal; review them before sharing outside DG Academy.
 - V3.2 eval scoring is lightweight and deterministic-first. Treat it as regression signal, not a substitute for Sopheap or trainer review.
 - V3.4 client portal token links are suitable for the internal MVP, but broad external rollout should add full Supabase Auth/RLS policies, rate limiting, and production monitoring.

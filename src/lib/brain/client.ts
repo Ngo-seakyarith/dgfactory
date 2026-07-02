@@ -6,7 +6,7 @@ import {
 } from "@/lib/brain/schemas";
 import type { BrainAgentDefinition, BrainMode } from "@/lib/brain/agents";
 import {
-  intendedBrainModel,
+  brainModel,
   recordBrainModelError,
   recordBrainModelSuccess,
   getBrainModelStatus,
@@ -31,7 +31,7 @@ export type BrainResult<TOutput> = {
 let openaiClient: OpenAI | null = null;
 
 export function getBrainModel() {
-  return intendedBrainModel;
+  return brainModel;
 }
 
 function getOpenAIClient() {
@@ -165,7 +165,7 @@ export async function generateStructuredOutput<TInput, TOutput>({
         throw new Error(`Schema validation failed: ${validation.errors.join("; ")}`);
       }
 
-      recordBrainModelSuccess(requestedModel);
+      recordBrainModelSuccess();
 
       return {
         output: output as TOutput,

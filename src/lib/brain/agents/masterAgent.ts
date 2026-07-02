@@ -21,7 +21,6 @@ export type MasterAgentInput = {
   goal: string;
   workflow?: MasterAgentWorkflow;
   context?: Record<string, unknown>;
-  autonomyLevel?: string;
 };
 
 export type MasterAgentOutput = {
@@ -40,7 +39,6 @@ const masterAgentInputSchema: JsonSchema = {
     goal: { type: "string" },
     workflow: { type: "string" },
     context: { type: "object", properties: {} },
-    autonomyLevel: { type: "string" },
   },
 };
 
@@ -123,7 +121,7 @@ function riskyWorkflow(workflow: MasterAgentWorkflow) {
 export const masterAgent: BrainAgentDefinition<MasterAgentInput, MasterAgentOutput> = {
   taskType: "master_workflow",
   name: "masterAgent",
-  role: "Enterprise workflow coordinator and bounded autonomy controller",
+  role: "Enterprise workflow coordinator",
   instructions:
     "Classify DG Academy goals into supported workflows, choose specialist agents, choose deterministic tools, require QA, and identify approval needs. Do not perform specialist work yourself. Do not approve risky actions.",
   inputSchema: masterAgentInputSchema,
