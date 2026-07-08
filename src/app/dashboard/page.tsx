@@ -170,7 +170,7 @@ export default async function DashboardPage() {
         <FactoryCard
           icon={FileText}
           title="Content Package"
-          detail="Generate client-ready training content with configured OpenAI credentials."
+          detail="Generate client-ready training content with configured OpenRouter credentials."
         />
         <FactoryCard
           icon={Sparkles}

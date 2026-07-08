@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -40,6 +41,15 @@ import {
 import type { ExportFormat, ExportTarget } from "@/lib/export-package";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import {
+  emptyProposalBrief,
+  type ProposalBrief,
+} from "@/lib/proposal-brief";
+import {
+  getTrainerById,
+  trainerCatalog,
+  trainerSnapshotFields,
+} from "@/lib/trainers";
+import {
   outputEvaluationTypes,
   reviewerTypes,
   type EvaluateOutputResult,
@@ -74,19 +84,6 @@ type RegeneratablePackageSection =
   | "syllabus"
   | "proposal";
 
-type ProposalBriefField =
-  | "clientBackground"
-  | "trainingNeed"
-  | "objectives"
-  | "participantRoles"
-  | "contentPriorities"
-  | "methodology"
-  | "schedule"
-  | "trainerProfile"
-  | "commercialNotes";
-
-type ProposalBrief = Record<ProposalBriefField, string>;
-
 const defaultInput: TrainingPackageInput = {
   courseTitle: "",
   audience: "",
@@ -95,18 +92,6 @@ const defaultInput: TrainingPackageInput = {
   promise: "",
   context: "",
   tone: "Executive, practical, commercially sharp",
-};
-
-const defaultProposalBrief: ProposalBrief = {
-  clientBackground: "",
-  trainingNeed: "",
-  objectives: "",
-  participantRoles: "",
-  contentPriorities: "",
-  methodology: "",
-  schedule: "",
-  trainerProfile: "",
-  commercialNotes: "",
 };
 
 const blankPackagePricingInputs: PricingInputs = {
@@ -126,39 +111,6 @@ const blankPackagePricingInputs: PricingInputs = {
   discountPercent: 0,
   taxPercent: 0,
 };
-
-const proposalBriefLabels: Record<ProposalBriefField, string> = {
-  clientBackground: "Client background",
-  trainingNeed: "Training need",
-  objectives: "Objectives and outcomes",
-  participantRoles: "Who should attend",
-  contentPriorities: "Content priorities",
-  methodology: "Training methodology",
-  schedule: "Schedule, date, venue",
-  trainerProfile: "Trainer profile",
-  commercialNotes: "Fee and acceptance notes",
-};
-
-function buildProposalContext(baseContext: string, proposalBrief: ProposalBrief) {
-  const sections = (Object.keys(proposalBrief) as ProposalBriefField[])
-    .map((key) => {
-      const value = proposalBrief[key].trim();
-      return value ? `${proposalBriefLabels[key]}:\n${value}` : "";
-    })
-    .filter(Boolean);
-
-  if (sections.length === 0) {
-    return baseContext;
-  }
-
-  return [
-    baseContext.trim(),
-    "DG Academy proposal template brief:",
-    sections.join("\n\n"),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
-}
 
 export function PackageForm({
   initialPackage,
@@ -183,7 +135,11 @@ export function PackageForm({
       : defaultInput,
   );
   const [proposalBrief, setProposalBrief] =
-    useState<ProposalBrief>(defaultProposalBrief);
+    useState<ProposalBrief>(initialPackage?.proposalBrief ?? emptyProposalBrief);
+  const selectedTrainer = useMemo(
+    () => getTrainerById(proposalBrief.trainerId),
+    [proposalBrief.trainerId],
+  );
   const [pricingInputs, setPricingInputs] =
     useState<PricingInputs>(
       initialPackage?.pricingInputs ?? blankPackagePricingInputs,
@@ -228,8 +184,25 @@ export function PackageForm({
     setForm((current) => ({ ...current, [key]: value }));
   }
 
-  function updateProposalBrief(key: ProposalBriefField, value: string) {
+  function updateProposalBrief(key: keyof ProposalBrief, value: string) {
     setProposalBrief((current) => ({ ...current, [key]: value }));
+  }
+
+  function selectTrainer(trainerId: string) {
+    const trainer = getTrainerById(trainerId);
+
+    setProposalBrief((current) => ({
+      ...current,
+      ...(trainer ? trainerSnapshotFields(trainer) : {
+        trainerId: "",
+        trainerImageUrl: "",
+        trainerName: "",
+        trainerTitle: "",
+        trainerBio: "",
+        trainerExperience: "",
+        trainerQualifications: "",
+      }),
+    }));
   }
 
   function updatePricing(nextInputs: PricingInputs) {
@@ -249,16 +222,36 @@ export function PackageForm({
     );
   }
 
+  async function persistPackage(packageToSave: TrainingPackage) {
+    const response = await fetch("/api/training-packages", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(packageToSave),
+    });
+    const payload = (await response.json()) as {
+      package?: TrainingPackage;
+      storage?: "supabase";
+      error?: string;
+    };
+
+    if (!response.ok || !payload.package) {
+      throw new Error(payload.error ?? "Database save failed.");
+    }
+
+    return payload.package;
+  }
+
   async function generatePackage() {
     setError("");
     setNotice("");
     setIsGenerating(true);
 
     try {
-      const generationInput: TrainingPackageInput = {
-        ...form,
-        context: buildProposalContext(form.context, proposalBrief),
-      };
+      if (!selectedTrainer) {
+        throw new Error("Select a trainer before generating the package.");
+      }
+
+      const generationInput: TrainingPackageInput = { ...form, proposalBrief };
       const response = await fetch("/api/generate-package", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -301,8 +294,11 @@ export function PackageForm({
       });
 
       setCurrentPackage(pkg);
-      onPackageSaved?.(pkg);
-      setNotice(payload.notice ?? "Generated with OpenAI.");
+      const savedPackage = await persistPackage(pkg);
+      setCurrentPackage(savedPackage);
+      onPackageSaved?.(savedPackage);
+      setNotice(payload.notice ?? "Generated with OpenRouter and saved in Supabase.");
+      router.replace(`/packages/${savedPackage.id}`);
     } catch (generationError) {
       setError(
         generationError instanceof Error
@@ -323,31 +319,17 @@ export function PackageForm({
     setError("");
     setNotice("");
 
-    const packageToSave = {
+    const packageToSave: TrainingPackage = {
       ...currentPackage,
       updatedAt: new Date().toISOString(),
     };
 
     try {
-      const response = await fetch("/api/training-packages", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(packageToSave),
-      });
-      const payload = (await response.json()) as {
-        package?: TrainingPackage;
-        storage?: "supabase";
-        error?: string;
-      };
-
-      if (!response.ok || !payload.package) {
-        throw new Error(payload.error ?? "Database save failed.");
-      }
-
-      setCurrentPackage(payload.package);
-      onPackageSaved?.(payload.package);
+      const savedPackage = await persistPackage(packageToSave);
+      setCurrentPackage(savedPackage);
+      onPackageSaved?.(savedPackage);
       setNotice("Saved in Supabase.");
-      router.push(`/packages/${payload.package.id}`);
+      router.push(`/packages/${savedPackage.id}`);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Database save failed.");
     } finally {
@@ -359,171 +341,204 @@ export function PackageForm({
     <div className="space-y-5">
       <div className="space-y-5">
         <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardHeader>
-          <CardTitle>Training Idea</CardTitle>
-          <CardDescription>
-            Enter the commercial brief. The factory turns it into a sellable DG
-            Academy package.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <Field label="Course title">
-            <Input
-              value={form.courseTitle}
-              onChange={(event) => updateField("courseTitle", event.target.value)}
-              placeholder="AI Leadership Sprint for Bank Executives"
-            />
-          </Field>
-          <Field label="Target learners">
-            <Input
-              value={form.audience}
-              onChange={(event) => updateField("audience", event.target.value)}
-              placeholder="Senior managers, innovation leads, department heads"
-            />
-          </Field>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Duration">
-              <Input
-                value={form.duration}
-                onChange={(event) => updateField("duration", event.target.value)}
-                placeholder="1 day, 2 days, 6 weeks"
-              />
-            </Field>
-            <Field label="Client or market">
-              <Input
-                value={form.client}
-                onChange={(event) => updateField("client", event.target.value)}
-                placeholder="Cambodian banks, universities, hospitality groups"
-              />
-            </Field>
-          </div>
-          <Field label="Program promise">
-            <Textarea
-              value={form.promise}
-              onChange={(event) => updateField("promise", event.target.value)}
-              placeholder="Help leaders identify practical AI use cases and leave with a 30-day implementation plan."
-            />
-          </Field>
-          <Field label="Context and examples">
-            <Textarea
-              value={form.context}
-              onChange={(event) => updateField("context", event.target.value)}
-              placeholder="Include local enterprise examples, workflow redesign, governance, and customer-facing AI use cases."
-            />
-          </Field>
-          <div className="space-y-3">
-            <div>
-              <h3 className="text-sm font-semibold text-white">
-                Proposal Template Details
-              </h3>
-              <p className="mt-1 text-xs leading-5 text-muted-foreground">
-                These feed the proposal sections: overview, objectives, outcomes,
-                outline, attendance, methodology, schedule, trainer, and fee.
-              </p>
+          <CardHeader>
+            <CardTitle>Proposal Brief</CardTitle>
+            <CardDescription>Client facts and required training content.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Course title">
+                <Input value={form.courseTitle} onChange={(event) => updateField("courseTitle", event.target.value)} placeholder="AI for Marketing Analytics" />
+              </Field>
+              <Field label="Client">
+                <Input value={form.client} onChange={(event) => updateField("client", event.target.value)} placeholder="Nippon Paint" />
+              </Field>
             </div>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Client background">
-                <Textarea
-                  value={proposalBrief.clientBackground}
-                  onChange={(event) =>
-                    updateProposalBrief("clientBackground", event.target.value)
-                  }
-                  placeholder="LOLC business context, sector, branch network, customer segment, current priority."
-                />
+              <Field label="Cover heading">
+                <Input value={proposalBrief.coverHeading} onChange={(event) => updateProposalBrief("coverHeading", event.target.value)} placeholder="AI Capability Development" />
               </Field>
-              <Field label="Training need">
-                <Textarea
-                  value={proposalBrief.trainingNeed}
-                  onChange={(event) =>
-                    updateProposalBrief("trainingNeed", event.target.value)
-                  }
-                  placeholder="What problem should the workshop solve? Sales conversion, service quality, AI adoption, leadership readiness..."
-                />
-              </Field>
-              <Field label="Objectives and outcomes">
-                <Textarea
-                  value={proposalBrief.objectives}
-                  onChange={(event) =>
-                    updateProposalBrief("objectives", event.target.value)
-                  }
-                  placeholder="What participants must be able to understand, practice, and apply after training."
-                />
-              </Field>
-              <Field label="Who should attend">
-                <Textarea
-                  value={proposalBrief.participantRoles}
-                  onChange={(event) =>
-                    updateProposalBrief("participantRoles", event.target.value)
-                  }
-                  placeholder="Credit officers, supervisors, managers, sales teams, support roles, executives."
-                />
-              </Field>
-              <Field label="Content priorities">
-                <Textarea
-                  value={proposalBrief.contentPriorities}
-                  onChange={(event) =>
-                    updateProposalBrief("contentPriorities", event.target.value)
-                  }
-                  placeholder="Topics to include in the content outline, ordered by client priority."
-                />
-              </Field>
-              <Field label="Training methodology">
-                <Textarea
-                  value={proposalBrief.methodology}
-                  onChange={(event) =>
-                    updateProposalBrief("methodology", event.target.value)
-                  }
-                  placeholder="Role-play, case practice, discussion, reflection, action plan, assessment, Q&A."
-                />
-              </Field>
-              <Field label="Schedule, date, venue">
-                <Textarea
-                  value={proposalBrief.schedule}
-                  onChange={(event) =>
-                    updateProposalBrief("schedule", event.target.value)
-                  }
-                  placeholder="Date, time, venue/TBC, participant count, room notes."
-                />
-              </Field>
-              <Field label="Trainer profile">
-                <Textarea
-                  value={proposalBrief.trainerProfile}
-                  onChange={(event) =>
-                    updateProposalBrief("trainerProfile", event.target.value)
-                  }
-                  placeholder="Facilitator name, role, practical experience, sector expertise, certifications."
-                />
+              <Field label="Certification or program label">
+                <Input value={proposalBrief.certificationLabel} onChange={(event) => updateProposalBrief("certificationLabel", event.target.value)} placeholder="DG Academy Certified AI Practitioner (DCAP) - Level 2 Marketing" />
               </Field>
             </div>
-            <Field label="Fee and acceptance notes">
-              <Textarea
-                value={proposalBrief.commercialNotes}
-                onChange={(event) =>
-                  updateProposalBrief("commercialNotes", event.target.value)
-                }
-                placeholder="Payment timing, included items, client responsibilities, acknowledgement wording, contact deadline."
-              />
+            <Field label="Cover subtitle">
+              <Textarea value={proposalBrief.coverSubtitle} onChange={(event) => updateProposalBrief("coverSubtitle", event.target.value)} placeholder="Practical AI skills for reporting, analytics, competitor tracking, and customer service" />
             </Field>
-          </div>
-          <Field label="Tone">
-            <Select
-              value={form.tone}
-              onChange={(event) => updateField("tone", event.target.value)}
+            <Field label="Target learners">
+              <Input value={form.audience} onChange={(event) => updateField("audience", event.target.value)} placeholder="Marketing team, campaign managers, analysts, customer-service leads" />
+            </Field>
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Field label="Client background">
+                <Textarea rows={5} value={proposalBrief.clientBackground} onChange={(event) => updateProposalBrief("clientBackground", event.target.value)} placeholder="Company, sector, team responsibilities, current priorities, and operating context" />
+              </Field>
+              <Field label="Training need">
+                <Textarea rows={5} value={proposalBrief.trainingNeed} onChange={(event) => updateProposalBrief("trainingNeed", event.target.value)} placeholder="Reporting delays, analysis gaps, competitor monitoring needs, customer-service challenges" />
+              </Field>
+            </div>
+            <Field label="Program goal">
+              <Textarea value={form.promise} onChange={(event) => updateField("promise", event.target.value)} placeholder="Enable the team to use AI for faster analysis, stronger decisions, and more productive daily workflows" />
+            </Field>
+            <Field label="Special requirements">
+              <Textarea value={form.context} onChange={(event) => updateField("context", event.target.value)} placeholder="Required tools, local examples, available data, confidentiality limits, and topics to avoid" />
+            </Field>
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+          <CardHeader>
+            <CardTitle>Course Design</CardTitle>
+            <CardDescription>Objectives, methodology, tools, and evaluation reflected in the proposal.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 lg:grid-cols-2">
+            <Field label="Objectives and outcomes">
+              <Textarea rows={7} value={proposalBrief.objectives} onChange={(event) => updateProposalBrief("objectives", event.target.value)} placeholder="Enter one objective per line" />
+            </Field>
+            <Field label="Content priorities">
+              <Textarea rows={7} value={proposalBrief.contentPriorities} onChange={(event) => updateProposalBrief("contentPriorities", event.target.value)} placeholder="Enter required sessions, topics, and practical applications" />
+            </Field>
+            <Field label="Training methodology">
+              <Textarea rows={6} value={proposalBrief.methodology} onChange={(event) => updateProposalBrief("methodology", event.target.value)} placeholder="Theory/practice ratio, demonstrations, exercises, group work, follow-up" />
+            </Field>
+            <Field label="Training tools and materials">
+              <Textarea rows={6} value={proposalBrief.trainingTools} onChange={(event) => updateProposalBrief("trainingTools", event.target.value)} placeholder="AI tools, templates, datasets, handouts, certificates, action plans" />
+            </Field>
+            <Field label="Evaluation approach">
+              <Textarea rows={5} value={proposalBrief.evaluationApproach} onChange={(event) => updateProposalBrief("evaluationApproach", event.target.value)} placeholder="Pre-training assessment, practical exercises, observation, feedback, application evidence" />
+            </Field>
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+          <CardHeader>
+            <CardTitle>Schedule & Trainer</CardTitle>
+            <CardDescription>Delivery details and facilitator profile shown in the proposal.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <Field label="Duration">
+                <Input value={form.duration} onChange={(event) => updateField("duration", event.target.value)} placeholder="Half-day" />
+              </Field>
+              <Field label="Date">
+                <Input value={proposalBrief.scheduleDate} onChange={(event) => updateProposalBrief("scheduleDate", event.target.value)} placeholder="TBC" />
+              </Field>
+              <Field label="Time">
+                <Input value={proposalBrief.scheduleTime} onChange={(event) => updateProposalBrief("scheduleTime", event.target.value)} placeholder="8:30 AM - 12:00 PM" />
+              </Field>
+              <Field label="Venue">
+                <Input value={proposalBrief.scheduleVenue} onChange={(event) => updateProposalBrief("scheduleVenue", event.target.value)} placeholder="Client office or TBC" />
+              </Field>
+            </div>
+            <Field
+              label="Trainer"
+              description="Required. The selected DG Academy profile is used exactly as approved."
             >
-              <option>Executive, practical, commercially sharp</option>
-              <option>Premium, strategic, boardroom-ready</option>
-              <option>Warm, accessible, confidence-building</option>
-              <option>Direct, operational, implementation-focused</option>
-            </Select>
-          </Field>
-        </CardContent>
+              <Select
+                value={proposalBrief.trainerId}
+                onChange={(event) => selectTrainer(event.target.value)}
+                required
+              >
+                <option value="">Select a trainer</option>
+                {trainerCatalog.map((trainer) => (
+                  <option key={trainer.id} value={trainer.id}>
+                    {trainer.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+
+            {selectedTrainer ? (
+              <div className="grid gap-6 border-t border-white/10 pt-5 lg:grid-cols-[180px_minmax(0,1fr)]">
+                <div className="relative aspect-[4/5] w-full max-w-[180px] overflow-hidden rounded-md bg-white">
+                  <Image
+                    src={selectedTrainer.imageUrl}
+                    alt={selectedTrainer.name}
+                    fill
+                    sizes="180px"
+                    className="object-contain"
+                  />
+                </div>
+                <div className="min-w-0 space-y-5">
+                  <div>
+                    <h3 className="text-lg font-semibold text-foreground">
+                      {selectedTrainer.name}
+                    </h3>
+                    <p className="text-sm text-muted-foreground">
+                      Trainer &amp; Speaker
+                    </p>
+                  </div>
+                  <p className="text-sm leading-6 text-muted-foreground">
+                    {selectedTrainer.bio}
+                  </p>
+                  {selectedTrainer.experience.length > 0 ? (
+                    <div>
+                      <h4 className="mb-2 text-sm font-semibold text-foreground">
+                        Experience
+                      </h4>
+                      <ul className="space-y-1.5 pl-5 text-sm leading-6 text-muted-foreground">
+                        {selectedTrainer.experience.map((item) => (
+                          <li key={item} className="list-disc">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                  {selectedTrainer.qualifications.length > 0 ? (
+                    <div>
+                      <h4 className="mb-2 text-sm font-semibold text-foreground">
+                        Qualifications
+                      </h4>
+                      <ul className="space-y-1.5 pl-5 text-sm leading-6 text-muted-foreground">
+                        {selectedTrainer.qualifications.map((item) => (
+                          <li key={item} className="list-disc">
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            ) : null}
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+          <CardHeader>
+            <CardTitle>Fee & Acceptance</CardTitle>
+            <CardDescription>Proposal terms around the professional fee.</CardDescription>
+          </CardHeader>
+          <CardContent className="grid gap-4 lg:grid-cols-2">
+            <Field label="Package includes">
+              <Textarea rows={6} value={proposalBrief.includedItems} onChange={(event) => updateProposalBrief("includedItems", event.target.value)} placeholder="Enter one included item per line" />
+            </Field>
+            <Field label="Client responsibilities">
+              <Textarea rows={6} value={proposalBrief.clientResponsibilities} onChange={(event) => updateProposalBrief("clientResponsibilities", event.target.value)} placeholder="Enter one client responsibility per line" />
+            </Field>
+            <Field label="Billing arrangement">
+              <Textarea value={proposalBrief.billingArrangement} onChange={(event) => updateProposalBrief("billingArrangement", event.target.value)} placeholder="Payment percentage and timing" />
+            </Field>
+            <Field label="Payment instructions">
+              <Textarea value={proposalBrief.paymentInstructions} onChange={(event) => updateProposalBrief("paymentInstructions", event.target.value)} placeholder="Payment method and account instructions" />
+            </Field>
+            <Field label="Acceptance deadline">
+              <Input value={proposalBrief.acceptanceDeadline} onChange={(event) => updateProposalBrief("acceptanceDeadline", event.target.value)} placeholder="No later than one week before the training date" />
+            </Field>
+            <Field
+              label="Proposal date"
+              description="Mr. Hin Sopheap, Executive Director, remains the authorized DG Academy signatory."
+            >
+              <Input value={proposalBrief.proposalDate} onChange={(event) => updateProposalBrief("proposalDate", event.target.value)} placeholder="17 June 2026" />
+            </Field>
+          </CardContent>
         </Card>
 
         <CommercialSetup
           value={pricingInputs}
           onChange={updatePricing}
           title="Commercial Setup"
-          description="Set pricing assumptions before generation. Numbers are calculated by code, not invented by AI."
+          description="Enter the client-facing fee and tax details used in the proposal."
         />
 
         <div className="space-y-3">
@@ -545,7 +560,7 @@ export function PackageForm({
               size="lg"
               className="w-full sm:w-auto"
               onClick={generatePackage}
-              disabled={isGenerating}
+              disabled={isGenerating || !selectedTrainer}
             >
               {isGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -560,7 +575,7 @@ export function PackageForm({
               size="lg"
               className="w-full sm:w-auto"
               onClick={savePackage}
-              disabled={!currentPackage || isSaving}
+              disabled={!currentPackage || isSaving || isGenerating}
             >
               {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Package
@@ -702,19 +717,9 @@ export function CommercialSetup({
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberField label="Participants" placeholder="Enter participant count" value={value.numberOfParticipants} onChange={(next) => updateNumber("numberOfParticipants", next)} />
-          <NumberField label="Training days" placeholder="Enter training days" value={value.numberOfTrainingDays} onChange={(next) => updateNumber("numberOfTrainingDays", next)} />
-          <NumberField label="Trainers" placeholder="Enter trainer count" value={value.numberOfTrainers} onChange={(next) => updateNumber("numberOfTrainers", next)} />
-          <NumberField label="Trainer day rate" placeholder="Enter trainer day rate" value={value.trainerDayRate} onChange={(next) => updateNumber("trainerDayRate", next)} />
-          <NumberField label="Venue cost" placeholder="Enter venue cost" value={value.venueCost} onChange={(next) => updateNumber("venueCost", next)} />
-          <NumberField label="F&B cost per person" placeholder="Enter food and beverage cost" value={value.foodAndBeverageCostPerPerson} onChange={(next) => updateNumber("foodAndBeverageCostPerPerson", next)} />
-          <NumberField label="Material cost per person" placeholder="Enter material cost" value={value.materialCostPerPerson} onChange={(next) => updateNumber("materialCostPerPerson", next)} />
-          <NumberField label="Admin cost" placeholder="Enter admin cost" value={value.adminCost} onChange={(next) => updateNumber("adminCost", next)} />
-          <NumberField label="Marketing cost" placeholder="Enter marketing cost" value={value.marketingCost} onChange={(next) => updateNumber("marketingCost", next)} />
-          <NumberField label="Travel cost" placeholder="Enter travel cost" value={value.travelCost} onChange={(next) => updateNumber("travelCost", next)} />
-          <NumberField label="Other cost" placeholder="Enter other cost" value={value.otherCost} onChange={(next) => updateNumber("otherCost", next)} />
-          <NumberField label="Target margin %" placeholder="Enter target margin percent" value={value.targetProfitMarginPercent} onChange={(next) => updateNumber("targetProfitMarginPercent", next)} />
+          <NumberField label="Professional fee (USD)" placeholder="Enter quoted professional fee" value={value.professionalFee} onChange={(next) => updateNumber("professionalFee", next)} />
           <NumberField label="Discount %" placeholder="Enter discount percent" value={value.discountPercent} onChange={(next) => updateNumber("discountPercent", next)} />
-          <NumberField label="Tax %" placeholder="Enter tax percent" value={value.taxPercent} onChange={(next) => updateNumber("taxPercent", next)} />
+          <NumberField label="VAT / tax %" placeholder="Enter VAT or tax percent" value={value.taxPercent} onChange={(next) => updateNumber("taxPercent", next)} />
         </div>
 
         {pricingOutputs.warnings.length > 0 ? (
@@ -1476,6 +1481,7 @@ export function OutputTabs({
             promise: pkg.promise,
             context: pkg.context,
             tone: pkg.tone,
+            proposalBrief: pkg.proposalBrief,
             pricingInputs: pkg.pricingInputs,
           },
           currentPackage: {

@@ -5,7 +5,12 @@ import type {
 } from "@/lib/knowledge";
 import type { TrainingPackage } from "@/lib/training-packages";
 import {
+  normalizeProposalBrief,
+  type ProposalBrief,
+} from "@/lib/proposal-brief";
+import {
   normalizeProposalContent,
+  proposalContentToMarkdown,
   type ProposalContent,
 } from "@/lib/proposal-content";
 import {
@@ -13,86 +18,79 @@ import {
   defaultPricingInputs,
   normalizePricingInputs,
   type PricingInputs,
-  type PricingOutputs,
 } from "@/lib/pricing";
 
 type PackageRow = {
   id: string;
-  title: string;
-  audience: string;
+  course_title: string;
+  target_learners: string;
   duration: string;
-  client: string;
-  promise: string;
-  context: string | null;
-  tone: string | null;
+  client_name: string;
+  program_goal: string;
+  special_requirements: string | null;
   syllabus: string;
-  proposal: string;
-  proposal_content?: ProposalContent | null;
+  proposal_content: ProposalContent;
+  proposal_brief?: Partial<ProposalBrief> | null;
   pricing_inputs?: Partial<PricingInputs> | null;
-  pricing_outputs?: PricingOutputs | null;
   knowledge_used?: KnowledgeSourceNote[] | null;
   created_at: string;
   updated_at: string;
 };
 
 function toRow(pkg: TrainingPackage) {
-  return {
-    id: pkg.id,
+  const proposalContent = normalizeProposalContent(pkg.proposalContent, pkg.proposal, {
     title: pkg.title,
+    client: pkg.client,
     audience: pkg.audience,
     duration: pkg.duration,
-    client: pkg.client,
     promise: pkg.promise,
-    context: pkg.context,
-    tone: pkg.tone,
+    proposalBrief: pkg.proposalBrief,
+  });
+
+  return {
+    id: pkg.id,
+    course_title: pkg.title,
+    target_learners: pkg.audience,
+    duration: pkg.duration,
+    client_name: pkg.client,
+    program_goal: pkg.promise,
+    special_requirements: pkg.context,
     syllabus: pkg.syllabus,
-    proposal: pkg.proposal,
-    proposal_content: pkg.proposalContent,
+    proposal_content: proposalContent,
+    proposal_brief: pkg.proposalBrief,
     pricing_inputs: pkg.pricingInputs,
-    pricing_outputs: pkg.pricingOutputs,
     knowledge_used: pkg.knowledgeUsed ?? [],
     created_at: pkg.createdAt,
     updated_at: pkg.updatedAt,
   };
 }
 
-function withoutProposalContent(row: ReturnType<typeof toRow>) {
-  const { proposal_content: _proposalContent, ...rest } = row;
-  return rest;
-}
-
-function isMissingProposalContentColumn(error: { message?: string; code?: string }) {
-  const message = String(error.message ?? "").toLowerCase();
-
-  return (
-    error.code === "PGRST204" ||
-    (message.includes("proposal_content") &&
-      (message.includes("column") || message.includes("schema cache")))
-  );
-}
-
 function fromRow(row: PackageRow): TrainingPackage {
   const pricingInputs = normalizePricingInputs(row.pricing_inputs ?? defaultPricingInputs);
-  const pricingOutputs = row.pricing_outputs ?? calculatePricing(pricingInputs);
+  const pricingOutputs = calculatePricing(pricingInputs);
+  const proposalBrief = normalizeProposalBrief(row.proposal_brief);
+  const proposalContent = normalizeProposalContent(row.proposal_content, "", {
+    title: row.course_title,
+    client: row.client_name,
+    audience: row.target_learners,
+    duration: row.duration,
+    promise: row.program_goal,
+    proposalBrief,
+  });
 
   return {
     id: row.id,
-    title: row.title,
-    audience: row.audience,
+    title: row.course_title,
+    audience: row.target_learners,
     duration: row.duration,
-    client: row.client,
-    promise: row.promise,
-    context: row.context ?? "",
-    tone: row.tone ?? "",
+    client: row.client_name,
+    promise: row.program_goal,
+    context: row.special_requirements ?? "",
+    tone: "Executive, practical, commercially sharp",
     syllabus: row.syllabus,
-    proposal: row.proposal,
-    proposalContent: normalizeProposalContent(row.proposal_content, row.proposal, {
-      title: row.title,
-      client: row.client,
-      audience: row.audience,
-      duration: row.duration,
-      promise: row.promise,
-    }),
+    proposal: proposalContentToMarkdown(proposalContent),
+    proposalContent,
+    proposalBrief,
     commercialProposal: "",
     deckOutline: "",
     workbook: "",
@@ -155,21 +153,11 @@ export async function saveTrainingPackage(pkg: TrainingPackage) {
   }
 
   const scopedRow = withAppScope(toRow(packageToSave));
-  let result = await supabase
+  const result = await supabase
     .from("training_packages")
     .upsert(scopedRow, { onConflict: "id" })
     .select("*")
     .single();
-
-  if (result.error && isMissingProposalContentColumn(result.error)) {
-    result = await supabase
-      .from("training_packages")
-      .upsert(withAppScope(withoutProposalContent(toRow(packageToSave))), {
-        onConflict: "id",
-      })
-      .select("*")
-      .single();
-  }
 
   if (result.error) {
     throw new Error(result.error.message);

@@ -4,6 +4,7 @@ out
 dist
 *.log
 *.tsbuildinfo
+tmp/
 .env
 .env*.local
 !.env.example

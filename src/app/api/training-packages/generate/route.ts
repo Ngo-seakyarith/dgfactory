@@ -20,6 +20,7 @@ import {
   retrieveKnowledge,
 } from "@/lib/knowledge/retrieve";
 import { knowledgeSourceNotesFromResults } from "@/lib/knowledge";
+import { getTrainerById } from "@/lib/trainers";
 
 function friendlyError(error: unknown) {
   const message =
@@ -40,10 +41,27 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     const input = normalizeTrainingInput(body);
+    if (!getTrainerById(input.proposalBrief?.trainerId ?? "")) {
+      return NextResponse.json(
+        { error: "Select a DG Academy trainer before generating the package." },
+        { status: 400 },
+      );
+    }
     const pricingInputs = normalizePricingInputs(
       (body as { pricingInputs?: Partial<PricingInputs> }).pricingInputs,
     );
     const pricingOutputs = calculatePricing(pricingInputs);
+    const knowledgeBriefValues = Object.entries(input.proposalBrief ?? {})
+      .filter(
+        ([key]) =>
+          ![
+            "trainerImageUrl",
+            "trainerBio",
+            "trainerExperience",
+            "trainerQualifications",
+          ].includes(key),
+      )
+      .map(([, value]) => value);
     const knowledgeResults = await retrieveKnowledge({
       query: [
         input.courseTitle,
@@ -51,6 +69,7 @@ export async function POST(request: Request) {
         input.client,
         input.promise,
         input.context,
+        ...knowledgeBriefValues,
       ].join(" "),
       filters: { visibility: "Any" },
       limit: 6,

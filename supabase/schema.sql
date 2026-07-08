@@ -45,18 +45,16 @@ for each row execute function public.handle_new_auth_user();
 
 create table if not exists public.training_packages (
   id uuid primary key default gen_random_uuid(),
-  title text not null,
-  audience text not null,
+  course_title text not null,
+  target_learners text not null,
   duration text not null,
-  client text not null,
-  promise text not null,
-  context text,
-  tone text,
+  client_name text not null,
+  program_goal text not null,
+  special_requirements text,
   syllabus text not null,
-  proposal text not null,
-  proposal_content jsonb,
+  proposal_content jsonb not null,
+  proposal_brief jsonb not null default '{}'::jsonb,
   pricing_inputs jsonb not null default '{}'::jsonb,
-  pricing_outputs jsonb not null default '{}'::jsonb,
   knowledge_used jsonb not null default '[]'::jsonb,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -67,8 +65,8 @@ alter table public.training_packages enable row level security;
 create index if not exists idx_training_packages_updated_at
   on public.training_packages(updated_at desc);
 
-create index if not exists idx_training_packages_client
-  on public.training_packages(client);
+create index if not exists idx_training_packages_client_name
+  on public.training_packages(client_name);
 
 create table if not exists public.clients (
   id uuid primary key default gen_random_uuid(),

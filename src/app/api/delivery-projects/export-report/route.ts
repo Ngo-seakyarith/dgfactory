@@ -7,6 +7,7 @@ import {
 import { defaultPricingInputs, calculatePricing } from "@/lib/pricing";
 import { normalizeDeliveryProject, type DeliveryProject } from "@/lib/delivery";
 import type { TrainingPackage } from "@/lib/training-packages";
+import { emptyProposalBrief } from "@/lib/proposal-brief";
 
 const formats: ExportFormat[] = ["docx"];
 
@@ -57,6 +58,7 @@ export async function POST(request: Request) {
       syllabus: "",
       proposal: project.postTrainingReport,
       proposalContent: null,
+      proposalBrief: emptyProposalBrief,
       commercialProposal: "",
       deckOutline: "",
       workbook: "",

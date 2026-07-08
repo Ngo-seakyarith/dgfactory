@@ -12,10 +12,11 @@ const runtimeState =
     lastError: null,
   });
 
-export const brainModel = process.env.AI_BRAIN_MODEL?.trim() || "gpt-5.5";
+export const brainModel = "openai/gpt-5.5";
+export const brainReasoningEffort = "low" as const;
 
 export function isBrainApiKeyConfigured() {
-  return Boolean(process.env.OPENAI_API_KEY);
+  return Boolean(process.env.OPENROUTER_API_KEY);
 }
 
 export function recordBrainModelSuccess() {

@@ -7,6 +7,7 @@ import {
 import type { BrainAgentDefinition, BrainMode } from "@/lib/brain/agents";
 import {
   brainModel,
+  brainReasoningEffort,
   recordBrainModelError,
   recordBrainModelSuccess,
   getBrainModelStatus,
@@ -28,22 +29,29 @@ export type BrainResult<TOutput> = {
   notice?: string;
 };
 
-let openaiClient: OpenAI | null = null;
+let openRouterClient: OpenAI | null = null;
 
 export function getBrainModel() {
   return brainModel;
 }
 
-function getOpenAIClient() {
-  if (!process.env.OPENAI_API_KEY) {
+function getOpenRouterClient() {
+  if (!process.env.OPENROUTER_API_KEY) {
     return null;
   }
 
-  if (!openaiClient) {
-    openaiClient = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+  if (!openRouterClient) {
+    openRouterClient = new OpenAI({
+      apiKey: process.env.OPENROUTER_API_KEY,
+      baseURL: "https://openrouter.ai/api/v1",
+      defaultHeaders: {
+        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
+        "X-OpenRouter-Title": "DG Academy Training Production Factory",
+      },
+    });
   }
 
-  return openaiClient;
+  return openRouterClient;
 }
 
 function normalizeJsonSchema(schema: JsonSchema) {
@@ -89,7 +97,7 @@ export async function resolveAgentPrompt<TInput>({
   };
 }
 
-async function callOpenAI<TInput>({
+async function callOpenRouter<TInput>({
   client,
   agent,
   input,
@@ -105,6 +113,7 @@ async function callOpenAI<TInput>({
   const prompt = await resolveAgentPrompt({ agent, input });
   const completion = await client.chat.completions.create({
     model,
+    reasoning_effort: brainReasoningEffort,
     response_format: {
       type: "json_schema",
       json_schema: normalizeJsonSchema(schema),
@@ -124,7 +133,7 @@ async function callOpenAI<TInput>({
   const raw = completion.choices[0]?.message.content;
 
   if (!raw) {
-    throw new Error("OpenAI returned an empty Brain Layer response.");
+    throw new Error("OpenRouter returned an empty Brain Layer response.");
   }
 
   return JSON.parse(raw) as unknown;
@@ -136,11 +145,11 @@ export async function generateStructuredOutput<TInput, TOutput>({
   schema = agent.outputSchema,
   retries = 1,
 }: GenerateStructuredOutputOptions<TInput, TOutput>): Promise<BrainResult<TOutput>> {
-  const client = getOpenAIClient();
+  const client = getOpenRouterClient();
   const requestedModel = getBrainModel();
 
   if (!client) {
-    const error = new Error("OPENAI_API_KEY is required for Brain Layer generation.");
+    const error = new Error("OPENROUTER_API_KEY is required for Brain Layer generation.");
     recordBrainModelError(error);
     throw error;
   }
@@ -152,7 +161,7 @@ export async function generateStructuredOutput<TInput, TOutput>({
     attempts += 1;
 
     try {
-      const output = await callOpenAI({
+      const output = await callOpenRouter({
         client,
         agent: agent as BrainAgentDefinition<TInput, unknown>,
         input,
@@ -180,7 +189,7 @@ export async function generateStructuredOutput<TInput, TOutput>({
   recordBrainModelError(lastError);
   throw lastError instanceof Error
     ? lastError
-    : new Error("OpenAI Brain Layer generation failed.");
+    : new Error("OpenRouter Brain Layer generation failed.");
 }
 
 export { getBrainModelStatus };

@@ -8,9 +8,10 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 type AccountButtonProps = {
   isAuthenticated: boolean;
+  className?: string;
 };
 
-export function AccountButton({ isAuthenticated }: AccountButtonProps) {
+export function AccountButton({ isAuthenticated, className }: AccountButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
   async function signIn() {
@@ -53,6 +54,7 @@ export function AccountButton({ isAuthenticated }: AccountButtonProps) {
       variant={isAuthenticated ? "outline" : "gold"}
       onClick={isAuthenticated ? signOut : signIn}
       disabled={isLoading}
+      className={className}
     >
       {isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin" />

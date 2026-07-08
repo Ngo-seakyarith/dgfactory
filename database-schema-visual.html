@@ -1,0 +1,235 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DG Factory Database Schema</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #14211c;
+      --muted: #64716b;
+      --line: #d8dfdb;
+      --paper: #f5f7f5;
+      --card: #ffffff;
+      --green: #16614d;
+      --green-soft: #e6f2ed;
+      --gold: #9a6815;
+      --gold-soft: #fff3d5;
+      --blue: #315b78;
+      --blue-soft: #e9f2f8;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      background: var(--paper);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    header {
+      border-bottom: 1px solid var(--line);
+      background: #10251e;
+      color: white;
+    }
+    .header-inner, .content { width: min(1480px, calc(100% - 32px)); margin: 0 auto; }
+    .header-inner { padding: 28px 0 24px; }
+    .eyebrow { color: #99d8c1; font-size: 12px; font-weight: 800; text-transform: uppercase; }
+    h1 { margin: 7px 0 6px; font-size: 30px; line-height: 1.2; }
+    .subtitle { margin: 0; color: #c8d8d1; font-size: 14px; }
+    .stats { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
+    .stat { min-width: 125px; border: 1px solid #355047; padding: 10px 12px; border-radius: 6px; background: #183129; }
+    .stat strong { display: block; font-size: 20px; }
+    .stat span { color: #b9cdc5; font-size: 12px; }
+    .content { padding: 22px 0 48px; }
+    .toolbar {
+      position: sticky;
+      top: 0;
+      z-index: 4;
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) 240px;
+      gap: 12px;
+      padding: 12px 0;
+      background: rgba(245, 247, 245, .96);
+      backdrop-filter: blur(8px);
+    }
+    input, select {
+      width: 100%;
+      height: 42px;
+      border: 1px solid #bac6c0;
+      border-radius: 6px;
+      background: white;
+      color: var(--ink);
+      padding: 0 12px;
+      font: inherit;
+      outline: none;
+    }
+    input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 3px rgba(22,97,77,.12); }
+    .legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 6px 0 20px; color: var(--muted); font-size: 12px; }
+    .legend span { display: inline-flex; align-items: center; gap: 6px; }
+    .marker { display: inline-grid; place-items: center; min-width: 28px; height: 20px; border-radius: 4px; font-size: 10px; font-weight: 800; }
+    .pk { color: var(--gold); background: var(--gold-soft); }
+    .fk { color: var(--blue); background: var(--blue-soft); }
+    .section { margin: 0 0 30px; }
+    .section-head { display: flex; align-items: baseline; gap: 10px; margin: 0 0 12px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+    .section-head h2 { margin: 0; font-size: 18px; }
+    .section-head span { color: var(--muted); font-size: 12px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 14px; align-items: start; }
+    .table-card { overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: var(--card); box-shadow: 0 2px 8px rgba(20,33,28,.04); }
+    .table-card header { padding: 14px 15px 12px; border: 0; border-bottom: 1px solid var(--line); background: var(--green-soft); color: var(--ink); }
+    .table-card h3 { margin: 0; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-size: 15px; }
+    .table-card p { margin: 5px 0 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .field { display: grid; grid-template-columns: minmax(125px, 1fr) 90px auto; gap: 8px; align-items: center; min-height: 34px; padding: 7px 12px; border-bottom: 1px solid #edf0ee; font-size: 12px; }
+    .field:last-child { border-bottom: 0; }
+    .field-name { min-width: 0; overflow-wrap: anywhere; font-family: ui-monospace, SFMono-Regular, Consolas, monospace; font-weight: 700; }
+    .field-type { color: var(--muted); font-family: ui-monospace, SFMono-Regular, Consolas, monospace; }
+    .relation { grid-column: 1 / -1; color: var(--blue); font-size: 11px; }
+    .empty { border: 1px dashed #aebbb4; padding: 28px; text-align: center; color: var(--muted); background: white; }
+    @media (max-width: 680px) {
+      .header-inner, .content { width: min(100% - 20px, 1480px); }
+      .toolbar { grid-template-columns: 1fr; }
+      .grid { grid-template-columns: 1fr; }
+      h1 { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="eyebrow">DG Academy Factory</div>
+      <h1>Database Schema</h1>
+      <p class="subtitle">Visual mirror of <code>supabase/schema.sql</code></p>
+      <div class="stats">
+        <div class="stat"><strong id="tableCount">0</strong><span>tables</span></div>
+        <div class="stat"><strong id="fieldCount">0</strong><span>columns</span></div>
+        <div class="stat"><strong id="relationCount">0</strong><span>foreign keys</span></div>
+        <div class="stat"><strong id="groupCount">0</strong><span>domains</span></div>
+      </div>
+    </div>
+  </header>
+
+  <main class="content">
+    <div class="toolbar">
+      <input id="search" type="search" placeholder="Search tables or columns" aria-label="Search tables or columns">
+      <select id="groupFilter" aria-label="Filter by domain"></select>
+    </div>
+    <div class="legend">
+      <span><b class="marker pk">PK</b> Primary key</span>
+      <span><b class="marker fk">FK</b> Foreign key</span>
+      <span>Relationships show the referenced table and column.</span>
+    </div>
+    <div id="schema"></div>
+  </main>
+
+  <script>
+    const groups = {
+      "Access": "Authentication profiles and activity history",
+      "Packages & CRM": "Training packages, clients, opportunities, and delivery",
+      "Knowledge & Quality": "Knowledge retrieval, evaluations, prompts, and QA evidence",
+      "Operations": "Approvals, loops, improvements, and pilot operations",
+      "Client Portal": "Token-based client access, published items, and feedback",
+      "Adaptive Growth": "Signals, offer experiments, selection, and reusable learning"
+    };
+
+    const tables = [
+      {g:"Access",n:"profiles",d:"Google-authenticated people and approval state.",f:["id:uuid:PK|FK=auth.users.id","full_name:text","email:text","avatar_url:text","access_status:user_access_status","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Access",n:"audit_logs",d:"Who performed an application action and when.",f:["id:uuid:PK","actor:text","action:text","entity_type:text","entity_id:text","metadata:jsonb","created_at:timestamptz"]},
+
+      {g:"Packages & CRM",n:"training_packages",d:"Saved training inputs, generated syllabus, proposal, and pricing.",f:["id:uuid:PK","course_title:text","target_learners:text","duration:text","client_name:text","program_goal:text","special_requirements:text","syllabus:text","proposal_content:jsonb","proposal_brief:jsonb","pricing_inputs:jsonb","knowledge_used:jsonb","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Packages & CRM",n:"clients",d:"Client organizations and primary relationship details.",f:["id:uuid:PK","name:text","sector:text","contact_person:text","email:text","phone:text","notes:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Packages & CRM",n:"opportunities",d:"Commercial pipeline opportunities linked to clients.",f:["id:uuid:PK","client_id:uuid:FK=clients.id","title:text","training_need:text","estimated_value:numeric","status:text","probability_percent:numeric","expected_close_date:date","next_follow_up_date:date","notes:text","linked_package_id:uuid","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Packages & CRM",n:"delivery_projects",d:"Operational delivery record for sold training work.",f:["id:uuid:PK","opportunity_id:uuid:FK=opportunities.id","package_id:uuid:FK=training_packages.id","client_id:uuid:FK=clients.id","title:text","delivery_status:text","training_date:date","location:text","trainer_name:text","participant_count:numeric","notes:text","evaluation:jsonb","post_training_report:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Packages & CRM",n:"delivery_tasks",d:"Preparation and delivery checklist items.",f:["id:uuid:PK","delivery_project_id:uuid:FK=delivery_projects.id","title:text","category:text","status:text","due_date:date","owner:text","notes:text","created_at:timestamptz","updated_at:timestamptz"]},
+
+      {g:"Knowledge & Quality",n:"knowledge_documents",d:"Internal or client-safe source material for generation.",f:["id:uuid:PK","title:text","type:text","content:text","tags:text[]","source:text","visibility:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Knowledge & Quality",n:"knowledge_chunks",d:"Searchable segments derived from knowledge documents.",f:["id:uuid:PK","document_id:uuid:FK=knowledge_documents.id","chunk_index:numeric","content:text","embedding:jsonb","metadata:jsonb","created_at:timestamptz"]},
+      {g:"Knowledge & Quality",n:"output_evaluations",d:"Human or AI quality review of generated work.",f:["id:uuid:PK","package_id:uuid:FK=training_packages.id","delivery_project_id:uuid:FK=delivery_projects.id","output_type:text","score:numeric","reviewer_type:text","feedback:text","strengths:text[]","weaknesses:text[]","improvement_suggestions:text[]","risks:text[]","created_at:timestamptz"]},
+      {g:"Knowledge & Quality",n:"prompt_improvement_suggestions",d:"Reviewable prompt changes derived from evaluations.",f:["id:uuid:PK","source_evaluation_id:uuid:FK=output_evaluations.id","target_agent:text","current_prompt_summary:text","suggested_change:text","reason:text","status:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Knowledge & Quality",n:"prompt_templates",d:"Versioned system and user prompt templates.",f:["id:uuid:PK","agent_name:text","version:numeric","title:text","system_prompt:text","user_prompt_template:text","output_schema:jsonb","status:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Knowledge & Quality",n:"prompt_template_changes",d:"Activation and version-change history for prompts.",f:["id:uuid:PK","prompt_template_id:uuid:FK=prompt_templates.id","old_version:numeric","new_version:numeric","change_summary:text","reason:text","approved_by:text","created_at:timestamptz"]},
+      {g:"Knowledge & Quality",n:"eval_datasets",d:"Named evaluation suites for specific agents.",f:["id:uuid:PK","name:text","description:text","target_agent:text","status:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Knowledge & Quality",n:"eval_examples",d:"Inputs, rubrics, and expected summaries in an eval suite.",f:["id:uuid:PK","dataset_id:uuid:FK=eval_datasets.id","input:jsonb","expected_output_summary:text","rubric:jsonb","tags:text[]","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Knowledge & Quality",n:"eval_runs",d:"One execution of an evaluation dataset.",f:["id:uuid:PK","dataset_id:uuid:FK=eval_datasets.id","target_agent:text","model_name:text","status:text","average_score:numeric","started_at:timestamptz","completed_at:timestamptz","summary:text"]},
+      {g:"Knowledge & Quality",n:"eval_results",d:"Per-example score and regression evidence.",f:["id:uuid:PK","eval_run_id:uuid:FK=eval_runs.id","eval_example_id:uuid:FK=eval_examples.id","score:numeric","passed:boolean","strengths:text[]","weaknesses:text[]","regression_risk:text","output:jsonb","created_at:timestamptz"]},
+      {g:"Knowledge & Quality",n:"agent_traces",d:"Compact runtime traces for agent tasks.",f:["id:uuid:PK","workflow_id:text","agent_name:text","task_type:text","input_summary:text","output_summary:text","status:text","duration_ms:numeric","created_at:timestamptz"]},
+
+      {g:"Operations",n:"approval_requests",d:"Human decisions required before risky actions.",f:["id:uuid:PK","requested_by:text","action_type:text","payload:jsonb","status:text","risk_level:text","human_note:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Operations",n:"loop_runs",d:"Scheduled or manual business loop execution records.",f:["id:uuid:PK","loop_type:text","status:text","input:jsonb","output:jsonb","summary:text","recommendations:text[]","created_at:timestamptz","completed_at:timestamptz"]},
+      {g:"Operations",n:"improvement_opportunities",d:"Codex-ready product and workflow improvement work.",f:["id:uuid:PK","source_type:text","source_id:uuid","title:text","description:text","category:text","priority:numeric","status:text","recommended_action:text","codex_prompt:text","suggested_files:text[]","acceptance_criteria:text[]","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Operations",n:"pilot_goals",d:"Internal pilot targets and current progress.",f:["id:uuid:PK","title:text","target_number:numeric","current_number:numeric","status:text","notes:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Operations",n:"pilot_issues",d:"Problems reported during internal pilot use.",f:["id:uuid:PK","title:text","description:text","severity:text","status:text","related_page:text","related_package_id:uuid","related_opportunity_id:uuid","created_by:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Operations",n:"pilot_feedback",d:"Structured feedback from internal users.",f:["id:uuid:PK","rating:numeric","what_worked:text","what_was_confusing:text","what_should_improve:text","urgency:text","related_feature:text","related_page:text","related_package_id:uuid","related_opportunity_id:uuid","created_by:text","created_at:timestamptz"]},
+
+      {g:"Client Portal",n:"client_portal_access",d:"Hashed portal tokens scoped to one client.",f:["id:uuid:PK","client_id:uuid:FK=clients.id","contact_email:text","access_token_hash:text","status:text","expires_at:timestamptz","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Client Portal",n:"client_portal_items",d:"Client-visible published package or delivery items.",f:["id:uuid:PK","client_id:uuid:FK=clients.id","item_type:text","item_id:uuid","title:text","visibility:text","status:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Client Portal",n:"client_feedback",d:"Client ratings, decisions, and requested changes.",f:["id:uuid:PK","client_id:uuid:FK=clients.id","related_item_type:text","related_item_id:uuid","rating:numeric","comments:text","requested_changes:text","decision_status:text","next_step_preference:text","created_at:timestamptz"]},
+
+      {g:"Adaptive Growth",n:"market_signals",d:"Observed market needs treated as hypotheses.",f:["id:uuid:PK","title:text","description:text","source_type:text","source_name:text","sector:text","audience:text","urgency_score:numeric","confidence_score:numeric","tags:text[]","status:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Adaptive Growth",n:"offer_variants",d:"Testable training offer variants derived from signals.",f:["id:uuid:PK","signal_id:uuid:FK=market_signals.id","title:text","description:text","target_audience:text","sector:text","format:text","duration:text","promise:text","price_assumption:numeric","status:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Adaptive Growth",n:"growth_experiments",d:"Market tests for an offer variant.",f:["id:uuid:PK","offer_variant_id:uuid:FK=offer_variants.id","hypothesis:text","test_method:text","channel:text","start_date:date","end_date:date","success_criteria:text","owner:text","status:text","notes:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Adaptive Growth",n:"experiment_metrics",d:"Deterministic funnel and quality evidence.",f:["id:uuid:PK","experiment_id:uuid:FK=growth_experiments.id","impressions:numeric","inquiries:numeric","meetings:numeric","proposals_sent:numeric","deals_won:numeric","revenue:numeric","estimated_margin:numeric","delivery_quality_score:numeric","client_interest_score:numeric","strategic_fit_score:numeric","reusability_score:numeric","notes:text","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Adaptive Growth",n:"selection_decisions",d:"Human decision to continue, scale, park, or stop an offer.",f:["id:uuid:PK","offer_variant_id:uuid:FK=offer_variants.id","experiment_id:uuid:FK=growth_experiments.id","decision:text","fitness_score:numeric","rationale:text","next_action:text","decided_by:text","created_at:timestamptz"]},
+      {g:"Adaptive Growth",n:"learning_genome_items",d:"Reusable patterns learned from offer experiments.",f:["id:uuid:PK","title:text","type:text","content:text","source_offer_variant_id:uuid:FK=offer_variants.id","source_experiment_id:uuid:FK=growth_experiments.id","tags:text[]","confidence_score:numeric","status:text","created_at:timestamptz","updated_at:timestamptz"]}
+    ];
+
+    function fieldParts(value) {
+      const [name, type, flag = ""] = value.split(":");
+      const relation = flag.startsWith("FK=") ? flag.slice(3) : flag.includes("|FK=") ? flag.split("|FK=")[1] : "";
+      return { name, type, pk: flag.includes("PK"), relation };
+    }
+
+    const parsed = tables.map(table => ({ ...table, fields: table.f.map(fieldParts) }));
+    const groupNames = Object.keys(groups);
+    const search = document.getElementById("search");
+    const filter = document.getElementById("groupFilter");
+    const schema = document.getElementById("schema");
+
+    filter.innerHTML = `<option value="">All domains</option>${groupNames.map(group => `<option>${group}</option>`).join("")}`;
+    document.getElementById("tableCount").textContent = parsed.length;
+    document.getElementById("fieldCount").textContent = parsed.reduce((sum, table) => sum + table.fields.length, 0);
+    document.getElementById("relationCount").textContent = parsed.reduce((sum, table) => sum + table.fields.filter(field => field.relation).length, 0);
+    document.getElementById("groupCount").textContent = groupNames.length;
+
+    function escapeHtml(value) {
+      return value.replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"})[char]);
+    }
+
+    function render() {
+      const query = search.value.trim().toLowerCase();
+      const selectedGroup = filter.value;
+      let visibleCount = 0;
+
+      schema.innerHTML = groupNames.map(group => {
+        if (selectedGroup && selectedGroup !== group) return "";
+        const matching = parsed.filter(table => {
+          if (table.g !== group) return false;
+          const haystack = `${table.n} ${table.d} ${table.fields.map(field => `${field.name} ${field.type} ${field.relation}`).join(" ")}`.toLowerCase();
+          return !query || haystack.includes(query);
+        });
+        if (!matching.length) return "";
+        visibleCount += matching.length;
+
+        const cards = matching.map(table => `
+          <article class="table-card">
+            <header><h3>${escapeHtml(table.n)}</h3><p>${escapeHtml(table.d)}</p></header>
+            <div>${table.fields.map(field => `
+              <div class="field">
+                <span class="field-name">${escapeHtml(field.name)}</span>
+                <span class="field-type">${escapeHtml(field.type)}</span>
+                <span>${field.pk ? '<b class="marker pk">PK</b>' : ''}${field.relation ? '<b class="marker fk">FK</b>' : ''}</span>
+                ${field.relation ? `<span class="relation">References ${escapeHtml(field.relation)}</span>` : ''}
+              </div>`).join("")}
+            </div>
+          </article>`).join("");
+
+        return `<section class="section"><div class="section-head"><h2>${escapeHtml(group)}</h2><span>${escapeHtml(groups[group])} · ${matching.length} tables</span></div><div class="grid">${cards}</div></section>`;
+      }).join("");
+
+      if (!visibleCount) schema.innerHTML = '<div class="empty">No tables match this search.</div>';
+    }
+
+    search.addEventListener("input", render);
+    filter.addEventListener("change", render);
+    render();
+  </script>
+</body>
+</html>

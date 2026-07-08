@@ -4,6 +4,7 @@ import {
   regeneratePackageSection,
   type RegeneratablePackageSection,
 } from "@/lib/brain/regeneratePackageSection";
+import { getTrainerById } from "@/lib/trainers";
 import type { TrainingPackageOutputs } from "@/lib/training-packages";
 
 const sections: RegeneratablePackageSection[] = [
@@ -29,6 +30,13 @@ export async function POST(request: Request) {
     if (!body.packageInput || !body.currentPackage) {
       return NextResponse.json(
         { error: "Package input and current package outputs are required." },
+        { status: 400 },
+      );
+    }
+
+    if (!getTrainerById(body.packageInput.proposalBrief?.trainerId ?? "")) {
+      return NextResponse.json(
+        { error: "Select a DG Academy trainer before regenerating the package." },
         { status: 400 },
       );
     }

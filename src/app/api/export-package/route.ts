@@ -8,6 +8,7 @@ import {
 } from "@/lib/export-package";
 import { requireApproved } from "@/lib/route-guards";
 import type { TrainingPackage } from "@/lib/training-packages";
+import { getTrainerById } from "@/lib/trainers";
 
 const formats: ExportFormat[] = ["docx", "pptx", "md"];
 const targets: ExportTarget[] = [
@@ -55,6 +56,17 @@ export async function POST(request: Request) {
     if (body.format === "pptx" && target !== "slides") {
       return NextResponse.json(
         { error: "PPTX export is available for slide deck outlines only." },
+        { status: 400 },
+      );
+    }
+
+    if (
+      body.format === "docx" &&
+      target === "proposal" &&
+      !getTrainerById(body.package.proposalBrief?.trainerId ?? "")
+    ) {
+      return NextResponse.json(
+        { error: "Select a DG Academy trainer before exporting the proposal." },
         { status: 400 },
       );
     }

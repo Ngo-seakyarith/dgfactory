@@ -35,6 +35,7 @@ export async function regeneratePackageSection({
     promise: packageInput.promise,
     context: packageInput.context,
     tone: packageInput.tone,
+    proposalBrief: packageInput.proposalBrief,
   };
   const baseContext = {
     input: clientPackageInput,
@@ -57,6 +58,7 @@ export async function regeneratePackageSection({
         promise: packageInput.promise,
         context: packageInput.context,
         tone: packageInput.tone,
+        proposalBrief: packageInput.proposalBrief,
         pricingSummary: pricingFacts.summary,
       },
     });

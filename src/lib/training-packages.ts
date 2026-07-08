@@ -7,6 +7,10 @@ import {
 } from "@/lib/pricing";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import {
+  normalizeProposalBrief,
+  type ProposalBrief,
+} from "@/lib/proposal-brief";
+import {
   normalizeProposalContent,
   proposalContentToMarkdown,
   type ProposalContent,
@@ -20,6 +24,7 @@ export type TrainingPackageInput = {
   promise: string;
   context: string;
   tone: string;
+  proposalBrief?: ProposalBrief;
 };
 
 export type QualityChecklistItem = {
@@ -36,13 +41,14 @@ export type TrainingPackageOutputs = {
 
 export type PackageOutputKey = "syllabus" | "proposal";
 
-export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle"> &
+export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle" | "proposalBrief"> &
   {
     id: string;
     title: string;
     syllabus: string;
     proposal: string;
     proposalContent: ProposalContent | null;
+    proposalBrief: ProposalBrief;
     pricingInputs: PricingInputs;
     pricingOutputs: PricingOutputs;
     commercialProposal: string;
@@ -107,6 +113,7 @@ export function normalizeTrainingInput(
     promise: String(input.promise).trim(),
     context: String(input.context ?? "").trim(),
     tone: String(input.tone ?? "Executive, practical, clear").trim(),
+    proposalBrief: normalizeProposalBrief(input.proposalBrief),
   };
 }
 
@@ -118,7 +125,9 @@ export function createTrainingOutputTemplate(
     : "Context to weave through the program: practical DG Academy examples, executive decision-making, and hands-on AI workflow design.";
 
   const proposalContent: ProposalContent = {
-    coverTitle: "Customized Training Proposal",
+    coverTitle: input.proposalBrief?.coverHeading || "Customized Training Proposal",
+    coverSubtitle: input.proposalBrief?.coverSubtitle ?? "",
+    certificationLabel: input.proposalBrief?.certificationLabel ?? "",
     courseTitle: input.courseTitle,
     client: input.client,
     courseOverview: [
@@ -167,11 +176,20 @@ export function createTrainingOutputTemplate(
       participants: input.audience,
     },
     trainer: {
-      name: "DG Academy Facilitator",
-      title: "Senior Training Facilitator",
-      bio: [
-        "DG Academy will assign a facilitator with practical business training experience aligned to the client context.",
-      ],
+      name: input.proposalBrief?.trainerName || "DG Academy Facilitator",
+      title: input.proposalBrief?.trainerTitle || "Trainer & Speaker",
+      imageUrl: input.proposalBrief?.trainerImageUrl ?? "",
+      bio: input.proposalBrief?.trainerBio
+        ? [input.proposalBrief.trainerBio]
+        : [
+            "DG Academy will assign a facilitator with practical business training experience aligned to the client context.",
+          ],
+      experience: input.proposalBrief?.trainerExperience
+        ? input.proposalBrief.trainerExperience.split(/\r?\n/).filter(Boolean)
+        : [],
+      qualifications: input.proposalBrief?.trainerQualifications
+        ? input.proposalBrief.trainerQualifications.split(/\r?\n/).filter(Boolean)
+        : [],
     },
     professionalFee: {
       included: [
@@ -184,7 +202,13 @@ export function createTrainingOutputTemplate(
       totalFee: "Professional fee to be confirmed from Commercial Setup.",
       clientResponsibilities: ["Training venue", "Meals or refreshments", "Participants"],
       billingArrangement: "Billing arrangement to be confirmed.",
+      paymentInstructions: input.proposalBrief?.paymentInstructions ?? "",
       acceptanceText: "Client acknowledgement and acceptance to be confirmed.",
+    },
+    signatory: {
+      name: "Mr. Hin Sopheap",
+      title: "Executive Director",
+      date: input.proposalBrief?.proposalDate ?? "",
     },
   };
 
@@ -250,6 +274,7 @@ export function normalizeTrainingOutputs(
       audience: input.audience,
       duration: input.duration,
       promise: input.promise,
+      proposalBrief: input.proposalBrief,
     },
   );
 
@@ -317,7 +342,9 @@ export function buildPackageFromParts({
 }): TrainingPackage {
   const normalizedPricingInputs = normalizePricingInputs(pricingInputs);
   const pricingOutputs = calculatePricing(normalizedPricingInputs);
-  const normalizedOutputs = normalizeTrainingOutputs(outputs, input);
+  const proposalBrief = normalizeProposalBrief(input.proposalBrief);
+  const normalizedInput: TrainingPackageInput = { ...input, proposalBrief };
+  const normalizedOutputs = normalizeTrainingOutputs(outputs, normalizedInput);
 
   return {
     title: input.courseTitle,
@@ -327,6 +354,7 @@ export function buildPackageFromParts({
     promise: input.promise,
     context: input.context,
     tone: input.tone,
+    proposalBrief,
     ...normalizedOutputs,
     commercialProposal: "",
     proposalContent: normalizedOutputs.proposalContent ?? null,

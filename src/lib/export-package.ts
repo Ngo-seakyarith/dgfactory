@@ -1,15 +1,20 @@
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
+
 import {
   AlignmentType,
+  BorderStyle,
   Document,
+  Footer,
   HeadingLevel,
+  ImageRun,
+  LineRuleType,
   Packer,
   PageBreak,
   Paragraph,
-  Table,
-  TableCell,
-  TableRow,
+  Tab,
+  TabStopType,
   TextRun,
-  WidthType,
 } from "docx";
 
 import {
@@ -18,12 +23,14 @@ import {
   type TrainingPackage,
 } from "@/lib/training-packages";
 import {
+  formatMoney,
   pricingSummaryToMarkdown,
 } from "@/lib/pricing";
 import {
   normalizeProposalContent,
   type ProposalContent,
 } from "@/lib/proposal-content";
+import { isTrustedTrainerImageUrl } from "@/lib/trainers";
 
 export type ExportFormat = "docx" | "pptx" | "md";
 export type ExportTarget =
@@ -46,6 +53,117 @@ type DocumentSection = {
   title: string;
   body: string;
 };
+
+let logoDataPromise: Promise<Buffer | null> | null = null;
+let signatureImageDataPromise: Promise<Buffer | null> | null = null;
+const trainerImagePromises = new Map<string, Promise<TrainerImageData>>();
+
+type TrainerImageData = {
+  data: Buffer;
+  type: "jpg" | "png";
+  width: number;
+  height: number;
+};
+
+function loadLogoData() {
+  if (!logoDataPromise) {
+    logoDataPromise = readFile(join(process.cwd(), "public", "app-logo.png")).catch(
+      () => null,
+    );
+  }
+
+  return logoDataPromise;
+}
+
+function imageDimensions(data: Buffer, type: "jpg" | "png") {
+  if (type === "png" && data.length >= 24) {
+    return { width: data.readUInt32BE(16), height: data.readUInt32BE(20) };
+  }
+
+  if (type === "jpg") {
+    let offset = 2;
+    while (offset + 8 < data.length) {
+      if (data[offset] !== 0xff) {
+        offset += 1;
+        continue;
+      }
+
+      const marker = data[offset + 1];
+      const segmentLength = data.readUInt16BE(offset + 2);
+      if ([0xc0, 0xc1, 0xc2, 0xc3, 0xc5, 0xc6, 0xc7, 0xc9, 0xca, 0xcb, 0xcd, 0xce, 0xcf].includes(marker)) {
+        return {
+          width: data.readUInt16BE(offset + 7),
+          height: data.readUInt16BE(offset + 5),
+        };
+      }
+      if (segmentLength < 2) break;
+      offset += segmentLength + 2;
+    }
+  }
+
+  return { width: 128, height: 139 };
+}
+
+async function fetchTrainerImage(imageUrl: string): Promise<TrainerImageData> {
+  if (!isTrustedTrainerImageUrl(imageUrl)) {
+    throw new Error("The selected trainer photo URL is not an approved ImageKit asset.");
+  }
+
+  const response = await fetch(imageUrl, {
+    headers: { Accept: "image/png,image/jpeg" },
+    signal: AbortSignal.timeout(15_000),
+  });
+  if (!response.ok) {
+    throw new Error(`Unable to load the selected trainer photo (${response.status}).`);
+  }
+
+  const data = Buffer.from(await response.arrayBuffer());
+  if (data.length === 0 || data.length > 10 * 1024 * 1024) {
+    throw new Error("The selected trainer photo is empty or too large.");
+  }
+  const isPng =
+    data.length >= 8 && data.subarray(0, 8).equals(Buffer.from("89504e470d0a1a0a", "hex"));
+  const isJpeg = data.length >= 2 && data[0] === 0xff && data[1] === 0xd8;
+  const type = isPng ? "png" : isJpeg ? "jpg" : null;
+  if (!type) {
+    throw new Error("The selected trainer photo returned invalid image data.");
+  }
+
+  return { data, type, ...imageDimensions(data, type) };
+}
+
+function loadTrainerImageData(imageUrl: string) {
+  const existing = trainerImagePromises.get(imageUrl);
+  if (existing) return existing;
+
+  const pending = fetchTrainerImage(imageUrl).catch((error) => {
+    trainerImagePromises.delete(imageUrl);
+    throw error;
+  });
+  trainerImagePromises.set(imageUrl, pending);
+  return pending;
+}
+
+function fitImage(
+  image: Pick<TrainerImageData, "width" | "height">,
+  maxWidth: number,
+  maxHeight: number,
+) {
+  const scale = Math.min(maxWidth / image.width, maxHeight / image.height);
+  return {
+    width: Math.max(1, Math.round(image.width * scale)),
+    height: Math.max(1, Math.round(image.height * scale)),
+  };
+}
+
+function loadSignatureImageData() {
+  if (!signatureImageDataPromise) {
+    signatureImageDataPromise = readFile(
+      join(process.cwd(), "public", "signature-hin-sopheap.png"),
+    ).catch(() => null);
+  }
+  return signatureImageDataPromise;
+}
 
 function filePart(value: string) {
   return (
@@ -278,16 +396,28 @@ function createZip(files: Array<{ name: string; content: string | Buffer }>) {
 
 function docxHeading(text: string, level: typeof HeadingLevel[keyof typeof HeadingLevel]) {
   return new Paragraph({
-    text,
+    children: [
+      docxText(text, {
+        bold: true,
+        color: "000000",
+        size: level === HeadingLevel.HEADING_1 ? 30 : 26,
+      }),
+    ],
     heading: level,
+    keepNext: true,
     spacing: { before: 240, after: 120 },
   });
 }
 
-function docxText(text: string, options: { bold?: boolean; size?: number } = {}) {
+function docxText(
+  text: string,
+  options: { bold?: boolean; color?: string; size?: number } = {},
+) {
   return new TextRun({
     text,
     bold: options.bold,
+    color: options.color,
+    font: "Arial",
     size: options.size ?? 22,
   });
 }
@@ -301,9 +431,24 @@ function docxParagraph(text: string) {
 
 function docxBullet(text: string) {
   return new Paragraph({
-    text,
+    children: [docxText(text)],
     bullet: { level: 0 },
     spacing: { after: 80 },
+  });
+}
+
+function docxLabeledBullet(label: string, value: string) {
+  return new Paragraph({
+    children: [docxText(`${label}: `, { bold: true }), docxText(value)],
+    bullet: { level: 0 },
+    spacing: { after: 100 },
+  });
+}
+
+function docxLabeledParagraph(label: string, value: string) {
+  return new Paragraph({
+    children: [docxText(`${label}: `, { bold: true }), docxText(value)],
+    spacing: { after: 100 },
   });
 }
 
@@ -315,42 +460,245 @@ function pageBreakParagraph() {
   return new Paragraph({ children: [new PageBreak()] });
 }
 
-function sectionChildren(title: string, body: string | string[]) {
-  const children: Paragraph[] = [docxHeading(title, HeadingLevel.HEADING_1)];
-
-  if (Array.isArray(body)) {
-    body.forEach((item) => children.push(docxBullet(item)));
-  } else {
-    body
-      .split(/\n{2,}/)
-      .map((item) => item.trim())
-      .filter(Boolean)
-      .forEach((item) => children.push(docxParagraph(item)));
-  }
-
-  return children;
+function logoParagraph(
+  logoData: Buffer | null,
+  size: number,
+  spacing: { before?: number; after?: number },
+) {
+  return logoData
+    ? new Paragraph({
+        children: [
+          new ImageRun({
+            type: "png",
+            data: logoData,
+            transformation: { width: size, height: size },
+            altText: {
+              title: "DG Academy",
+              description: "DG Academy logo",
+              name: "DG Academy logo",
+            },
+          }),
+        ],
+        alignment: AlignmentType.CENTER,
+        spacing,
+      })
+    : new Paragraph({
+        children: [docxText("DG Academy", { bold: true, size: 28 })],
+        alignment: AlignmentType.CENTER,
+        spacing,
+      });
 }
 
-function tableCell(text: string, bold = false) {
-  return new TableCell({
+function exportFooter() {
+  const footerText = (text: string, color = "595959") =>
+    new TextRun({ text, color, font: "Calibri Light", size: 22 });
+  const footerSymbol = (
+    text: string,
+    color: string,
+    font = "Segoe UI Symbol",
+  ) => new TextRun({ text, color, font, size: 30, position: "-1pt" });
+  const footerLink = (text: string) =>
+    new TextRun({
+      text,
+      color: "0070C0",
+      font: "Calibri Light",
+      size: 22,
+      underline: {},
+    });
+  const footerTab = () => new TextRun({ children: [new Tab()] });
+
+  return new Footer({
     children: [
       new Paragraph({
-        children: [docxText(text, { bold })],
+        children: [
+          footerText(
+            "Address: 9th Floor, PPIU Building Street 169, Sangkat Veal Vong, Khan 7 Makara, Phnom Penh, Cambodia.",
+            "404040",
+          ),
+        ],
+        alignment: AlignmentType.CENTER,
+        border: {
+          top: {
+            style: BorderStyle.SINGLE,
+            color: "4472C4",
+            size: 8,
+            space: 8,
+          },
+        },
+        indent: { left: -600, right: -600 },
+        spacing: { after: 100 },
+      }),
+      new Paragraph({
+        children: [
+          footerSymbol("\u260E", "E4C36A"),
+          footerText(" 095 666 788"),
+          footerTab(),
+          footerSymbol("\u2709", "009FE3"),
+          footerText(" "),
+          footerLink("contact@dgdemy.org"),
+          footerTab(),
+          footerSymbol("\uD83C\uDF10", "009FE3", "Segoe UI Emoji"),
+          footerText(" "),
+          footerLink("www.dgdemy.org"),
+        ],
+        tabStops: [
+          { type: TabStopType.LEFT, position: 3600 },
+          { type: TabStopType.LEFT, position: 6900 },
+        ],
+        indent: { left: -600, right: -600 },
         spacing: { after: 0 },
       }),
     ],
   });
 }
 
-function keyValueTable(rows: Array<[string, string]>) {
-  return new Table({
-    width: { size: 100, type: WidthType.PERCENTAGE },
-    rows: rows.map(
-      ([label, value]) =>
-        new TableRow({
-          children: [tableCell(label, true), tableCell(value)],
-        }),
-    ),
+function sectionChildren(title: string, body: string | string[]) {
+  if (Array.isArray(body)) {
+    const items = body.map((item) => item.trim()).filter(Boolean);
+    return items.length > 0
+      ? [
+          docxHeading(title, HeadingLevel.HEADING_1),
+          ...items.map((item) => docxBullet(item)),
+        ]
+      : [];
+  }
+
+  const paragraphs = body
+    .split(/\n{2,}/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  return paragraphs.length > 0
+    ? [
+        docxHeading(title, HeadingLevel.HEADING_1),
+        ...paragraphs.map((item) => docxParagraph(item)),
+      ]
+    : [];
+}
+
+function wrapCoverText(text: string, maxCharacters: number) {
+  const words = text.trim().split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+
+  words.forEach((word) => {
+    const current = lines.at(-1);
+    if (!current || `${current} ${word}`.length > maxCharacters) {
+      lines.push(word);
+      return;
+    }
+    lines[lines.length - 1] = `${current} ${word}`;
+  });
+
+  return lines.length > 0 ? lines : [text];
+}
+
+function coverTextRuns(
+  lines: string[],
+  options: { bold?: boolean; color?: string; size: number },
+) {
+  return lines.flatMap((line, index) => [
+    ...(index > 0 ? [new TextRun({ break: 1 })] : []),
+    docxText(line, options),
+  ]);
+}
+
+function proposalRun(
+  text: string,
+  options: {
+    bold?: boolean;
+    italics?: boolean;
+    font?: string;
+    size?: number;
+  } = {},
+) {
+  return new TextRun({
+    text,
+    bold: options.bold,
+    italics: options.italics,
+    font: options.font ?? "Calibri",
+    size: options.size ?? 24,
+  });
+}
+
+function proposalHeading(text: string, before = 260, after = 260) {
+  return new Paragraph({
+    children: [proposalRun(text, { bold: true, font: "Arial", size: 28 })],
+    spacing: { before, after },
+    keepNext: true,
+  });
+}
+
+function proposalParagraph(
+  text: string,
+  options: {
+    bold?: boolean;
+    italics?: boolean;
+    font?: string;
+    size?: number;
+    before?: number;
+    after?: number;
+    alignment?: (typeof AlignmentType)[keyof typeof AlignmentType];
+  } = {},
+) {
+  return new Paragraph({
+    children: [proposalRun(text, options)],
+    alignment: options.alignment,
+    spacing: {
+      before: options.before ?? 0,
+      after: options.after ?? 180,
+      line: 336,
+      lineRule: LineRuleType.AT_LEAST,
+    },
+  });
+}
+
+function proposalBullet(
+  text: string,
+  font = "Calibri",
+  size = 24,
+  after = 70,
+) {
+  return new Paragraph({
+    children: [proposalRun(text, { font, size })],
+    bullet: { level: 0 },
+    indent: { left: 360, hanging: 360 },
+    spacing: { after, line: 330, lineRule: LineRuleType.AT_LEAST },
+  });
+}
+
+function proposalSessionChildren(item: string, index: number) {
+  const [headingSource, detailSource] = item.includes("|")
+    ? item.split(/\s*\|\s*/, 2)
+    : [`Session ${index + 1}`, item.replace(/^Session\s+\d+\s*:\s*/i, "")];
+  const heading = headingSource.trim() || `Session ${index + 1}`;
+  const details = detailSource
+    .split(/;\s*/)
+    .map((detail) => detail.trim())
+    .filter(Boolean);
+
+  return [
+    proposalParagraph(heading, {
+      bold: true,
+      font: "Calibri Light",
+      size: 26,
+      before: 160,
+      after: 80,
+    }),
+    ...details.map((detail) => proposalBullet(detail)),
+  ];
+}
+
+function proposalScheduleBullet(label: string, value: string) {
+  return new Paragraph({
+    children: [
+      proposalRun(label),
+      new TextRun({ children: [new Tab()] }),
+      proposalRun(`: ${value}`),
+    ],
+    bullet: { level: 0 },
+    indent: { left: 360, hanging: 360 },
+    tabStops: [{ type: TabStopType.LEFT, position: 2880 }],
+    spacing: { after: 100, line: 336, lineRule: LineRuleType.AT_LEAST },
   });
 }
 
@@ -390,72 +738,314 @@ function markdownToDocxChildren(markdown: string) {
   return children;
 }
 
-function proposalDocxChildren(content: ProposalContent) {
+function proposalDocxChildren(
+  content: ProposalContent,
+  totalFee: string,
+  participantCount: number,
+  logoData: Buffer | null,
+  trainerImageData: TrainerImageData | null,
+  signatureImageData: Buffer | null,
+) {
   const title = content.coverTitle || "Customized Training Proposal";
+  const courseTitleLines = wrapCoverText(content.courseTitle, 18);
+  courseTitleLines[0] = `\u201C${courseTitleLines[0]}`;
+  courseTitleLines[courseTitleLines.length - 1] = `${courseTitleLines.at(-1)}\u201D`;
+  const sessions = content.contentOutlines.flatMap((item, index) =>
+    proposalSessionChildren(item, index),
+  );
+  const firstPageSessions = content.contentOutlines
+    .slice(0, 3)
+    .flatMap((item, index) => proposalSessionChildren(item, index));
+  const secondPageSessions = content.contentOutlines
+    .slice(3)
+    .flatMap((item, index) => proposalSessionChildren(item, index + 3));
+  const trainerImageSize = trainerImageData
+    ? fitImage(trainerImageData, 150, 180)
+    : null;
+  const signatureTabs = [{ type: TabStopType.LEFT, position: 5760 }];
+  const participantLabel =
+    participantCount > 0 ? `${participantCount} Pax` : content.schedule.participants;
 
   return [
+    logoParagraph(logoData, 120, { before: 0, after: 480 }),
     new Paragraph({
-      children: [docxText("DG Academy", { bold: true, size: 28 })],
+      children: [docxText(title, { size: 28 })],
       alignment: AlignmentType.CENTER,
-      spacing: { after: 360 },
+      spacing: { after: 320 },
     }),
     new Paragraph({
-      children: [docxText(title, { bold: true, size: 40 })],
+      children: [docxText("On", { size: 28 })],
       alignment: AlignmentType.CENTER,
-      spacing: { after: 240 },
+      spacing: { after: 20 },
     }),
     new Paragraph({
-      children: [docxText("On", { size: 24 })],
+      children: coverTextRuns(courseTitleLines, {
+        bold: true,
+        color: "0070C0",
+        size: 72,
+      }),
       alignment: AlignmentType.CENTER,
-      spacing: { after: 120 },
+      spacing: {
+        after: 528,
+        line: 1244,
+        lineRule: LineRuleType.EXACT,
+      },
+    }),
+    ...(content.coverSubtitle
+      ? [
+          new Paragraph({
+            children: coverTextRuns(wrapCoverText(content.coverSubtitle, 40), {
+              bold: true,
+              color: "0070C0",
+              size: 48,
+            }),
+            alignment: AlignmentType.CENTER,
+            spacing: {
+              after: 944,
+              line: 596,
+              lineRule: LineRuleType.EXACT,
+            },
+          }),
+        ]
+      : []),
+    ...(content.certificationLabel
+      ? [
+          new Paragraph({
+            children: coverTextRuns(
+              wrapCoverText(content.certificationLabel, 38),
+              {
+                bold: true,
+                color: "0070C0",
+                size: 48,
+              },
+            ),
+            alignment: AlignmentType.CENTER,
+            spacing: {
+              after: 374,
+              line: 826,
+              lineRule: LineRuleType.EXACT,
+            },
+          }),
+        ]
+      : []),
+    new Paragraph({
+      children: [docxText("for", { bold: true, color: "0070C0", size: 52 })],
+      alignment: AlignmentType.CENTER,
+      spacing: { after: 460 },
     }),
     new Paragraph({
-      children: [docxText(content.courseTitle, { bold: true, size: 32 })],
+      children: [
+        docxText(content.client, { bold: true, color: "0070C0", size: 52 }),
+      ],
       alignment: AlignmentType.CENTER,
-      spacing: { after: 180 },
-    }),
-    new Paragraph({
-      children: [docxText(`at ${content.client}`, { bold: true, size: 28 })],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 720 },
+      spacing: { after: 0 },
     }),
     pageBreakParagraph(),
-    ...sectionChildren("Course Overview", content.courseOverview.join("\n\n")),
-    ...sectionChildren("Course Objectives", content.courseObjectives),
-    ...sectionChildren(
-      "Expected Learning Outcomes",
-      content.expectedLearningOutcomes,
+    proposalHeading("I. Course Overview", 0),
+    ...content.courseOverview.map((item) => proposalParagraph(item)),
+    proposalHeading("II. Course Objectives"),
+    proposalParagraph(
+      "Upon completion of this training program, participants will be able to:",
+      { after: 140 },
     ),
-    ...sectionChildren("Content Outlines", content.contentOutlines),
-    ...sectionChildren("Who Should Attend", content.whoShouldAttend),
-    ...sectionChildren("Training Methodology", content.trainingMethodology),
-    ...sectionChildren("Training and Coaching Tools", content.trainingTools),
-    ...sectionChildren("Training Evaluation", content.trainingEvaluation),
-    docxHeading("Schedule", HeadingLevel.HEADING_1),
-    keyValueTable([
-      ["Course Duration", content.schedule.duration],
-      ["Date", content.schedule.date],
-      ["Time", content.schedule.time],
-      ["Venue", content.schedule.venue],
-      ["Participants", content.schedule.participants],
-    ]),
-    emptyParagraph(),
-    docxHeading("Trainer", HeadingLevel.HEADING_1),
-    docxParagraph(
-      [content.trainer.name, content.trainer.title].filter(Boolean).join(" - "),
+    ...content.courseObjectives.map((item) => proposalBullet(item)),
+    proposalHeading("III. Content Outlines"),
+    ...firstPageSessions,
+    pageBreakParagraph(),
+    ...(secondPageSessions.length > 0 ? secondPageSessions : sessions.slice(6)),
+    proposalHeading("IV. Training Methodology"),
+    ...content.trainingMethodology.map((item) => proposalBullet(item)),
+    proposalHeading("V. Schedule"),
+    proposalScheduleBullet("Course Duration", content.schedule.duration),
+    proposalScheduleBullet("Date", content.schedule.date),
+    proposalScheduleBullet("Time", content.schedule.time),
+    proposalScheduleBullet("Venue", content.schedule.venue),
+    proposalScheduleBullet("Participants", participantLabel),
+    pageBreakParagraph(),
+    proposalHeading("Trainers", 0),
+    ...(trainerImageData
+      ? [
+          new Paragraph({
+            children: [
+              new ImageRun({
+                type: trainerImageData.type,
+                data: trainerImageData.data,
+                transformation: trainerImageSize ?? { width: 128, height: 139 },
+                altText: {
+                  title: content.trainer.name,
+                  description: `${content.trainer.name}, DG Academy trainer`,
+                  name: `${content.trainer.name} portrait`,
+                },
+              }),
+            ],
+            indent: { left: 300 },
+            spacing: { before: 72, after: 180 },
+          }),
+        ]
+      : []),
+    proposalParagraph(content.trainer.name, {
+        bold: true,
+        font: "Arial",
+        size: 24,
+        after: 160,
+    }),
+    proposalParagraph(content.trainer.title, {
+        bold: true,
+        italics: true,
+        font: "Arial",
+        size: 24,
+        after: 220,
+    }),
+    ...content.trainer.bio.map((item, index) =>
+      proposalParagraph(item, {
+        font: "Arial",
+        size: 24,
+        alignment: AlignmentType.JUSTIFIED,
+        after: index === content.trainer.bio.length - 1 ? 0 : 180,
+      }),
     ),
-    ...content.trainer.bio.map((item) => docxParagraph(item)),
-    docxHeading("Professional Fee", HeadingLevel.HEADING_1),
-    docxParagraph("The training package includes:"),
-    ...content.professionalFee.included.map((item) => docxBullet(item)),
-    docxParagraph(content.professionalFee.totalFee),
-    docxParagraph(`${content.client} will be responsible for the following:`),
+    ...(content.trainer.experience.length > 0
+      ? [
+          proposalHeading("Experience", 260, 120),
+          ...content.trainer.experience.map((item) =>
+            proposalBullet(item, "Arial", 22, 70),
+          ),
+        ]
+      : []),
+    ...(content.trainer.qualifications.length > 0
+      ? [
+          proposalHeading("Qualifications", 260, 120),
+          ...content.trainer.qualifications.map((item) =>
+            proposalBullet(item, "Arial", 22, 70),
+          ),
+        ]
+      : []),
+    pageBreakParagraph(),
+    proposalHeading("VI. Professional Fee & Logistics", 0, 0),
+    proposalParagraph("The training package includes:", {
+      size: 22,
+      after: 140,
+    }),
+    ...content.professionalFee.included.map((item) =>
+      proposalBullet(item, "Calibri", 22, 40),
+    ),
+    proposalParagraph(totalFee, {
+      bold: true,
+      size: 22,
+      before: 0,
+      after: 120,
+    }),
+    proposalParagraph(`${content.client} will be responsible for the following:`, {
+      size: 22,
+      after: 140,
+    }),
     ...content.professionalFee.clientResponsibilities.map((item) =>
-      docxBullet(item),
+      proposalBullet(item, "Calibri", 22, 40),
     ),
-    docxParagraph(content.professionalFee.billingArrangement),
-    docxHeading("Acknowledgement and Acceptance", HeadingLevel.HEADING_2),
-    docxParagraph(content.professionalFee.acceptanceText),
+    new Paragraph({
+      children: [
+        proposalRun("Billing arrangements: ", { bold: true, size: 22 }),
+        proposalRun(content.professionalFee.billingArrangement, { size: 22 }),
+      ],
+      spacing: { before: 620, after: 20, line: 320 },
+    }),
+    ...(content.professionalFee.paymentInstructions
+      ? [proposalParagraph(content.professionalFee.paymentInstructions, { size: 22 })]
+      : []),
+    proposalParagraph("Acknowledgement and Acceptance", {
+      font: "Calibri Light",
+      size: 32,
+      before: 20,
+      after: 120,
+    }),
+    proposalParagraph(content.professionalFee.acceptanceText, {
+      size: 22,
+      after: 160,
+    }),
+    proposalParagraph(
+      `${content.client} confirms engaging DG Academy to conduct the ${content.courseTitle} training described above.`,
+      { size: 22, after: 0 },
+    ),
+    new Paragraph({
+      children: [
+        proposalRun("DG Academy", { bold: true, font: "Arial", size: 24 }),
+        new TextRun({ children: [new Tab()] }),
+        proposalRun(content.client, { bold: true, font: "Arial", size: 24 }),
+      ],
+      tabStops: signatureTabs,
+      spacing: { before: 1400, after: 100 },
+    }),
+    ...(signatureImageData
+      ? [
+          new Paragraph({
+            children: [
+              new ImageRun({
+                type: "png",
+                data: signatureImageData,
+                transformation: { width: 136, height: 102 },
+                altText: {
+                  title: "Hin Sopheap signature",
+                  description: "Signature of Hin Sopheap",
+                  name: "Hin Sopheap signature",
+                },
+              }),
+            ],
+            indent: { left: 360 },
+            spacing: { after: 20 },
+          }),
+        ]
+      : []),
+    new Paragraph({
+      children: [
+        proposalRun(content.signatory.name, {
+          bold: true,
+          font: "Arial",
+          size: 24,
+        }),
+        new TextRun({ children: [new Tab()] }),
+        proposalRun("........................................", {
+          bold: true,
+          font: "Arial",
+          size: 24,
+        }),
+      ],
+      tabStops: signatureTabs,
+      spacing: { after: 80 },
+    }),
+    new Paragraph({
+      children: [
+        proposalRun(content.signatory.title, {
+          bold: true,
+          font: "Arial",
+          size: 24,
+        }),
+        new TextRun({ children: [new Tab()] }),
+        proposalRun("........................................", {
+          bold: true,
+          font: "Arial",
+          size: 24,
+        }),
+      ],
+      tabStops: signatureTabs,
+      spacing: { after: 80 },
+    }),
+    new Paragraph({
+      children: [
+        proposalRun(`Date ${content.signatory.date}`, {
+          bold: true,
+          font: "Arial",
+          size: 24,
+        }),
+        new TextRun({ children: [new Tab()] }),
+        proposalRun("Date:........./............./..........", {
+          bold: true,
+          font: "Arial",
+          size: 24,
+        }),
+      ],
+      tabStops: signatureTabs,
+      spacing: { after: 0 },
+    }),
   ];
 }
 
@@ -464,23 +1054,40 @@ async function createDocx(
   target: ExportTarget,
 ) {
   const body = contentForTarget(pkg, target);
+  const proposalContent = normalizeProposalContent(pkg.proposalContent, body, {
+    title: pkg.title,
+    client: pkg.client,
+    audience: pkg.audience,
+    duration: pkg.duration,
+    promise: pkg.promise,
+    proposalBrief: pkg.proposalBrief,
+  });
+  const [logoData, trainerImageData, signatureImageData] = await Promise.all([
+    loadLogoData(),
+    target === "proposal" && proposalContent.trainer.imageUrl
+      ? loadTrainerImageData(proposalContent.trainer.imageUrl)
+      : Promise.resolve(null),
+    loadSignatureImageData(),
+  ]);
+  const deterministicFee =
+    pkg.pricingOutputs.finalPrice > 0
+      ? `Total professional fee for ${pkg.duration.toLowerCase()} training (${pkg.pricingInputs.taxPercent > 0 ? "including VAT" : "excluding VAT"}): ${formatMoney(
+          pkg.pricingOutputs.finalPrice,
+          pkg.pricingInputs.currency,
+        )}.`
+      : proposalContent.professionalFee.totalFee;
   const children =
     target === "proposal" && pkg.proposalContent
       ? proposalDocxChildren(
-          normalizeProposalContent(pkg.proposalContent, body, {
-            title: pkg.title,
-            client: pkg.client,
-            audience: pkg.audience,
-            duration: pkg.duration,
-            promise: pkg.promise,
-          }),
+          proposalContent,
+          deterministicFee,
+          pkg.pricingInputs.numberOfParticipants,
+          logoData,
+          trainerImageData,
+          signatureImageData,
         )
       : [
-          new Paragraph({
-            children: [docxText("DG Academy", { bold: true, size: 30 })],
-            alignment: AlignmentType.CENTER,
-            spacing: { after: 240 },
-          }),
+          logoParagraph(logoData, 64, { after: 240 }),
           docxHeading(docTitle(target), HeadingLevel.HEADING_1),
           docxParagraph(`Course: ${pkg.title}`),
           docxParagraph(`Client: ${pkg.client}`),
@@ -494,13 +1101,23 @@ async function createDocx(
     title: `${pkg.title} - ${docTitle(target)}`,
     sections: [
       {
+        footers: {
+          default: exportFooter(),
+          first: exportFooter(),
+          even: exportFooter(),
+        },
         properties: {
           page: {
+            size: {
+              width: 12240,
+              height: 15840,
+            },
             margin: {
-              top: 720,
-              right: 720,
-              bottom: 720,
-              left: 720,
+              top: 1440,
+              right: 1440,
+              bottom: 1080,
+              left: 1440,
+              footer: 320,
             },
           },
         },

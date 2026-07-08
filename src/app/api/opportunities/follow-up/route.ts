@@ -16,16 +16,16 @@ function safeError(error: unknown) {
       : undefined;
 
   if (status === 401) {
-    return "OpenAI key was rejected. Follow-up draft generation failed.";
+    return "OpenRouter key was rejected. Follow-up draft generation failed.";
   }
 
   if (status === 429) {
-    return "OpenAI rate limit or quota was reached. Follow-up draft generation failed.";
+    return "OpenRouter rate limit or quota was reached. Follow-up draft generation failed.";
   }
 
   return error instanceof Error
     ? error.message
-    : "OpenAI follow-up generation failed.";
+    : "OpenRouter follow-up generation failed.";
 }
 
 export async function POST(request: Request) {
@@ -43,9 +43,9 @@ export async function POST(request: Request) {
     lastNotes: String(body.lastNotes ?? "").trim(),
     nextFollowUpDate: String(body.nextFollowUpDate ?? "").trim(),
   };
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
-      { error: "OPENAI_API_KEY is required for follow-up draft generation." },
+      { error: "OPENROUTER_API_KEY is required for follow-up draft generation." },
       { status: 503 },
     );
   }

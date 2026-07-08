@@ -6,6 +6,7 @@ import { getPilotSnapshot } from "@/lib/pilot-storage";
 import { calculatePricing, defaultPricingInputs } from "@/lib/pricing";
 import { requireApproved } from "@/lib/route-guards";
 import type { TrainingPackage } from "@/lib/training-packages";
+import { emptyProposalBrief } from "@/lib/proposal-brief";
 
 function pilotReportFilename(format: ExportFormat) {
   const date = new Date().toISOString().slice(0, 10);
@@ -42,6 +43,7 @@ export async function POST(request: Request) {
     syllabus: "",
     proposal: report,
     proposalContent: null,
+    proposalBrief: emptyProposalBrief,
     commercialProposal: "",
     deckOutline: "",
     workbook: "",

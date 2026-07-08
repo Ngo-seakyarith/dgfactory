@@ -26,16 +26,16 @@ function safeError(error: unknown) {
       : undefined;
 
   if (status === 401) {
-    return "OpenAI key was rejected. Delivery draft generation failed.";
+    return "OpenRouter key was rejected. Delivery draft generation failed.";
   }
 
   if (status === 429) {
-    return "OpenAI rate limit or quota was reached. Delivery draft generation failed.";
+    return "OpenRouter rate limit or quota was reached. Delivery draft generation failed.";
   }
 
   return error instanceof Error
     ? error.message
-    : "OpenAI delivery generation failed.";
+    : "OpenRouter delivery generation failed.";
 }
 
 export async function POST(request: Request) {
@@ -59,9 +59,9 @@ export async function POST(request: Request) {
     packageTitle: String(body.packageTitle ?? "").trim(),
     learningObjectives: String(body.learningObjectives ?? "").trim(),
   };
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.OPENROUTER_API_KEY) {
     return NextResponse.json(
-      { error: "OPENAI_API_KEY is required for delivery draft generation." },
+      { error: "OPENROUTER_API_KEY is required for delivery draft generation." },
       { status: 503 },
     );
   }

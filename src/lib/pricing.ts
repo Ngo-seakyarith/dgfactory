@@ -1,5 +1,6 @@
 export type PricingInputs = {
   currency: string;
+  professionalFee: number;
   numberOfParticipants: number;
   numberOfTrainingDays: number;
   numberOfTrainers: number;
@@ -34,6 +35,7 @@ export type PricingOutputs = {
 
 export const defaultPricingInputs: PricingInputs = {
   currency: "USD",
+  professionalFee: 0,
   numberOfParticipants: 20,
   numberOfTrainingDays: 1,
   numberOfTrainers: 1,
@@ -54,6 +56,7 @@ const numericFields: Array<keyof Omit<
   PricingInputs,
   "currency"
 >> = [
+  "professionalFee",
   "numberOfParticipants",
   "numberOfTrainingDays",
   "numberOfTrainers",
@@ -125,10 +128,12 @@ export function calculatePricing(
     Math.max(inputs.targetProfitMarginPercent, 0),
     99.99,
   );
-  const subtotalBeforeDiscount =
+  const costBasedSubtotal =
     totalDirectCost > 0
       ? totalDirectCost / (1 - targetMarginPercent / 100)
       : 0;
+  const subtotalBeforeDiscount =
+    inputs.professionalFee > 0 ? inputs.professionalFee : costBasedSubtotal;
   const targetProfit = subtotalBeforeDiscount - totalDirectCost;
   const discountAmount = (subtotalBeforeDiscount * inputs.discountPercent) / 100;
   const subtotalAfterDiscount = subtotalBeforeDiscount - discountAmount;

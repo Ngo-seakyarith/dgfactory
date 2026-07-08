@@ -1,3 +1,5 @@
+import type { ProposalBrief } from "@/lib/proposal-brief";
+
 export type ProposalSchedule = {
   duration: string;
   date: string;
@@ -9,7 +11,10 @@ export type ProposalSchedule = {
 export type ProposalTrainer = {
   name: string;
   title: string;
+  imageUrl: string;
   bio: string[];
+  experience: string[];
+  qualifications: string[];
 };
 
 export type ProposalProfessionalFee = {
@@ -17,11 +22,20 @@ export type ProposalProfessionalFee = {
   totalFee: string;
   clientResponsibilities: string[];
   billingArrangement: string;
+  paymentInstructions: string;
   acceptanceText: string;
+};
+
+export type ProposalSignatory = {
+  name: string;
+  title: string;
+  date: string;
 };
 
 export type ProposalContent = {
   coverTitle: string;
+  coverSubtitle: string;
+  certificationLabel: string;
   courseTitle: string;
   client: string;
   courseOverview: string[];
@@ -35,6 +49,7 @@ export type ProposalContent = {
   schedule: ProposalSchedule;
   trainer: ProposalTrainer;
   professionalFee: ProposalProfessionalFee;
+  signatory: ProposalSignatory;
 };
 
 type ProposalFallbackMeta = {
@@ -43,6 +58,7 @@ type ProposalFallbackMeta = {
   audience: string;
   duration: string;
   promise: string;
+  proposalBrief?: ProposalBrief;
 };
 
 function cleanItems(items: unknown, fallback: string[] = []) {
@@ -60,6 +76,13 @@ function cleanItems(items: unknown, fallback: string[] = []) {
 function cleanString(value: unknown, fallback = "") {
   const cleaned = String(value ?? "").trim();
   return cleaned || fallback;
+}
+
+function briefLines(value?: string) {
+  return String(value ?? "")
+    .split(/\r?\n/)
+    .map((item) => item.replace(/^[-*]\s*/, "").trim())
+    .filter(Boolean);
 }
 
 function markdownBullets(items: string[]) {
@@ -123,6 +146,7 @@ export function proposalContentToMarkdown(content: ProposalContent) {
     markdownBullets(content.professionalFee.clientResponsibilities),
     "",
     content.professionalFee.billingArrangement,
+    content.professionalFee.paymentInstructions,
     "",
     "### Acknowledgement and Acceptance",
     content.professionalFee.acceptanceText,
@@ -134,6 +158,8 @@ export function proposalContentToMarkdown(content: ProposalContent) {
     `# ${content.coverTitle}`,
     "",
     `On ${content.courseTitle}`,
+    content.coverSubtitle,
+    content.certificationLabel,
     `at ${content.client}`,
     "",
     section("Course Overview", content.courseOverview.join("\n\n")),
@@ -156,6 +182,11 @@ export function proposalContentToMarkdown(content: ProposalContent) {
         .join("\n\n"),
     ),
     section("Professional Fee", professionalFee),
+    section("DG Academy Signatory", [
+      content.signatory.name,
+      content.signatory.title,
+      content.signatory.date,
+    ].filter(Boolean)),
   ].join("\n\n");
 }
 
@@ -163,45 +194,87 @@ export function proposalContentFromMarkdown(
   markdown: string,
   meta: ProposalFallbackMeta,
 ): ProposalContent {
+  const brief = meta.proposalBrief;
+
   return {
-    coverTitle: "Customized Training Proposal",
+    coverTitle: meta.proposalBrief?.coverHeading || "Customized Training Proposal",
+    coverSubtitle: meta.proposalBrief?.coverSubtitle ?? "",
+    certificationLabel: meta.proposalBrief?.certificationLabel ?? "",
     courseTitle: meta.title,
     client: meta.client,
     courseOverview:
-      sectionLines(markdown, "Course Overview").length > 0
-        ? sectionLines(markdown, "Course Overview")
-        : [
-            `${meta.client} is preparing ${meta.audience} to apply ${meta.title} in practical business situations.`,
-            meta.promise,
-          ],
-    courseObjectives: sectionLines(markdown, "Course Objectives"),
+      brief?.clientBackground || brief?.trainingNeed
+        ? [brief.clientBackground, brief.trainingNeed, meta.promise].filter(Boolean)
+        : sectionLines(markdown, "Course Overview").length > 0
+          ? sectionLines(markdown, "Course Overview")
+          : [
+              `${meta.client} is preparing ${meta.audience} to apply ${meta.title} in practical business situations.`,
+              meta.promise,
+            ],
+    courseObjectives:
+      briefLines(brief?.objectives).length > 0
+        ? briefLines(brief?.objectives)
+        : sectionLines(markdown, "Course Objectives"),
     expectedLearningOutcomes: sectionLines(markdown, "Expected Learning Outcomes"),
-    contentOutlines: sectionLines(markdown, "Content Outlines"),
+    contentOutlines:
+      briefLines(brief?.contentPriorities).length > 0
+        ? briefLines(brief?.contentPriorities)
+        : sectionLines(markdown, "Content Outlines"),
     whoShouldAttend:
       sectionLines(markdown, "Who Should Attend").length > 0
         ? sectionLines(markdown, "Who Should Attend")
         : [meta.audience],
-    trainingMethodology: sectionLines(markdown, "Training Methodology"),
-    trainingTools: sectionLines(markdown, "Training and Coaching Tools"),
-    trainingEvaluation: sectionLines(markdown, "Training Evaluation"),
+    trainingMethodology:
+      briefLines(brief?.methodology).length > 0
+        ? briefLines(brief?.methodology)
+        : sectionLines(markdown, "Training Methodology"),
+    trainingTools:
+      briefLines(brief?.trainingTools).length > 0
+        ? briefLines(brief?.trainingTools)
+        : sectionLines(markdown, "Training and Coaching Tools"),
+    trainingEvaluation:
+      briefLines(brief?.evaluationApproach).length > 0
+        ? briefLines(brief?.evaluationApproach)
+        : sectionLines(markdown, "Training Evaluation"),
     schedule: {
       duration: meta.duration,
-      date: "TBC",
-      time: "TBC",
-      venue: "TBC",
+      date: brief?.scheduleDate || "TBC",
+      time: brief?.scheduleTime || "TBC",
+      venue: brief?.scheduleVenue || "TBC",
       participants: meta.audience,
     },
     trainer: {
-      name: "DG Academy Facilitator",
-      title: "Senior Training Facilitator",
-      bio: sectionLines(markdown, "Trainer"),
+      name: brief?.trainerName || "DG Academy Facilitator",
+      title: brief?.trainerTitle || "Trainer & Speaker",
+      imageUrl: brief?.trainerImageUrl ?? "",
+      bio:
+        briefLines(brief?.trainerBio).length > 0
+          ? briefLines(brief?.trainerBio)
+          : sectionLines(markdown, "Trainer"),
+      experience: briefLines(brief?.trainerExperience),
+      qualifications: briefLines(brief?.trainerQualifications),
     },
     professionalFee: {
-      included: sectionLines(markdown, "Professional Fee"),
+      included:
+        briefLines(brief?.includedItems).length > 0
+          ? briefLines(brief?.includedItems)
+          : sectionLines(markdown, "Professional Fee"),
       totalFee: "Professional fee to be confirmed from Commercial Setup.",
-      clientResponsibilities: ["Training venue", "Participants"],
-      billingArrangement: "Billing arrangement to be confirmed.",
-      acceptanceText: "Client acknowledgement and acceptance to be confirmed.",
+      clientResponsibilities:
+        briefLines(brief?.clientResponsibilities).length > 0
+          ? briefLines(brief?.clientResponsibilities)
+          : ["Training venue", "Participants"],
+      billingArrangement:
+        brief?.billingArrangement || "Billing arrangement to be confirmed.",
+      paymentInstructions: brief?.paymentInstructions ?? "",
+      acceptanceText: brief?.acceptanceDeadline
+        ? `Please confirm acceptance ${brief.acceptanceDeadline}.`
+        : "Client acknowledgement and acceptance to be confirmed.",
+    },
+    signatory: {
+      name: "Mr. Hin Sopheap",
+      title: "Executive Director",
+      date: brief?.proposalDate ?? "",
     },
   };
 }
@@ -220,9 +293,15 @@ export function normalizeProposalContent(
   const schedule = (record.schedule ?? {}) as Partial<ProposalSchedule>;
   const trainer = (record.trainer ?? {}) as Partial<ProposalTrainer>;
   const fee = (record.professionalFee ?? {}) as Partial<ProposalProfessionalFee>;
+  const signatory = (record.signatory ?? {}) as Partial<ProposalSignatory>;
 
   return {
     coverTitle: cleanString(record.coverTitle, fallback.coverTitle),
+    coverSubtitle: cleanString(record.coverSubtitle, fallback.coverSubtitle),
+    certificationLabel: cleanString(
+      record.certificationLabel,
+      fallback.certificationLabel,
+    ),
     courseTitle: cleanString(record.courseTitle, fallback.courseTitle),
     client: cleanString(record.client, fallback.client),
     courseOverview: cleanItems(record.courseOverview, fallback.courseOverview),
@@ -252,11 +331,22 @@ export function normalizeProposalContent(
         fallback.schedule.participants,
       ),
     },
-    trainer: {
-      name: cleanString(trainer.name, fallback.trainer.name),
-      title: cleanString(trainer.title, fallback.trainer.title),
-      bio: cleanItems(trainer.bio, fallback.trainer.bio),
-    },
+    trainer: meta.proposalBrief?.trainerId
+      ? fallback.trainer
+      : {
+          name: cleanString(trainer.name, fallback.trainer.name),
+          title: cleanString(trainer.title, fallback.trainer.title),
+          imageUrl: cleanString(trainer.imageUrl, fallback.trainer.imageUrl),
+          bio: cleanItems(trainer.bio, fallback.trainer.bio),
+          experience: cleanItems(
+            trainer.experience,
+            fallback.trainer.experience,
+          ),
+          qualifications: cleanItems(
+            trainer.qualifications,
+            fallback.trainer.qualifications,
+          ),
+        },
     professionalFee: {
       included: cleanItems(fee.included, fallback.professionalFee.included),
       totalFee: cleanString(fee.totalFee, fallback.professionalFee.totalFee),
@@ -268,10 +358,19 @@ export function normalizeProposalContent(
         fee.billingArrangement,
         fallback.professionalFee.billingArrangement,
       ),
+      paymentInstructions: cleanString(
+        fee.paymentInstructions,
+        fallback.professionalFee.paymentInstructions,
+      ),
       acceptanceText: cleanString(
         fee.acceptanceText,
         fallback.professionalFee.acceptanceText,
       ),
+    },
+    signatory: {
+      name: fallback.signatory.name,
+      title: fallback.signatory.title,
+      date: cleanString(signatory.date, fallback.signatory.date),
     },
   };
 }

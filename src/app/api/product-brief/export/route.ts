@@ -4,6 +4,7 @@ import { exportTrainingPackage, type ExportFormat } from "@/lib/export-package";
 import { defaultPricingInputs } from "@/lib/pricing";
 import { buildProductBriefMarkdown } from "@/lib/productization";
 import type { TrainingPackage } from "@/lib/training-packages";
+import { emptyProposalBrief } from "@/lib/proposal-brief";
 
 const formats: ExportFormat[] = ["docx", "md"];
 
@@ -34,6 +35,7 @@ export async function POST(request: Request) {
     syllabus: "",
     proposal: buildProductBriefMarkdown(),
     proposalContent: null,
+    proposalBrief: emptyProposalBrief,
     commercialProposal: "",
     deckOutline: "",
     workbook: "",

@@ -9,14 +9,22 @@ This app is separate from DG Command OS.
 - The app uses shadcn-style local primitives in `src/components/ui`.
 - `components.json` is configured for a Next.js `src` app with `new-york` style, CSS variables, and `zinc` base color.
 - Tailwind semantic tokens live in `tailwind.config.ts` and `src/app/globals.css`.
+- Internal navigation uses a fixed desktop sidebar and a mobile drawer; client portal routes remain unframed.
 - New UI should use shared primitives or shadcn CLI additions instead of one-off input styling.
 - Existing `Select` is currently the native-select pattern because app screens use `<option>` children; migrate to Radix shadcn `Select` only when refactoring each caller to the trigger/content/item API.
 - Shared form wrappers should use `Field`, `Label`, `Input`, `Textarea`, `Select`, and `Checkbox` from `src/components/ui`.
 
 ## Features
 
-- Generate full training packages with configured OpenAI credentials
-- Save and reopen packages in Supabase
+- Generate full training packages through OpenRouter
+- Capture a structured proposal brief aligned to DG Academy cover, course design, schedule, trainer, fee, logistics, and acceptance sections
+- Proposal DOCX export mirrors the approved DG Academy format with a full-page cover, numbered course sections, complete trainer profile, no-table acceptance layout, and deterministic Commercial Setup fee. Long trainer profiles continue onto additional pages.
+- Every DOCX export embeds the DG Academy logo from `public/app-logo.png`.
+- Package creation requires one of the 17 approved DG Academy trainers from `src/data/trainers.json`. Selection fills a read-only profile sourced from the DG Academy website catalog.
+- Proposal DOCX exports download the selected trainer's approved PNG or JPEG portrait from ImageKit and include the complete biography, experience, and qualifications.
+- The acceptance section always uses Mr. Hin Sopheap, Executive Director, and the approved signature asset from `public/signature-hin-sopheap.png`; trainer selection never changes the authorized signatory.
+- Every DOCX page includes the DG Academy address, phone, email, and website footer.
+- Automatically save generated packages in Supabase, then reopen and edit them by saved URL
 - Copy each section
 - Commercial Setup with deterministic pricing calculations
 - Client-facing commercial proposal
@@ -70,14 +78,13 @@ Create `.env.local`:
 NEXT_PUBLIC_SUPABASE_URL=
 NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=
 SUPABASE_SECRET_KEY=
-OPENAI_API_KEY=
-AI_BRAIN_MODEL=gpt-5.5
+OPENROUTER_API_KEY=
 ```
 
 Required production keys:
 
-- Missing or invalid OpenAI credentials cause AI generation routes to fail explicitly.
-- `AI_BRAIN_MODEL` controls the intended Brain Layer model and all OpenAI-backed generation. V3.6 defaults to `gpt-5.5`.
+- Missing or invalid OpenRouter credentials cause AI generation routes to fail explicitly.
+- All AI generation uses OpenRouter model `openai/gpt-5.5` with low reasoning effort.
 - Missing Supabase server configuration causes persistence routes to fail explicitly. Server persistence requires `SUPABASE_SECRET_KEY`; browser auth requires `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 - `/api/loops/*` uses the normal approved internal app access gate.
 - Production sign-in uses Google OAuth only. Configure Google in Supabase Auth providers and add `/auth/callback` to the allowed redirect URLs.
@@ -118,7 +125,7 @@ V3.6 closes the main gap between the internal adaptive MVP and a safer enterpris
 Brain model:
 
 - `src/lib/brain/modelConfig.ts` centralizes model configuration.
-- `AI_BRAIN_MODEL` now defaults to `gpt-5.5`.
+- The Brain Layer uses OpenRouter model `openai/gpt-5.5` with low reasoning effort; only `OPENROUTER_API_KEY` is configured through the environment.
 - `/api/brain/status` reports intended model, actual model, API key status, last successful model, and runtime status.
 
 Master Agent:
@@ -393,7 +400,7 @@ Workflow:
 6. Discard weak variants.
 7. Convert promising variants into experiments or training packages.
 
-The mutation agent uses DG Academy knowledge retrieval when available. Missing or invalid OpenAI keys now stop generation with a configuration error. Generated variants are hypotheses only; human selection, experiments, and feedback decide what moves to testing, scaling, or the learning genome.
+The mutation agent uses DG Academy knowledge retrieval when available. Missing or invalid OpenRouter keys stop generation with a configuration error. Generated variants are hypotheses only; human selection, experiments, and feedback decide what moves to testing, scaling, or the learning genome.
 
 ## Fitness Score and Selection Engine
 
@@ -547,7 +554,7 @@ V1.6 refactors AI generation into `src/lib/brain`.
 
 Brain Layer folders:
 
-- `src/lib/brain/client.ts` - OpenAI client wrapper, model config, retries, and schema validation
+- `src/lib/brain/client.ts` - OpenRouter client through the OpenAI-compatible SDK, model config, retries, and schema validation
 - `src/lib/brain/router.ts` - routes task types to specialist agents
 - `src/lib/brain/agents` - chief brain, course architect, proposal, pricing narrative, slide, workbook, QA, sales follow-up, delivery, and improvement agents
 - `src/lib/brain/tools` - deterministic helper tools, currently pricing facts
@@ -584,6 +591,8 @@ V1.7 keeps package generation as a single user action while the Brain Layer hand
 Commercial Setup pricing assumptions are calculated deterministically before generation and passed into the proposal prompt.
 
 Package generation stores syllabus, proposal markdown, structured `proposal_content` JSON, and deterministic pricing inputs/outputs on `training_packages`. The structured proposal object is the source for professional DOCX export; markdown is derived for fast browser preview and copy workflows.
+
+The selected trainer is stored as a snapshot inside the existing `proposal_brief` JSONB value, including trainer ID, ImageKit URL, biography, experience, and qualifications. This requires no additional Supabase table or migration. Existing packages without a trainer ID remain readable, but users must select an approved trainer before regeneration or proposal DOCX export.
 
 Files:
 
@@ -874,7 +883,7 @@ AI follow-up support:
 - Opportunity detail pages include `Generate Follow-Up Message`.
 - The app generates draft email text, a Telegram/WhatsApp-style short message, and a suggested next step.
 - No email or message is sent automatically.
-- Missing or invalid OpenAI configuration returns an explicit generation error.
+- Missing or invalid OpenRouter configuration returns an explicit generation error.
 
 ## Pricing Formula
 
@@ -986,7 +995,7 @@ npm run build
 2. Import the repo into Vercel as a new project.
 3. Add environment variables:
    - Supabase: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`, `SUPABASE_SECRET_KEY`
-   - AI: `OPENAI_API_KEY`, `AI_BRAIN_MODEL`
+   - AI: `OPENROUTER_API_KEY`
    - Internal auth: Google OAuth through Supabase Auth
    - Public URL: `NEXT_PUBLIC_APP_URL` for generated portal links when request origin is unavailable
 4. Apply `supabase/schema.sql` to the target Supabase project.
@@ -995,7 +1004,7 @@ npm run build
 
 ## Launch Checklist
 
-- Keep `SUPABASE_SECRET_KEY` and `OPENAI_API_KEY` server-only.
+- Keep `SUPABASE_SECRET_KEY` and `OPENROUTER_API_KEY` server-only.
 - Confirm prompt template routes require approved internal access.
 - Confirm client exports do not include internal notes or margin language.
 - Review `/approvals` before any external sending, export handoff, deployment, deletion, payment, or production database schema change.
@@ -1003,7 +1012,7 @@ npm run build
 
 ## Troubleshooting
 
-- If generation fails, check `OPENAI_API_KEY`, `AI_BRAIN_MODEL`, and the route error message.
+- If generation fails, check `OPENROUTER_API_KEY` and the route error message.
 - If Supabase is missing, persistence routes fail until Supabase credentials are configured.
 - If `/api/loops/*` returns 401 or 403, check the signed-in user's approved app access.
 - If `/admin/prompts` returns 403, approve the user's Supabase profile.
