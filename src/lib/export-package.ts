@@ -14,7 +14,11 @@ import {
   Paragraph,
   Tab,
   TabStopType,
+  Table,
+  TableCell,
+  TableRow,
   TextRun,
+  WidthType,
 } from "docx";
 
 import {
@@ -24,6 +28,7 @@ import {
 } from "@/lib/training-packages";
 import {
   formatMoney,
+  normalizePricingInputs,
   pricingSummaryToMarkdown,
 } from "@/lib/pricing";
 import {
@@ -496,7 +501,7 @@ function exportFooter() {
     text: string,
     color: string,
     font = "Segoe UI Symbol",
-  ) => new TextRun({ text, color, font, size: 30, position: "-1pt" });
+  ) => new TextRun({ text, color, font, size: 24, position: "-1pt" });
   const footerLink = (text: string) =>
     new TextRun({
       text,
@@ -505,7 +510,27 @@ function exportFooter() {
       size: 22,
       underline: {},
     });
-  const footerTab = () => new TextRun({ children: [new Tab()] });
+  const emptyBorder = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
+  const contactCell = (
+    children: TextRun[],
+    alignment: (typeof AlignmentType)[keyof typeof AlignmentType],
+  ) =>
+    new TableCell({
+      children: [
+        new Paragraph({
+          children,
+          alignment,
+          spacing: { before: 0, after: 0 },
+        }),
+      ],
+      borders: {
+        top: emptyBorder,
+        bottom: emptyBorder,
+        left: emptyBorder,
+        right: emptyBorder,
+      },
+      margins: { top: 0, bottom: 0, left: 0, right: 0 },
+    });
 
   return new Footer({
     children: [
@@ -528,25 +553,39 @@ function exportFooter() {
         indent: { left: -600, right: -600 },
         spacing: { after: 100 },
       }),
-      new Paragraph({
-        children: [
-          footerSymbol("\u260E", "E4C36A"),
-          footerText(" 095 666 788"),
-          footerTab(),
-          footerSymbol("\u2709", "009FE3"),
-          footerText(" "),
-          footerLink("contact@dgdemy.org"),
-          footerTab(),
-          footerSymbol("\uD83C\uDF10", "009FE3", "Segoe UI Emoji"),
-          footerText(" "),
-          footerLink("www.dgdemy.org"),
+      new Table({
+        width: { size: 9360, type: WidthType.DXA },
+        columnWidths: [3120, 3120, 3120],
+        borders: {
+          top: emptyBorder,
+          bottom: emptyBorder,
+          left: emptyBorder,
+          right: emptyBorder,
+          insideHorizontal: emptyBorder,
+          insideVertical: emptyBorder,
+        },
+        margins: { top: 0, bottom: 0, left: 0, right: 0 },
+        rows: [
+          new TableRow({
+            children: [
+              contactCell(
+                [footerSymbol("\u260E", "E4C36A"), footerText("095 666 788")],
+                AlignmentType.LEFT,
+              ),
+              contactCell(
+                [footerSymbol("\u2709", "009FE3"), footerLink("contact@dgdemy.org")],
+                AlignmentType.CENTER,
+              ),
+              contactCell(
+                [
+                  footerSymbol("\uD83C\uDF10", "009FE3", "Segoe UI Emoji"),
+                  footerLink("www.dgdemy.org"),
+                ],
+                AlignmentType.RIGHT,
+              ),
+            ],
+          }),
         ],
-        tabStops: [
-          { type: TabStopType.LEFT, position: 3600 },
-          { type: TabStopType.LEFT, position: 6900 },
-        ],
-        indent: { left: -600, right: -600 },
-        spacing: { after: 0 },
       }),
     ],
   });
@@ -688,6 +727,58 @@ function proposalSessionChildren(item: string, index: number) {
   ];
 }
 
+function proposalContentOutlineChildren(items: string[]) {
+  const looksLikeSessionPlan = items.some((item) =>
+    /\||^Session\s+\d+\s*:/i.test(item),
+  );
+
+  if (!looksLikeSessionPlan) {
+    return items.map((item) =>
+      proposalParagraph(item, {
+        font: "Calibri",
+        size: 24,
+        before: 0,
+        after: 80,
+      }),
+    );
+  }
+
+  return items.flatMap((item, index) => proposalSessionChildren(item, index));
+}
+
+function numberedProposalSection(
+  index: number,
+  title: string,
+  children: Paragraph[],
+  before = 260,
+) {
+  return [
+    proposalHeading(`${toRoman(index)}. ${title}`, before),
+    ...children,
+  ];
+}
+
+function toRoman(value: number) {
+  const numerals: Array<[number, string]> = [
+    [10, "X"],
+    [9, "IX"],
+    [5, "V"],
+    [4, "IV"],
+    [1, "I"],
+  ];
+  let remaining = value;
+  let result = "";
+
+  numerals.forEach(([number, roman]) => {
+    while (remaining >= number) {
+      result += roman;
+      remaining -= number;
+    }
+  });
+
+  return result;
+}
+
 function proposalScheduleBullet(label: string, value: string) {
   return new Paragraph({
     children: [
@@ -750,15 +841,13 @@ function proposalDocxChildren(
   const courseTitleLines = wrapCoverText(content.courseTitle, 18);
   courseTitleLines[0] = `\u201C${courseTitleLines[0]}`;
   courseTitleLines[courseTitleLines.length - 1] = `${courseTitleLines.at(-1)}\u201D`;
-  const sessions = content.contentOutlines.flatMap((item, index) =>
-    proposalSessionChildren(item, index),
+  const shouldShow = (items: string[]) => items.length > 0;
+  let sectionNumber = 1;
+  const nextSection = (title: string, children: Paragraph[], before = 260) =>
+    numberedProposalSection(sectionNumber++, title, children, before);
+  const contentOutlineChildren = proposalContentOutlineChildren(
+    content.contentOutlines,
   );
-  const firstPageSessions = content.contentOutlines
-    .slice(0, 3)
-    .flatMap((item, index) => proposalSessionChildren(item, index));
-  const secondPageSessions = content.contentOutlines
-    .slice(3)
-    .flatMap((item, index) => proposalSessionChildren(item, index + 3));
   const trainerImageSize = trainerImageData
     ? fitImage(trainerImageData, 150, 180)
     : null;
@@ -841,28 +930,56 @@ function proposalDocxChildren(
       spacing: { after: 0 },
     }),
     pageBreakParagraph(),
-    proposalHeading("I. Course Overview", 0),
-    ...content.courseOverview.map((item) => proposalParagraph(item)),
-    proposalHeading("II. Course Objectives"),
-    proposalParagraph(
-      "Upon completion of this training program, participants will be able to:",
-      { after: 140 },
+    ...nextSection(
+      "Course Overview",
+      content.courseOverview.map((item) => proposalParagraph(item)),
+      0,
     ),
-    ...content.courseObjectives.map((item) => proposalBullet(item)),
-    proposalHeading("III. Content Outlines"),
-    ...firstPageSessions,
+    ...nextSection("Course Objectives", [
+      proposalParagraph(
+        "Upon completion of this training program, participants will be able to:",
+        { after: 140 },
+      ),
+      ...content.courseObjectives.map((item) => proposalBullet(item)),
+    ]),
+    ...(shouldShow(content.expectedLearningOutcomes)
+      ? nextSection(
+          "Expected Learning Outcomes",
+          content.expectedLearningOutcomes.map((item) => proposalBullet(item)),
+        )
+      : []),
+    ...nextSection("Content Outlines", contentOutlineChildren),
+    ...(shouldShow(content.whoShouldAttend)
+      ? nextSection(
+          "Who Should Attend",
+          content.whoShouldAttend.map((item) => proposalBullet(item)),
+        )
+      : []),
+    ...nextSection(
+      "Training Methodology",
+      content.trainingMethodology.map((item) => proposalBullet(item)),
+    ),
+    ...(shouldShow(content.trainingTools)
+      ? nextSection(
+          "Training and Coaching Tools",
+          content.trainingTools.map((item) => proposalBullet(item)),
+        )
+      : []),
+    ...(shouldShow(content.trainingEvaluation)
+      ? nextSection(
+          "Training Evaluation",
+          content.trainingEvaluation.map((item) => proposalBullet(item)),
+        )
+      : []),
+    ...nextSection("Schedule", [
+      proposalScheduleBullet("Course Duration", content.schedule.duration),
+      proposalScheduleBullet("Date", content.schedule.date),
+      proposalScheduleBullet("Time", content.schedule.time),
+      proposalScheduleBullet("Venue", content.schedule.venue),
+      proposalScheduleBullet("Participants", participantLabel),
+    ]),
     pageBreakParagraph(),
-    ...(secondPageSessions.length > 0 ? secondPageSessions : sessions.slice(6)),
-    proposalHeading("IV. Training Methodology"),
-    ...content.trainingMethodology.map((item) => proposalBullet(item)),
-    proposalHeading("V. Schedule"),
-    proposalScheduleBullet("Course Duration", content.schedule.duration),
-    proposalScheduleBullet("Date", content.schedule.date),
-    proposalScheduleBullet("Time", content.schedule.time),
-    proposalScheduleBullet("Venue", content.schedule.venue),
-    proposalScheduleBullet("Participants", participantLabel),
-    pageBreakParagraph(),
-    proposalHeading("Trainers", 0),
+    proposalHeading(`${toRoman(sectionNumber++)}. Trainer`, 0),
     ...(trainerImageData
       ? [
           new Paragraph({
@@ -921,7 +1038,7 @@ function proposalDocxChildren(
         ]
       : []),
     pageBreakParagraph(),
-    proposalHeading("VI. Professional Fee & Logistics", 0, 0),
+    proposalHeading(`${toRoman(sectionNumber++)}. Professional Fee & Logistics`, 0, 0),
     proposalParagraph("The training package includes:", {
       size: 22,
       after: 140,
@@ -1069,11 +1186,12 @@ async function createDocx(
       : Promise.resolve(null),
     loadSignatureImageData(),
   ]);
+  const pricingInputs = normalizePricingInputs(pkg.pricingInputs);
   const deterministicFee =
     pkg.pricingOutputs.finalPrice > 0
-      ? `Total professional fee for ${pkg.duration.toLowerCase()} training (${pkg.pricingInputs.taxPercent > 0 ? "including VAT" : "excluding VAT"}): ${formatMoney(
+      ? `Total professional fee for ${pkg.duration.toLowerCase()} training (${pricingInputs.vatStatus.toLowerCase()}): ${formatMoney(
           pkg.pricingOutputs.finalPrice,
-          pkg.pricingInputs.currency,
+          pricingInputs.currency,
         )}.`
       : proposalContent.professionalFee.totalFee;
   const children =

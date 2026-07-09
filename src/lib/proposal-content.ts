@@ -1,4 +1,8 @@
-import type { ProposalBrief } from "@/lib/proposal-brief";
+import {
+  defaultBillingArrangement,
+  defaultPaymentInstructions,
+  type ProposalBrief,
+} from "@/lib/proposal-brief";
 
 export type ProposalSchedule = {
   duration: string;
@@ -20,6 +24,7 @@ export type ProposalTrainer = {
 export type ProposalProfessionalFee = {
   included: string[];
   totalFee: string;
+  vatStatus: string;
   clientResponsibilities: string[];
   billingArrangement: string;
   paymentInstructions: string;
@@ -87,6 +92,10 @@ function briefLines(value?: string) {
 
 function markdownBullets(items: string[]) {
   return items.map((item) => `- ${item}`).join("\n");
+}
+
+function optionalSection(title: string, body: string[]) {
+  return body.length > 0 ? section(title, body) : "";
 }
 
 function section(title: string, body: string | string[]) {
@@ -164,12 +173,12 @@ export function proposalContentToMarkdown(content: ProposalContent) {
     "",
     section("Course Overview", content.courseOverview.join("\n\n")),
     section("Course Objectives", content.courseObjectives),
-    section("Expected Learning Outcomes", content.expectedLearningOutcomes),
+    optionalSection("Expected Learning Outcomes", content.expectedLearningOutcomes),
     section("Content Outlines", content.contentOutlines),
-    section("Who Should Attend", content.whoShouldAttend),
+    optionalSection("Who Should Attend", content.whoShouldAttend),
     section("Training Methodology", content.trainingMethodology),
-    section("Training and Coaching Tools", content.trainingTools),
-    section("Training Evaluation", content.trainingEvaluation),
+    optionalSection("Training and Coaching Tools", content.trainingTools),
+    optionalSection("Training Evaluation", content.trainingEvaluation),
     section("Schedule", schedule),
     section(
       "Trainer",
@@ -215,15 +224,18 @@ export function proposalContentFromMarkdown(
       briefLines(brief?.objectives).length > 0
         ? briefLines(brief?.objectives)
         : sectionLines(markdown, "Course Objectives"),
-    expectedLearningOutcomes: sectionLines(markdown, "Expected Learning Outcomes"),
+    expectedLearningOutcomes:
+      briefLines(brief?.expectedLearningOutcomes).length > 0
+        ? briefLines(brief?.expectedLearningOutcomes)
+        : sectionLines(markdown, "Expected Learning Outcomes"),
     contentOutlines:
       briefLines(brief?.contentPriorities).length > 0
         ? briefLines(brief?.contentPriorities)
         : sectionLines(markdown, "Content Outlines"),
     whoShouldAttend:
-      sectionLines(markdown, "Who Should Attend").length > 0
-        ? sectionLines(markdown, "Who Should Attend")
-        : [meta.audience],
+      briefLines(brief?.whoShouldAttend).length > 0
+        ? briefLines(brief?.whoShouldAttend)
+        : sectionLines(markdown, "Who Should Attend"),
     trainingMethodology:
       briefLines(brief?.methodology).length > 0
         ? briefLines(brief?.methodology)
@@ -260,13 +272,14 @@ export function proposalContentFromMarkdown(
           ? briefLines(brief?.includedItems)
           : sectionLines(markdown, "Professional Fee"),
       totalFee: "Professional fee to be confirmed from Commercial Setup.",
+      vatStatus: brief?.vatStatus || "Excluding VAT",
       clientResponsibilities:
         briefLines(brief?.clientResponsibilities).length > 0
           ? briefLines(brief?.clientResponsibilities)
           : ["Training venue", "Participants"],
-      billingArrangement:
-        brief?.billingArrangement || "Billing arrangement to be confirmed.",
-      paymentInstructions: brief?.paymentInstructions ?? "",
+      billingArrangement: brief?.billingArrangement || defaultBillingArrangement,
+      paymentInstructions:
+        brief?.paymentInstructions || defaultPaymentInstructions,
       acceptanceText: brief?.acceptanceDeadline
         ? `Please confirm acceptance ${brief.acceptanceDeadline}.`
         : "Client acknowledgement and acceptance to be confirmed.",
@@ -350,6 +363,10 @@ export function normalizeProposalContent(
     professionalFee: {
       included: cleanItems(fee.included, fallback.professionalFee.included),
       totalFee: cleanString(fee.totalFee, fallback.professionalFee.totalFee),
+      vatStatus: cleanString(
+        fee.vatStatus,
+        fallback.professionalFee.vatStatus,
+      ),
       clientResponsibilities: cleanItems(
         fee.clientResponsibilities,
         fallback.professionalFee.clientResponsibilities,

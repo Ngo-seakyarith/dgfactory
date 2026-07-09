@@ -5,7 +5,9 @@ export type ProposalBrief = {
   clientBackground: string;
   trainingNeed: string;
   objectives: string;
+  expectedLearningOutcomes: string;
   contentPriorities: string;
+  whoShouldAttend: string;
   methodology: string;
   trainingTools: string;
   evaluationApproach: string;
@@ -23,11 +25,18 @@ export type ProposalBrief = {
   clientResponsibilities: string;
   billingArrangement: string;
   paymentInstructions: string;
+  vatStatus: string;
   acceptanceDeadline: string;
   proposalDate: string;
   signatoryName: string;
   signatoryTitle: string;
 };
+
+export const defaultBillingArrangement =
+  "The professional fee 100% shall be made to DG Academy before the training date.";
+
+export const defaultPaymentInstructions =
+  "Payment shall be made in either cash or check or bank transfer to DG Academy's account No: 34730640543314/ DGACADEMY of ACLEDA Bank. Bank slip shall be sent to DG Academy should the payment is made through bank transfer.";
 
 export const emptyProposalBrief: ProposalBrief = {
   coverHeading: "",
@@ -36,7 +45,9 @@ export const emptyProposalBrief: ProposalBrief = {
   clientBackground: "",
   trainingNeed: "",
   objectives: "",
+  expectedLearningOutcomes: "",
   contentPriorities: "",
+  whoShouldAttend: "",
   methodology: "",
   trainingTools: "",
   evaluationApproach: "",
@@ -52,8 +63,9 @@ export const emptyProposalBrief: ProposalBrief = {
   trainerQualifications: "",
   includedItems: "",
   clientResponsibilities: "",
-  billingArrangement: "",
-  paymentInstructions: "",
+  billingArrangement: defaultBillingArrangement,
+  paymentInstructions: defaultPaymentInstructions,
+  vatStatus: "Excluding VAT",
   acceptanceDeadline: "",
   proposalDate: "",
   signatoryName: "",
@@ -68,6 +80,11 @@ export function normalizeProposalBrief(value?: Partial<ProposalBrief> | null): P
     ]),
   ) as ProposalBrief;
   const trainer = getTrainerById(normalized.trainerId);
+  normalized.billingArrangement =
+    normalized.billingArrangement || defaultBillingArrangement;
+  normalized.paymentInstructions =
+    normalized.paymentInstructions || defaultPaymentInstructions;
+  normalized.vatStatus = normalized.vatStatus || emptyProposalBrief.vatStatus;
 
   return trainer ? { ...normalized, ...trainerSnapshotFields(trainer) } : normalized;
 }

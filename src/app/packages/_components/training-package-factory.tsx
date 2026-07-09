@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import {
   Check,
   Clipboard,
@@ -210,6 +210,10 @@ export function PackageForm({
     const pricingOutputs = calculatePricing(normalizedInputs);
 
     setPricingInputs(normalizedInputs);
+    setProposalBrief((current) => ({
+      ...current,
+      vatStatus: normalizedInputs.vatStatus,
+    }));
     setCurrentPackage((current) =>
       current
         ? {
@@ -394,8 +398,14 @@ export function PackageForm({
             <Field label="Objectives and outcomes">
               <Textarea rows={7} value={proposalBrief.objectives} onChange={(event) => updateProposalBrief("objectives", event.target.value)} placeholder="Enter one objective per line" />
             </Field>
+            <Field label="Expected learning outcomes">
+              <Textarea rows={7} value={proposalBrief.expectedLearningOutcomes} onChange={(event) => updateProposalBrief("expectedLearningOutcomes", event.target.value)} placeholder="Enter one outcome per line. Leave blank if the proposal does not need this section." />
+            </Field>
             <Field label="Content priorities">
               <Textarea rows={7} value={proposalBrief.contentPriorities} onChange={(event) => updateProposalBrief("contentPriorities", event.target.value)} placeholder="Enter required sessions, topics, and practical applications" />
+            </Field>
+            <Field label="Who should attend">
+              <Textarea rows={6} value={proposalBrief.whoShouldAttend} onChange={(event) => updateProposalBrief("whoShouldAttend", event.target.value)} placeholder="Enter one participant group per line. Leave blank if the audience field is enough." />
             </Field>
             <Field label="Training methodology">
               <Textarea rows={6} value={proposalBrief.methodology} onChange={(event) => updateProposalBrief("methodology", event.target.value)} placeholder="Theory/practice ratio, demonstrations, exercises, group work, follow-up" />
@@ -517,10 +527,10 @@ export function PackageForm({
               <Textarea rows={6} value={proposalBrief.clientResponsibilities} onChange={(event) => updateProposalBrief("clientResponsibilities", event.target.value)} placeholder="Enter one client responsibility per line" />
             </Field>
             <Field label="Billing arrangement">
-              <Textarea value={proposalBrief.billingArrangement} onChange={(event) => updateProposalBrief("billingArrangement", event.target.value)} placeholder="Payment percentage and timing" />
+              <Textarea value={proposalBrief.billingArrangement} onChange={(event) => updateProposalBrief("billingArrangement", event.target.value)} placeholder="The professional fee 100% shall be made to DG Academy before the training date." />
             </Field>
             <Field label="Payment instructions">
-              <Textarea value={proposalBrief.paymentInstructions} onChange={(event) => updateProposalBrief("paymentInstructions", event.target.value)} placeholder="Payment method and account instructions" />
+              <Textarea value={proposalBrief.paymentInstructions} onChange={(event) => updateProposalBrief("paymentInstructions", event.target.value)} placeholder="Payment shall be made in either cash or check or bank transfer to DG Academy's account No: 34730640543314/ DGACADEMY of ACLEDA Bank. Bank slip shall be sent to DG Academy should the payment is made through bank transfer." />
             </Field>
             <Field label="Acceptance deadline">
               <Input value={proposalBrief.acceptanceDeadline} onChange={(event) => updateProposalBrief("acceptanceDeadline", event.target.value)} placeholder="No later than one week before the training date" />
@@ -718,6 +728,22 @@ export function CommercialSetup({
         <div className="grid gap-4 sm:grid-cols-2">
           <NumberField label="Participants" placeholder="Enter participant count" value={value.numberOfParticipants} onChange={(next) => updateNumber("numberOfParticipants", next)} />
           <NumberField label="Professional fee (USD)" placeholder="Enter quoted professional fee" value={value.professionalFee} onChange={(next) => updateNumber("professionalFee", next)} />
+          <Field label="VAT wording">
+            <Select
+              value={value.vatStatus}
+              onChange={(event) =>
+                onChange(
+                  normalizePricingInputs({
+                    ...value,
+                    vatStatus: event.target.value,
+                  }),
+                )
+              }
+            >
+              <option>Excluding VAT</option>
+              <option>Including VAT</option>
+            </Select>
+          </Field>
           <NumberField label="Discount %" placeholder="Enter discount percent" value={value.discountPercent} onChange={(next) => updateNumber("discountPercent", next)} />
           <NumberField label="VAT / tax %" placeholder="Enter VAT or tax percent" value={value.taxPercent} onChange={(next) => updateNumber("taxPercent", next)} />
         </div>
@@ -1337,6 +1363,122 @@ function outputTypeText(pkg: TrainingPackage, outputType: OutputEvaluationType) 
   return pkg[outputType];
 }
 
+function renderInlineMarkdown(text: string): ReactNode[] {
+  return text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((part, index) => {
+    if (part.startsWith("**") && part.endsWith("**")) {
+      return (
+        <strong key={index} className="font-semibold text-white">
+          {part.slice(2, -2)}
+        </strong>
+      );
+    }
+
+    if (part.startsWith("`") && part.endsWith("`")) {
+      return (
+        <code
+          key={index}
+          className="rounded border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[0.9em] text-teal-100"
+        >
+          {part.slice(1, -1)}
+        </code>
+      );
+    }
+
+    return part;
+  });
+}
+
+function MarkdownPreview({ value }: { value: string }) {
+  const lines = value.split(/\r?\n/);
+  const elements: ReactNode[] = [];
+  let listType: "ul" | "ol" | null = null;
+  let listItems: string[] = [];
+
+  function flushList() {
+    if (!listType || listItems.length === 0) {
+      return;
+    }
+
+    const Tag = listType;
+    elements.push(
+      <Tag
+        key={`list-${elements.length}`}
+        className={`my-3 space-y-1 pl-6 text-sm leading-7 text-slate-200 ${
+          listType === "ol" ? "list-decimal" : "list-disc"
+        }`}
+      >
+        {listItems.map((item, index) => (
+          <li key={`${item}-${index}`}>{renderInlineMarkdown(item)}</li>
+        ))}
+      </Tag>,
+    );
+    listType = null;
+    listItems = [];
+  }
+
+  lines.forEach((line, index) => {
+    const trimmed = line.trim();
+
+    if (!trimmed) {
+      flushList();
+      return;
+    }
+
+    const heading = trimmed.match(/^(#{1,3})\s+(.+)/);
+    if (heading) {
+      flushList();
+      const level = heading[1].length;
+      const className =
+        level === 1
+          ? "mb-4 mt-1 text-2xl font-semibold leading-tight text-white"
+          : level === 2
+            ? "mb-2 mt-6 text-lg font-semibold leading-snug text-white"
+            : "mb-2 mt-4 text-base font-semibold leading-snug text-teal-50";
+      elements.push(
+        <div key={`heading-${index}`} className={className}>
+          {renderInlineMarkdown(heading[2])}
+        </div>,
+      );
+      return;
+    }
+
+    const bullet = trimmed.match(/^[-*]\s+(.+)/);
+    if (bullet) {
+      if (listType !== "ul") {
+        flushList();
+        listType = "ul";
+      }
+      listItems.push(bullet[1]);
+      return;
+    }
+
+    const numbered = trimmed.match(/^\d+\.\s+(.+)/);
+    if (numbered) {
+      if (listType !== "ol") {
+        flushList();
+        listType = "ol";
+      }
+      listItems.push(numbered[1]);
+      return;
+    }
+
+    flushList();
+    elements.push(
+      <p key={`paragraph-${index}`} className="my-3 text-sm leading-7 text-slate-200">
+        {renderInlineMarkdown(trimmed)}
+      </p>,
+    );
+  });
+
+  flushList();
+
+  return (
+    <div className="max-h-[34rem] overflow-auto p-5">
+      <div className="max-w-4xl">{elements}</div>
+    </div>
+  );
+}
+
 export function OutputTabs({
   pkg,
   onPackageUpdate,
@@ -1577,9 +1719,7 @@ export function OutputTabs({
             ) : null}
           </div>
         </div>
-        <pre className="max-h-[34rem] overflow-auto whitespace-pre-wrap p-4 font-sans text-sm leading-7 text-slate-100">
-          {activeText}
-        </pre>
+        <MarkdownPreview value={activeText} />
       </div>
       {regenerateNotice ? (
         <p className="rounded-lg border border-teal-300/20 bg-teal-300/10 p-3 text-sm text-teal-50">

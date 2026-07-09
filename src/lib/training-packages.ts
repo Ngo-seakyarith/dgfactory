@@ -7,6 +7,8 @@ import {
 } from "@/lib/pricing";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import {
+  defaultBillingArrangement,
+  defaultPaymentInstructions,
   normalizeProposalBrief,
   type ProposalBrief,
 } from "@/lib/proposal-brief";
@@ -140,34 +142,30 @@ export function createTrainingOutputTemplate(
       "Practice the core workflows through guided DG Academy exercises.",
       "Convert workshop insights into a 30-day implementation plan.",
     ],
-    expectedLearningOutcomes: [
-      `Shared understanding of ${input.courseTitle} and its business value.`,
-      `Practical workflow prototypes or implementation ideas for ${input.client}.`,
-      "Clear follow-up plan with owners and measures.",
-    ],
+    expectedLearningOutcomes: input.proposalBrief?.expectedLearningOutcomes
+      ? input.proposalBrief.expectedLearningOutcomes.split(/\r?\n/).filter(Boolean)
+      : [],
     contentOutlines: [
       "Executive framing and success criteria",
       "Core concepts and field examples",
       "Applied workshop labs",
       "Implementation planning",
     ],
-    whoShouldAttend: [input.audience],
+    whoShouldAttend: input.proposalBrief?.whoShouldAttend
+      ? input.proposalBrief.whoShouldAttend.split(/\r?\n/).filter(Boolean)
+      : [],
     trainingMethodology: [
       "Executive briefing",
       "Practical demonstrations",
       "Facilitated exercises",
       "Action-plan readout",
     ],
-    trainingTools: [
-      "Full syllabus and facilitator flow",
-      "Participant exercises",
-      "Action-plan template",
-    ],
-    trainingEvaluation: [
-      "Participant engagement and practical exercise observation",
-      "Action-plan quality review",
-      "Post-course feedback",
-    ],
+    trainingTools: input.proposalBrief?.trainingTools
+      ? input.proposalBrief.trainingTools.split(/\r?\n/).filter(Boolean)
+      : [],
+    trainingEvaluation: input.proposalBrief?.evaluationApproach
+      ? input.proposalBrief.evaluationApproach.split(/\r?\n/).filter(Boolean)
+      : [],
     schedule: {
       duration: input.duration,
       date: "TBC",
@@ -199,10 +197,13 @@ export function createTrainingOutputTemplate(
         "Certificates of completion",
         "Pre-training and post-training evaluation",
       ],
-      totalFee: "Professional fee to be confirmed from Commercial Setup.",
+      totalFee: `Professional fee to be confirmed from Commercial Setup (${input.proposalBrief?.vatStatus || "Excluding VAT"}).`,
+      vatStatus: input.proposalBrief?.vatStatus || "Excluding VAT",
       clientResponsibilities: ["Training venue", "Meals or refreshments", "Participants"],
-      billingArrangement: "Billing arrangement to be confirmed.",
-      paymentInstructions: input.proposalBrief?.paymentInstructions ?? "",
+      billingArrangement:
+        input.proposalBrief?.billingArrangement || defaultBillingArrangement,
+      paymentInstructions:
+        input.proposalBrief?.paymentInstructions || defaultPaymentInstructions,
       acceptanceText: "Client acknowledgement and acceptance to be confirmed.",
     },
     signatory: {

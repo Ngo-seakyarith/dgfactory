@@ -1,5 +1,6 @@
 export type PricingInputs = {
   currency: string;
+  vatStatus: string;
   professionalFee: number;
   numberOfParticipants: number;
   numberOfTrainingDays: number;
@@ -35,6 +36,7 @@ export type PricingOutputs = {
 
 export const defaultPricingInputs: PricingInputs = {
   currency: "USD",
+  vatStatus: "Excluding VAT",
   professionalFee: 0,
   numberOfParticipants: 20,
   numberOfTrainingDays: 1,
@@ -54,7 +56,7 @@ export const defaultPricingInputs: PricingInputs = {
 
 const numericFields: Array<keyof Omit<
   PricingInputs,
-  "currency"
+  "currency" | "vatStatus"
 >> = [
   "professionalFee",
   "numberOfParticipants",
@@ -97,6 +99,7 @@ export function normalizePricingInputs(
   return {
     ...normalized,
     currency: String(normalized.currency || "USD").trim() || "USD",
+    vatStatus: String(normalized.vatStatus || "Excluding VAT").trim() || "Excluding VAT",
   };
 }
 

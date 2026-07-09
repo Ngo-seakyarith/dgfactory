@@ -592,6 +592,13 @@ Commercial Setup pricing assumptions are calculated deterministically before gen
 
 Package generation stores syllabus, proposal markdown, structured `proposal_content` JSON, and deterministic pricing inputs/outputs on `training_packages`. The structured proposal object is the source for professional DOCX export; markdown is derived for fast browser preview and copy workflows.
 
+Proposal briefs support the DG Academy reference proposal sections without a database migration because the fields live inside `proposal_brief` JSONB:
+
+- Core filled fields render the short client proposal sections: cover, overview, objectives, content outline, methodology, schedule, trainer, fee, and acceptance.
+- Optional fields such as expected learning outcomes, who should attend, training/coaching tools, and training evaluation render only when filled or when generated from supplied brief content.
+- Content outline formatting follows the user's entered structure, including session plans, numbered topic lists, or mixed topic lists with sub-items.
+- Commercial Setup owns client-facing VAT wording (`Including VAT` or `Excluding VAT`). The default payment instruction uses DG Academy's ACLEDA account wording from the reference proposals.
+
 The selected trainer is stored as a snapshot inside the existing `proposal_brief` JSONB value, including trainer ID, ImageKit URL, biography, experience, and qualifications. This requires no additional Supabase table or migration. Existing packages without a trainer ID remain readable, but users must select an approved trainer before regeneration or proposal DOCX export.
 
 Files:

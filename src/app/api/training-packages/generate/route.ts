@@ -50,6 +50,9 @@ export async function POST(request: Request) {
     const pricingInputs = normalizePricingInputs(
       (body as { pricingInputs?: Partial<PricingInputs> }).pricingInputs,
     );
+    if (input.proposalBrief) {
+      input.proposalBrief.vatStatus = pricingInputs.vatStatus;
+    }
     const pricingOutputs = calculatePricing(pricingInputs);
     const knowledgeBriefValues = Object.entries(input.proposalBrief ?? {})
       .filter(

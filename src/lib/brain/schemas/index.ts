@@ -154,11 +154,21 @@ export const proposalContentSchema: JsonSchema = {
     },
     trainer: {
       type: "object",
-      required: ["name", "title", "bio"],
+      required: [
+        "name",
+        "title",
+        "imageUrl",
+        "bio",
+        "experience",
+        "qualifications",
+      ],
       properties: {
         name: { type: "string" },
         title: { type: "string" },
+        imageUrl: { type: "string" },
         bio: stringArraySchema,
+        experience: stringArraySchema,
+        qualifications: stringArraySchema,
       },
     },
     professionalFee: {
@@ -166,6 +176,7 @@ export const proposalContentSchema: JsonSchema = {
       required: [
         "included",
         "totalFee",
+        "vatStatus",
         "clientResponsibilities",
         "billingArrangement",
         "paymentInstructions",
@@ -174,6 +185,7 @@ export const proposalContentSchema: JsonSchema = {
       properties: {
         included: stringArraySchema,
         totalFee: { type: "string" },
+        vatStatus: { type: "string" },
         clientResponsibilities: stringArraySchema,
         billingArrangement: { type: "string" },
         paymentInstructions: { type: "string" },
