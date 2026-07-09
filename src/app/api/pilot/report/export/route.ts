@@ -1,12 +1,15 @@
 import { NextResponse } from "next/server";
 
-import { exportTrainingPackage, type ExportFormat } from "@/lib/export-package";
+import {
+  exportTrainingPackage,
+  type ExportFormat,
+} from "@/features/training-packages/export/export-package";
 import { buildPilotReport, calculatePilotMetrics } from "@/lib/pilot";
 import { getPilotSnapshot } from "@/lib/pilot-storage";
-import { calculatePricing, defaultPricingInputs } from "@/lib/pricing";
+import { calculatePricing, defaultPricingInputs } from "@/features/training-packages";
 import { requireApproved } from "@/lib/route-guards";
-import type { TrainingPackage } from "@/lib/training-packages";
-import { emptyProposalBrief } from "@/lib/proposal-brief";
+import type { TrainingPackage } from "@/features/training-packages";
+import { emptyProposalBrief } from "@/features/training-packages";
 
 function pilotReportFilename(format: ExportFormat) {
   const date = new Date().toISOString().slice(0, 10);

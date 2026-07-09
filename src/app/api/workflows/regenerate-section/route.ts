@@ -4,8 +4,8 @@ import {
   regeneratePackageSection,
   type RegeneratablePackageSection,
 } from "@/lib/brain/regeneratePackageSection";
-import { getTrainerById } from "@/lib/trainers";
-import type { TrainingPackageOutputs } from "@/lib/training-packages";
+import { getTrainerById } from "@/features/training-packages";
+import type { TrainingPackageOutputs } from "@/features/training-packages";
 
 const sections: RegeneratablePackageSection[] = [
   "syllabus",

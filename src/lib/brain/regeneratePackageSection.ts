@@ -4,12 +4,12 @@ import type {
 } from "@/lib/brain/agents";
 import { routeBrainTask } from "@/lib/brain/router";
 import { buildDeterministicPricingFacts } from "@/lib/brain/tools";
-import type { PricingInputs } from "@/lib/pricing";
+import type { PricingInputs } from "@/features/training-packages";
 import {
   normalizeTrainingOutputs,
   type TrainingPackageInput,
   type TrainingPackageOutputs,
-} from "@/lib/training-packages";
+} from "@/features/training-packages";
 
 export type RegeneratablePackageSection = "syllabus" | "proposal";
 

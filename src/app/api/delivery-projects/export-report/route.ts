@@ -3,11 +3,11 @@ import { NextResponse } from "next/server";
 import {
   exportTrainingPackage,
   type ExportFormat,
-} from "@/lib/export-package";
-import { defaultPricingInputs, calculatePricing } from "@/lib/pricing";
+} from "@/features/training-packages/export/export-package";
+import { defaultPricingInputs, calculatePricing } from "@/features/training-packages";
 import { normalizeDeliveryProject, type DeliveryProject } from "@/lib/delivery";
-import type { TrainingPackage } from "@/lib/training-packages";
-import { emptyProposalBrief } from "@/lib/proposal-brief";
+import type { TrainingPackage } from "@/features/training-packages";
+import { emptyProposalBrief } from "@/features/training-packages";
 
 const formats: ExportFormat[] = ["docx"];
 

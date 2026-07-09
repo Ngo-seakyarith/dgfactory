@@ -49,7 +49,7 @@ import {
   type Client,
   type Opportunity,
 } from "@/lib/crm";
-import type { TrainingPackage } from "@/lib/training-packages";
+import type { TrainingPackage } from "@/features/training-packages";
 import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 
 function useDeliveryData() {

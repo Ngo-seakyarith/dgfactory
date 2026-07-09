@@ -41,6 +41,8 @@
 
 * {
   box-sizing: border-box;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(148, 163, 184, 0.55) rgba(7, 17, 31, 0.45);
 }
 
 html,
@@ -64,4 +66,36 @@ a {
 
 ::selection {
   background: rgba(45, 212, 191, 0.32);
+}
+
+*::-webkit-scrollbar {
+  width: 0.55rem;
+  height: 0.55rem;
+}
+
+*::-webkit-scrollbar-track {
+  background: rgba(7, 17, 31, 0.45);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: linear-gradient(
+    180deg,
+    rgba(45, 212, 191, 0.85),
+    rgba(148, 163, 184, 0.72)
+  );
+  border: 2px solid rgba(7, 17, 31, 0.9);
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(
+    180deg,
+    rgba(94, 234, 212, 0.95),
+    rgba(203, 213, 225, 0.82)
+  );
+}
+
+*::-webkit-scrollbar-corner {
+  background: transparent;
 }

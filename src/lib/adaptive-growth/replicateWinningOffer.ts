@@ -9,7 +9,7 @@ import type {
 } from "@/lib/brain/agents";
 import { saveKnowledgeDocument } from "@/lib/knowledge-storage";
 import type { KnowledgeDocumentType } from "@/lib/knowledge";
-import { getTrainingPackage } from "@/lib/training-storage";
+import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
 import type {
   LearningGenomeItem,
   SelectionDecision,

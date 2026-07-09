@@ -548,7 +548,7 @@ Safety:
 - Production UI never runs Codex directly.
 - Approved improvements can be copied as Codex prompts, but implementation and release still require human review.
 
-## V1.6 GPT-5.4 Brain Layer
+## V1.6 GPT-5.5 Brain Layer
 
 V1.6 refactors AI generation into `src/lib/brain`.
 
@@ -603,7 +603,7 @@ The selected trainer is stored as a snapshot inside the existing `proposal_brief
 
 Files:
 
-- `POST /api/generate-package`
+- `POST /api/training-packages/generate`
 - `POST /api/workflows/regenerate-section`
 
 UI behavior:
@@ -613,6 +613,7 @@ UI behavior:
 - Proposal generation returns structured sections for overview, objectives, outcomes, content outline, attendance, methodology, tools, evaluation, schedule, trainer, professional fee, billing, and acceptance.
 - Proposal DOCX export uses the `docx` library instead of hand-written Word XML.
 - Package output tabs include `Regenerate this section` for syllabus and proposal.
+- Training package domain, storage, export, server handlers, and UI components live under `src/features/training-packages`; `src/app` package pages and API routes are thin wrappers.
 
 State:
 
@@ -938,7 +939,7 @@ If participant count is zero, price per participant is shown as `0`.
 - `/approvals`
 - `/loops`
 - `/admin/prompts`
-- `POST /api/generate-package`
+- `POST /api/training-packages/generate`
 - `POST /api/export-package`
 - `GET/POST /api/training-packages`
 - `GET/DELETE /api/training-packages/[id]`
@@ -972,7 +973,7 @@ If participant count is zero, price per participant is shown as `0`.
 - `GET /api/audit-logs`
 - `GET /api/approvals`
 - `GET/PATCH /api/approvals/[id]`
-- `POST /api/generate-package`
+- `POST /api/training-packages/generate`
 - `POST /api/workflows/regenerate-section`
 - `GET/POST /api/knowledge-documents`
 - `GET/DELETE /api/knowledge-documents/[id]`

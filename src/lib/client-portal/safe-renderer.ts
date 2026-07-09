@@ -1,5 +1,5 @@
 import type { DeliveryProject } from "@/lib/delivery";
-import type { TrainingPackage } from "@/lib/training-packages";
+import type { TrainingPackage } from "@/features/training-packages";
 
 const internalLinePatterns = [
   /internal[-\s]?only/i,

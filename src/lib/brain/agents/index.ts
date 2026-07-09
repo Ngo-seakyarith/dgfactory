@@ -1,7 +1,7 @@
 import type {
   TrainingPackageInput,
   TrainingPackageOutputs,
-} from "@/lib/training-packages";
+} from "@/features/training-packages";
 import {
   adaptiveGrowthRecommendationsOutputSchema,
   deliveryDraftOutputSchema,
@@ -16,7 +16,7 @@ import {
   type JsonSchema,
 } from "@/lib/brain/schemas";
 import { masterAgent } from "@/lib/brain/agents/masterAgent";
-import type { ProposalContent } from "@/lib/proposal-content";
+import type { ProposalContent } from "@/features/training-packages";
 
 export const brainTaskTypes = [
   "course_package",

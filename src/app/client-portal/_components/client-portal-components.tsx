@@ -36,7 +36,7 @@ import type {
 import { portalDecisionStatuses } from "@/lib/client-portal/types";
 import type { Client, Opportunity } from "@/lib/crm";
 import type { DeliveryProject } from "@/lib/delivery";
-import type { TrainingPackage } from "@/lib/training-packages";
+import type { TrainingPackage } from "@/features/training-packages";
 
 type PublicAccess = Omit<ClientPortalAccess, "accessTokenHash">;
 

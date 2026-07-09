@@ -3,22 +3,22 @@ import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import type {
   KnowledgeSourceNote,
 } from "@/lib/knowledge";
-import type { TrainingPackage } from "@/lib/training-packages";
+import type { TrainingPackage } from "@/features/training-packages";
 import {
   normalizeProposalBrief,
   type ProposalBrief,
-} from "@/lib/proposal-brief";
+} from "@/features/training-packages";
 import {
   normalizeProposalContent,
   proposalContentToMarkdown,
   type ProposalContent,
-} from "@/lib/proposal-content";
+} from "@/features/training-packages";
 import {
   calculatePricing,
   defaultPricingInputs,
   normalizePricingInputs,
   type PricingInputs,
-} from "@/lib/pricing";
+} from "@/features/training-packages";
 
 type PackageRow = {
   id: string;

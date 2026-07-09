@@ -1,3 +1,5 @@
+import { getTrainerById, trainerSnapshotFields } from "./trainers";
+
 export type ProposalBrief = {
   coverHeading: string;
   coverSubtitle: string;
@@ -88,4 +90,3 @@ export function normalizeProposalBrief(value?: Partial<ProposalBrief> | null): P
 
   return trainer ? { ...normalized, ...trainerSnapshotFields(trainer) } : normalized;
 }
-import { getTrainerById, trainerSnapshotFields } from "@/lib/trainers";

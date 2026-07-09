@@ -28,9 +28,9 @@ import {
   ErrorState,
   LoadingState,
   PackageForm,
-} from "@/app/packages/_components/training-package-factory";
+} from "@/features/training-packages/components";
 import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
-import type { TrainingPackage } from "@/lib/training-packages";
+import type { TrainingPackage } from "@/features/training-packages";
 import { PackageOpportunityPanel } from "@/app/crm/_components/crm-components";
 import { AdaptiveGrowthPackageLinkPanel } from "@/app/adaptive-growth/_components/adaptive-growth-components";
 

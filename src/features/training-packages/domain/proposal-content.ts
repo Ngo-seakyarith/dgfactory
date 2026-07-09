@@ -2,7 +2,7 @@ import {
   defaultBillingArrangement,
   defaultPaymentInstructions,
   type ProposalBrief,
-} from "@/lib/proposal-brief";
+} from "./proposal-brief";
 
 export type ProposalSchedule = {
   duration: string;

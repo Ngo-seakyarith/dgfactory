@@ -4,7 +4,7 @@ import { listOutputEvaluations, listPromptImprovementSuggestions } from "@/lib/e
 import { listLoopRuns } from "@/lib/loops/storage";
 import { listAuditLogs } from "@/lib/audit";
 import { listOpportunities } from "@/lib/crm-storage";
-import { listTrainingPackages } from "@/lib/training-storage";
+import { listTrainingPackages } from "@/features/training-packages/storage/training-storage";
 
 export const pilotIssueSeverities = ["Low", "Medium", "High", "Critical"] as const;
 export type PilotIssueSeverity = (typeof pilotIssueSeverities)[number];

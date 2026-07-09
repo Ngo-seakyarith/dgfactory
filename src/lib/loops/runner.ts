@@ -9,7 +9,7 @@ import { listClients, listOpportunities } from "@/lib/crm-storage";
 import { listDeliveryProjects, listDeliveryTasks } from "@/lib/delivery-storage";
 import { getQualityDashboardMetrics } from "@/lib/evaluation-storage";
 import { listPromptImprovementSuggestions } from "@/lib/evaluation-storage";
-import { listTrainingPackages } from "@/lib/training-storage";
+import { listTrainingPackages } from "@/features/training-packages/storage/training-storage";
 import { listKnowledgeDocuments } from "@/lib/knowledge-storage";
 import { listAdaptiveGrowthData } from "@/lib/adaptive-growth-storage";
 import { calculateOfferFitness } from "@/lib/adaptive-growth/fitness";

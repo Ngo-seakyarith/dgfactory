@@ -4,7 +4,7 @@ import { listDeliveryProjects } from "@/lib/delivery-storage";
 import { getQualityDashboardMetrics } from "@/lib/evaluation-storage";
 import { listLoopRuns } from "@/lib/loops/storage";
 import { listApprovalRequests } from "@/lib/approvals";
-import { listTrainingPackages } from "@/lib/training-storage";
+import { listTrainingPackages } from "@/features/training-packages/storage/training-storage";
 
 function startOfMonth() {
   const date = new Date();

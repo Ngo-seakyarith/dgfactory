@@ -1,4 +1,4 @@
-import trainerData from "@/data/trainers.json";
+import trainerData from "@/features/training-packages/data/trainers.json";
 
 export type TrainerCatalogEntry = {
   id: string;

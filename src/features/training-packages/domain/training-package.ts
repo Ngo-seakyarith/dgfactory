@@ -4,19 +4,19 @@ import {
   normalizePricingInputs,
   type PricingInputs,
   type PricingOutputs,
-} from "@/lib/pricing";
+} from "./pricing";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import {
   defaultBillingArrangement,
   defaultPaymentInstructions,
   normalizeProposalBrief,
   type ProposalBrief,
-} from "@/lib/proposal-brief";
+} from "./proposal-brief";
 import {
   normalizeProposalContent,
   proposalContentToMarkdown,
   type ProposalContent,
-} from "@/lib/proposal-content";
+} from "./proposal-content";
 
 export type TrainingPackageInput = {
   courseTitle: string;

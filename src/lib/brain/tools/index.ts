@@ -3,7 +3,7 @@ import {
   clientPricingSummaryToMarkdown,
   normalizePricingInputs,
   type PricingInputs,
-} from "@/lib/pricing";
+} from "@/features/training-packages";
 
 export function buildDeterministicPricingFacts(
   pricingInputs: Partial<PricingInputs> | undefined,

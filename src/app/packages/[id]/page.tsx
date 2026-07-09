@@ -1,4 +1,4 @@
-import { PackageDetailClient } from "@/app/packages/_components/training-package-browser";
+import { PackageDetailClient } from "@/features/training-packages/components";
 
 export default async function PackageDetailPage({
   params,

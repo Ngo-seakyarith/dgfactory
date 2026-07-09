@@ -68,7 +68,7 @@ import {
   calculateOfferFitness,
   type FitnessEvaluationResult,
 } from "@/lib/adaptive-growth/fitness";
-import type { TrainingPackage } from "@/lib/training-packages";
+import type { TrainingPackage } from "@/features/training-packages";
 import {
   mutationStrategies,
   type MutationStrategy,

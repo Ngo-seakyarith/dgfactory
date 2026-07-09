@@ -42,7 +42,7 @@ import {
   type Opportunity,
   type OpportunityStatus,
 } from "@/lib/crm";
-import type { TrainingPackage } from "@/lib/training-packages";
+import type { TrainingPackage } from "@/features/training-packages";
 
 function useCrmData() {
   const [clients, setClients] = useState<Client[]>([]);

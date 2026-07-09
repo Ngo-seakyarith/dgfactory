@@ -14,7 +14,7 @@ import {
   validatePortalToken,
 } from "@/lib/client-portal/storage";
 import { buildClientSafePackageDocument } from "@/lib/client-portal/safe-renderer";
-import { getTrainingPackage } from "@/lib/training-storage";
+import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
 
 export default async function PortalProposalPage({
   params,
