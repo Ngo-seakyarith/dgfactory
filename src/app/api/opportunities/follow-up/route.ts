@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { routeBrainTask } from "@/lib/brain/router";
+import { routeBrainTask } from "@/lib/brain/routing/router";
 import {
   isOpportunityStatus,
   type FollowUpDraft,

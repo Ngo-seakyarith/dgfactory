@@ -8,12 +8,12 @@ import type { BrainAgentDefinition, BrainMode } from "@/lib/brain/agents";
 import {
   brainModel,
   brainReasoningEffort,
+  getBrainModelStatus,
   recordBrainModelError,
   recordBrainModelSuccess,
-  getBrainModelStatus,
-} from "@/lib/brain/modelConfig";
-import { getActivePromptTemplate } from "@/lib/prompt-template-storage";
-import { renderUserPromptTemplate } from "@/lib/prompt-templates";
+} from "@/lib/brain/core/modelConfig";
+import { getOpenRouterClient } from "@/lib/brain/core/openRouterClient";
+import { resolveAgentPrompt } from "@/lib/brain/core/promptResolver";
 
 type GenerateStructuredOutputOptions<TInput, TOutput> = {
   agent: BrainAgentDefinition<TInput, TOutput>;
@@ -29,29 +29,8 @@ export type BrainResult<TOutput> = {
   notice?: string;
 };
 
-let openRouterClient: OpenAI | null = null;
-
 export function getBrainModel() {
   return brainModel;
-}
-
-function getOpenRouterClient() {
-  if (!process.env.OPENROUTER_API_KEY) {
-    return null;
-  }
-
-  if (!openRouterClient) {
-    openRouterClient = new OpenAI({
-      apiKey: process.env.OPENROUTER_API_KEY,
-      baseURL: "https://openrouter.ai/api/v1",
-      defaultHeaders: {
-        "HTTP-Referer": process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000",
-        "X-OpenRouter-Title": "DG Academy Training Production Factory",
-      },
-    });
-  }
-
-  return openRouterClient;
 }
 
 function normalizeJsonSchema(schema: JsonSchema) {
@@ -59,41 +38,6 @@ function normalizeJsonSchema(schema: JsonSchema) {
     name: "dg_brain_output",
     strict: false,
     schema,
-  };
-}
-
-export async function resolveAgentPrompt<TInput>({
-  agent,
-  input,
-}: {
-  agent: BrainAgentDefinition<TInput, unknown>;
-  input: TInput;
-}) {
-  const activeTemplate = await getActivePromptTemplate(agent.name);
-
-  if (activeTemplate) {
-    return {
-      systemPrompt: activeTemplate.systemPrompt,
-      userPrompt: renderUserPromptTemplate(
-        activeTemplate.userPromptTemplate,
-        input,
-      ),
-      source: "template" as const,
-      templateVersion: activeTemplate.version,
-    };
-  }
-
-  return {
-    systemPrompt: [
-      `Agent: ${agent.name}`,
-      `Role: ${agent.role}`,
-      agent.instructions,
-      "Return only JSON matching the requested schema.",
-      "Keep DG Academy context practical, executive-friendly, and commercially careful.",
-    ].join("\n\n"),
-    userPrompt: JSON.stringify(input),
-    source: "code" as const,
-    templateVersion: null,
   };
 }
 

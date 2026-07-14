@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
 import type { ImprovementOpportunityOutput } from "@/lib/brain/agents";
-import { routeBrainTask } from "@/lib/brain/router";
+import { routeBrainTask } from "@/lib/brain/routing/router";
 import { saveImprovementOpportunity } from "@/lib/improvement-storage";
 import type {
   ImprovementCategory,

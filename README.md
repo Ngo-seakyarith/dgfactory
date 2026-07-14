@@ -124,9 +124,9 @@ V3.6 closes the main gap between the internal adaptive MVP and a safer enterpris
 
 Brain model:
 
-- `src/lib/brain/modelConfig.ts` centralizes model configuration.
+- `src/lib/brain/core/modelConfig.ts` centralizes model configuration.
 - The Brain Layer uses OpenRouter model `openai/gpt-5.5` with low reasoning effort; only `OPENROUTER_API_KEY` is configured through the environment.
-- `/api/brain/status` reports intended model, actual model, API key status, last successful model, and runtime status.
+- `/api/brain/status` reports the configured model, API key status, and latest runtime error.
 
 Master Agent:
 
@@ -554,11 +554,12 @@ V1.6 refactors AI generation into `src/lib/brain`.
 
 Brain Layer folders:
 
-- `src/lib/brain/client.ts` - OpenRouter client through the OpenAI-compatible SDK, model config, retries, and schema validation
-- `src/lib/brain/router.ts` - routes task types to specialist agents
+- `src/lib/brain/core` - OpenRouter client setup, prompt resolution, model config, retries, and schema validation
+- `src/lib/brain/routing` - routes task types to specialist agents
+- `src/lib/brain/generation` - package-specific generation helpers such as section regeneration
 - `src/lib/brain/agents` - chief brain, course architect, proposal, pricing narrative, slide, workbook, QA, sales follow-up, delivery, and improvement agents
 - `src/lib/brain/tools` - deterministic helper tools, currently pricing facts
-- `src/lib/brain/prompts` - shared Brain Layer prompt principles
+- `src/lib/brain/prompts` - shared Brain Layer prompt principles and DG proposal template guidance
 - `src/lib/brain/schemas` - lightweight JSON schema definitions and validation
 - `src/lib/brain/evals` - QA review evaluation helpers
 

@@ -1,6 +1,6 @@
 import type { BrainTaskType } from "@/lib/brain/agents";
-import { getBrainModel } from "@/lib/brain/client";
-import { getAgentForTask, routeBrainTask } from "@/lib/brain/router";
+import { getBrainModel } from "@/lib/brain/core/structuredOutput";
+import { getAgentForTask, routeBrainTask } from "@/lib/brain/routing/router";
 import { createDeterministicEvaluation, type OutputEvaluationType } from "@/lib/evaluations";
 import {
   getEvalDataset,

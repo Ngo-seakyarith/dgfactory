@@ -2,7 +2,7 @@ import {
   saveAdaptiveGrowthRecord,
   listAdaptiveGrowthData,
 } from "@/lib/adaptive-growth-storage";
-import { routeBrainTask } from "@/lib/brain/router";
+import { routeBrainTask } from "@/lib/brain/routing/router";
 import type {
   OfferReplicationInput,
   OfferReplicationOutput,

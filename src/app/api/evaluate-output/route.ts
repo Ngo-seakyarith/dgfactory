@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { generateStructuredOutput } from "@/lib/brain/client";
+import { generateStructuredOutput } from "@/lib/brain/core/structuredOutput";
 import { outputEvaluationResultSchema } from "@/lib/brain/schemas";
 import { getRubricForOutputType } from "@/lib/brain/evals/rubrics";
 import {

@@ -14,7 +14,7 @@ import { listKnowledgeDocuments } from "@/lib/knowledge-storage";
 import { listAdaptiveGrowthData } from "@/lib/adaptive-growth-storage";
 import { calculateOfferFitness } from "@/lib/adaptive-growth/fitness";
 import { mutationStrategies } from "@/lib/brain/agents";
-import { routeBrainTask } from "@/lib/brain/router";
+import { routeBrainTask } from "@/lib/brain/routing/router";
 import { saveApprovalRequest } from "@/lib/approvals";
 import { buildPilotReport, calculatePilotMetrics } from "@/lib/pilot";
 import { getPilotSnapshot } from "@/lib/pilot-storage";

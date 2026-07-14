@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 import {
   regeneratePackageSection,
   type RegeneratablePackageSection,
-} from "@/lib/brain/regeneratePackageSection";
+} from "@/lib/brain/generation/regeneratePackageSection";
 import { getTrainerById } from "@/features/training-packages";
 import type { TrainingPackageOutputs } from "@/features/training-packages";
 

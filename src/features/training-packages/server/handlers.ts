@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
-import { routeBrainTask } from "@/lib/brain/router";
+import { routeBrainTask } from "@/lib/brain/routing/router";
 import type { CoursePackageBrainInput } from "@/lib/brain/agents";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import { knowledgeSourceNotesFromResults } from "@/lib/knowledge";

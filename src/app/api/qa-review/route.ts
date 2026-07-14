@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { routeBrainTask } from "@/lib/brain/router";
+import { routeBrainTask } from "@/lib/brain/routing/router";
 import type { QaReviewInput, QaReviewOutput } from "@/lib/brain/agents";
 
 function friendlyError(error: unknown) {

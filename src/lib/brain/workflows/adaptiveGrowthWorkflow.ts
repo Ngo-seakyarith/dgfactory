@@ -6,7 +6,7 @@ import type {
   MarketSignal,
   OfferVariant,
 } from "@/lib/adaptive-growth";
-import { routeBrainTask } from "@/lib/brain/router";
+import { routeBrainTask } from "@/lib/brain/routing/router";
 import type { MasterAgentInput, MasterAgentOutput } from "@/lib/brain/agents/masterAgent";
 import type { TextAgentOutput } from "@/lib/brain/agents";
 import { classifyRiskyAction, type RiskClassification } from "@/lib/safety/riskClassifier";

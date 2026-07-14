@@ -2,7 +2,7 @@ import type {
   CoursePackageBrainInput,
   ProposalAgentOutput,
 } from "@/lib/brain/agents";
-import { routeBrainTask } from "@/lib/brain/router";
+import { routeBrainTask } from "@/lib/brain/routing/router";
 import { buildDeterministicPricingFacts } from "@/lib/brain/tools";
 import type { PricingInputs } from "@/features/training-packages";
 import {

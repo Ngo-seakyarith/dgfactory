@@ -16,6 +16,7 @@ import {
   type JsonSchema,
 } from "@/lib/brain/schemas";
 import { masterAgent } from "@/lib/brain/agents/masterAgent";
+import { dgProposalTemplateGuide } from "@/lib/brain/prompts/proposalTemplateGuide";
 import type { ProposalContent } from "@/features/training-packages";
 
 export const brainTaskTypes = [
@@ -251,24 +252,6 @@ const coursePackageInputSchema: JsonSchema = {
     },
   },
 };
-
-const dgProposalTemplateGuide = [
-  "Follow the DG Academy client proposal family shown by the Nippon Paint and LOLC references. Do not force one fixed page count.",
-  "Proposal length is driven by the fields the user fills. Required core fields create the short proposal. Optional fields add their own sections only when useful content is supplied.",
-  "1. Cover: use proposalBrief.coverHeading when supplied, then [course title], optional subtitle, optional certification label, and [client]. Nippon-style covers may include certification. LOLC-style covers may simply say Customized Training Proposal and at [client].",
-  "2. Course Overview: write three short paragraphs explaining the client context, the practical training goal, and the expected business value.",
-  "3. Course Objectives: concise bullets beginning with what participants will be able to understand, identify, analyze, build, communicate, handle, or apply.",
-  "4. Expected Learning Outcomes: include this section when proposalBrief.expectedLearningOutcomes is supplied; otherwise leave the array empty.",
-  "5. Content Outlines: use proposalBrief.contentPriorities as the authority. Preserve the user's structure when they provide session plans, numbered topic lists, or mixed topic lists with sub-items.",
-  "6. Who Should Attend, Training and Coaching Tools, and Training Evaluation: include these sections only when the user supplies those fields. Otherwise leave the arrays empty.",
-  "7. Training Methodology: provide concise bullets for theory/practice balance, focused inputs, live demonstrations, exercises, group sharing, local context, and follow-up when relevant.",
-  "8. Schedule: course duration, date, time, venue, participant count, and TBC where details are missing.",
-  "9. Trainer: use the selected catalog trainer name and title only; never invent or rewrite trainer credentials. The application inserts the approved photo and full profile deterministically. Long trainer profiles may continue onto extra pages.",
-  "10. Professional Fee and Logistics: include what the package includes, total professional fee, VAT wording, client responsibilities, billing arrangement, payment instructions, and acknowledgement/acceptance wording.",
-  "Treat proposalBrief as authoritative. Convert line-separated objectives, topics, tools, included items, and responsibilities into clean arrays. Preserve supplied schedule, trainer identity, payment terms, acceptance deadline, and proposal date without inventing replacements. The authorized DG Academy signatory is always Mr. Hin Sopheap, Executive Director, and is independent of trainer selection.",
-  "Use deterministic pricing facts only for the Professional Fee section. Never invent fees, discounts, VAT, direct costs, profit, or margins.",
-  "Return proposalContent as structured JSON. If proposal markdown is requested by the schema, derive it from proposalContent instead of inventing a second version.",
-].join("\n");
 
 const qaInputSchema: JsonSchema = {
   type: "object",

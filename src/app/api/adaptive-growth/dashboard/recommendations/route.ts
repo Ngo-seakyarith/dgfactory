@@ -5,7 +5,7 @@ import {
   buildAdaptiveGrowthExecutiveReport,
   type AdaptiveDashboardRange,
 } from "@/lib/adaptive-growth-dashboard";
-import { routeBrainTask } from "@/lib/brain/router";
+import { routeBrainTask } from "@/lib/brain/routing/router";
 import type {
   AdaptiveGrowthRecommendationsInput,
   AdaptiveGrowthRecommendationsOutput,
