@@ -22,11 +22,10 @@ export function AccountButton({ isAuthenticated, className }: AccountButtonProps
 
       if (!supabase) throw new Error("Supabase browser auth is not configured.");
 
-      const next = window.location.pathname === "/login" ? "/dashboard" : window.location.pathname;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: "google",
         options: {
-          redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(next)}`,
+          redirectTo: `${window.location.origin}/auth/callback`,
         },
       });
 
