@@ -10,7 +10,7 @@ import {
   type DeliveryTask,
   type DeliveryTaskCategory,
   type DeliveryTaskStatus,
-} from "@/lib/delivery";
+} from "@/features/delivery";
 
 type DeliveryProjectRow = {
   id: string;

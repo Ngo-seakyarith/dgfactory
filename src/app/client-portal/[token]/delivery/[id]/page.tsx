@@ -14,7 +14,7 @@ import {
   getPortalItemForClient,
   validatePortalToken,
 } from "@/lib/client-portal/storage";
-import { getDeliveryProject } from "@/lib/delivery-storage";
+import { getDeliveryProject } from "@/features/delivery/storage/delivery-storage";
 
 export default async function PortalDeliveryPage({
   params,

@@ -1,5 +1,5 @@
 import { formatCrmMoney } from "@/lib/crm";
-import { listDeliveryProjects } from "@/lib/delivery-storage";
+import { listDeliveryProjects } from "@/features/delivery/storage/delivery-storage";
 import { listOutputEvaluations, listPromptImprovementSuggestions } from "@/lib/evaluation-storage";
 import { listLoopRuns } from "@/lib/loops/storage";
 import { listAuditLogs } from "@/lib/audit";

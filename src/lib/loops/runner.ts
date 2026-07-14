@@ -6,7 +6,7 @@ import {
   type Opportunity,
 } from "@/lib/crm";
 import { listClients, listOpportunities } from "@/lib/crm-storage";
-import { listDeliveryProjects, listDeliveryTasks } from "@/lib/delivery-storage";
+import { listDeliveryProjects, listDeliveryTasks } from "@/features/delivery/storage/delivery-storage";
 import { getQualityDashboardMetrics } from "@/lib/evaluation-storage";
 import { listPromptImprovementSuggestions } from "@/lib/evaluation-storage";
 import { listTrainingPackages } from "@/features/training-packages/storage/training-storage";

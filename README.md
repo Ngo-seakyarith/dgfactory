@@ -840,6 +840,11 @@ Delivery workflow:
 - Generate draft trainer checklist, participant email, training-day agenda, and post-training report.
 - Export the post-training report as DOCX.
 
+Code ownership:
+
+- Delivery domain types, storage, API handlers, and UI components live under `src/features/delivery`.
+- `src/app/delivery` pages and delivery API routes stay as thin wrappers around the feature code.
+
 Safety:
 
 - AI support creates drafts only.

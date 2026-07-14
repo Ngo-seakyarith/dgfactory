@@ -1,6 +1,6 @@
 import { calculatePipelineMetrics, formatCrmMoney } from "@/lib/crm";
 import { listOpportunities } from "@/lib/crm-storage";
-import { listDeliveryProjects } from "@/lib/delivery-storage";
+import { listDeliveryProjects } from "@/features/delivery/storage/delivery-storage";
 import { getQualityDashboardMetrics } from "@/lib/evaluation-storage";
 import { listLoopRuns } from "@/lib/loops/storage";
 import { listApprovalRequests } from "@/lib/approvals";

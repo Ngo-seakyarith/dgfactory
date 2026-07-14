@@ -1,45 +1,4 @@
-import { NextResponse } from "next/server";
-
-import {
-  listDeliveryProjects,
-  saveDeliveryProject,
-} from "@/lib/delivery-storage";
-import type { DeliveryProject } from "@/lib/delivery";
-import { requireApproved } from "@/lib/route-guards";
-
-function friendlyError(error: unknown) {
-  return error instanceof Error ? error.message : "Delivery project request failed.";
-}
-
-export async function GET(request: Request) {
-  const auth = await requireApproved(request);
-  if (!auth.ok) return auth.response;
-
-  try {
-    const projects = await listDeliveryProjects();
-    return NextResponse.json({ projects });
-  } catch (error) {
-    return NextResponse.json({ error: friendlyError(error) }, { status: 500 });
-  }
-}
-
-export async function POST(request: Request) {
-  const auth = await requireApproved(request);
-  if (!auth.ok) return auth.response;
-
-  try {
-    const body = (await request.json()) as Partial<DeliveryProject>;
-
-    if (!body.title?.trim()) {
-      return NextResponse.json(
-        { error: "Delivery project title is required." },
-        { status: 400 },
-      );
-    }
-
-    const result = await saveDeliveryProject(body);
-    return NextResponse.json(result);
-  } catch (error) {
-    return NextResponse.json({ error: friendlyError(error) }, { status: 500 });
-  }
-}
+export {
+  listDeliveryProjectsHandler as GET,
+  saveDeliveryProjectHandler as POST,
+} from "@/features/delivery/server/handlers";

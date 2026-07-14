@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { DeliveryProjectForm } from "@/app/delivery/_components/delivery-components";
+import { DeliveryProjectForm } from "@/features/delivery/components";
 
 export default function NewDeliveryProjectPage() {
   return (

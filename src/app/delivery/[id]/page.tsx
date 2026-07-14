@@ -1,4 +1,4 @@
-import { DeliveryProjectDetailClient } from "@/app/delivery/_components/delivery-components";
+import { DeliveryProjectDetailClient } from "@/features/delivery/components";
 
 type PageProps = {
   params: Promise<{ id: string }>;
