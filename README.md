@@ -587,11 +587,11 @@ QA Review:
 
 ## V1.7 Multi-Agent Package Workflow
 
-V1.7 keeps package generation as a single user action while the Brain Layer handles structured syllabus and proposal creation behind the scenes.
+V1.7 keeps package generation as a single user action while the Brain Layer creates one structured client training document. The app derives the proposal and syllabus from that shared content so they remain aligned.
 
 Commercial Setup pricing assumptions are calculated deterministically before generation and passed into the proposal prompt.
 
-Package generation stores syllabus, proposal markdown, structured `proposal_content` JSON, and deterministic pricing inputs/outputs on `training_packages`. The structured proposal object is the source for professional DOCX export; markdown is derived for fast browser preview and copy workflows.
+Package generation stores structured `proposal_content` JSON and deterministic pricing inputs/outputs on `training_packages`. Proposal and syllabus Markdown are derived for browser preview and copy workflows. The proposal includes commercial sections; the syllabus uses the same training content and branded document layout without fee, VAT, billing, payment, acceptance, or signature sections. The existing `syllabus` column remains compatible and requires no database migration.
 
 Proposal briefs support the DG Academy reference proposal sections without a database migration because the fields live inside `proposal_brief` JSONB:
 
@@ -600,7 +600,7 @@ Proposal briefs support the DG Academy reference proposal sections without a dat
 - Content outline formatting follows the user's entered structure, including session plans, numbered topic lists, or mixed topic lists with sub-items.
 - Commercial Setup owns client-facing VAT wording (`Including VAT` or `Excluding VAT`). The default payment instruction uses DG Academy's ACLEDA account wording from the reference proposals.
 
-The selected trainer is stored as a snapshot inside the existing `proposal_brief` JSONB value, including trainer ID, ImageKit URL, biography, experience, and qualifications. This requires no additional Supabase table or migration. Existing packages without a trainer ID remain readable, but users must select an approved trainer before regeneration or proposal DOCX export.
+The selected trainer is stored as a snapshot inside the existing `proposal_brief` JSONB value, including trainer ID, ImageKit URL, biography, experience, and qualifications. This requires no additional Supabase table or migration. Existing packages without a trainer ID remain readable, but users must select an approved trainer before regeneration or proposal/syllabus DOCX export.
 
 Files:
 
@@ -611,9 +611,9 @@ UI behavior:
 
 - New Package page has one `Generate Training Package` action with no generation-mode selector.
 - Commercial Setup pricing assumptions feed the proposal prompt and are stored as deterministic pricing inputs/outputs.
-- Proposal generation returns structured sections for overview, objectives, outcomes, content outline, attendance, methodology, tools, evaluation, schedule, trainer, professional fee, billing, and acceptance.
-- Proposal DOCX export uses the `docx` library instead of hand-written Word XML.
-- Package output tabs include `Regenerate this section` for syllabus and proposal.
+- Generation returns structured sections for overview, objectives, outcomes, content outline, attendance, methodology, tools, evaluation, schedule, trainer, professional fee, billing, and acceptance.
+- Proposal and syllabus DOCX exports share the branded `docx` renderer. The syllabus filters out the commercial and acceptance sections.
+- Package output tabs regenerate proposal and syllabus together from one new structured response.
 - Training package domain, storage, export, server handlers, and UI components live under `src/features/training-packages`; `src/app` package pages and API routes are thin wrappers.
 
 State:

@@ -5,7 +5,6 @@ import {
   type RegeneratablePackageSection,
 } from "@/lib/brain/generation/regeneratePackageSection";
 import { getTrainerById } from "@/features/training-packages";
-import type { TrainingPackageOutputs } from "@/features/training-packages";
 
 const sections: RegeneratablePackageSection[] = [
   "syllabus",
@@ -17,7 +16,6 @@ export async function POST(request: Request) {
     const body = (await request.json()) as {
       section?: RegeneratablePackageSection;
       packageInput?: Parameters<typeof regeneratePackageSection>[0]["packageInput"];
-      currentPackage?: TrainingPackageOutputs;
     };
 
     if (!body.section || !sections.includes(body.section)) {
@@ -27,9 +25,9 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!body.packageInput || !body.currentPackage) {
+    if (!body.packageInput) {
       return NextResponse.json(
-        { error: "Package input and current package outputs are required." },
+        { error: "Package input is required." },
         { status: 400 },
       );
     }
@@ -44,7 +42,6 @@ export async function POST(request: Request) {
     const result = await regeneratePackageSection({
       section: body.section,
       packageInput: body.packageInput,
-      currentPackage: body.currentPackage,
     });
 
     return NextResponse.json(result);

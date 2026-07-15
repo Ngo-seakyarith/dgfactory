@@ -64,15 +64,6 @@ function KnowledgeUsedPanel({
   );
 }
 
-function sectionLabel(section: RegeneratablePackageSection) {
-  const labels: Record<RegeneratablePackageSection, string> = {
-    syllabus: "Syllabus",
-    proposal: "Proposal",
-  };
-
-  return labels[section];
-}
-
 function regeneratableSectionForKey(
   key: OutputTabKey,
 ): RegeneratablePackageSection | null {
@@ -230,31 +221,34 @@ export function OutputTabs({
             proposalBrief: pkg.proposalBrief,
             pricingInputs: pkg.pricingInputs,
           },
-          currentPackage: {
-            syllabus: pkg.syllabus,
-            proposal: pkg.proposal,
-          },
         }),
       });
       const payload = (await response.json()) as {
         section?: RegeneratablePackageSection;
         content?: string;
+        outputs?: {
+          syllabus: string;
+          proposal: string;
+          proposalContent?: TrainingPackage["proposalContent"];
+        };
         mode?: "openai";
         error?: string;
       };
 
-      if (!response.ok || !payload.section || payload.content === undefined) {
-        throw new Error(payload.error ?? "Section regeneration failed.");
+      if (!response.ok || !payload.section || !payload.outputs) {
+        throw new Error(payload.error ?? "Package regeneration failed.");
       }
 
       const updatedPackage = {
         ...pkg,
-        [payload.section]: payload.content,
+        ...payload.outputs,
+        proposalContent:
+          payload.outputs.proposalContent ?? pkg.proposalContent,
         updatedAt: new Date().toISOString(),
       };
       await onPackageUpdate?.(updatedPackage);
       setRegenerateNotice(
-        `${sectionLabel(payload.section)} regenerated with ${payload.mode ?? "openai"} mode.`,
+        `Proposal and syllabus regenerated together with ${payload.mode ?? "openai"} mode.`,
       );
     } catch (error) {
       setRegenerateNotice(
@@ -309,7 +303,7 @@ export function OutputTabs({
                 disabled={Boolean(isRegenerating) || !onPackageUpdate}
                 title={
                   onPackageUpdate
-                    ? `Regenerate ${sectionLabel(activeRegeneratableSection)}`
+                    ? "Regenerate proposal and syllabus together"
                     : "Open a package detail page to regenerate saved sections."
                 }
               >
@@ -318,7 +312,7 @@ export function OutputTabs({
                 ) : (
                   <Sparkles className="h-4 w-4" />
                 )}
-                Regenerate this section
+                Regenerate package
               </Button>
             ) : null}
           </div>

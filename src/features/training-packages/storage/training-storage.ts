@@ -11,6 +11,7 @@ import {
 import {
   normalizeProposalContent,
   proposalContentToMarkdown,
+  proposalContentToSyllabusMarkdown,
   type ProposalContent,
 } from "@/features/training-packages";
 import {
@@ -87,7 +88,7 @@ function fromRow(row: PackageRow): TrainingPackage {
     promise: row.program_goal,
     context: row.special_requirements ?? "",
     tone: "Executive, practical, commercially sharp",
-    syllabus: row.syllabus,
+    syllabus: proposalContentToSyllabusMarkdown(proposalContent),
     proposal: proposalContentToMarkdown(proposalContent),
     proposalContent,
     proposalBrief,

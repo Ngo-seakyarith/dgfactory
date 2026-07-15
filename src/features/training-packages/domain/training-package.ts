@@ -15,6 +15,7 @@ import {
 import {
   normalizeProposalContent,
   proposalContentToMarkdown,
+  proposalContentToSyllabusMarkdown,
   type ProposalContent,
 } from "./proposal-content";
 
@@ -71,7 +72,7 @@ export const packageOutputSections: Array<{
   {
     key: "syllabus",
     label: "Syllabus",
-    description: "Learning outcomes, modules, timing, and delivery flow.",
+    description: "The complete client training document without commercial sections.",
   },
   {
     key: "proposal",
@@ -122,10 +123,6 @@ export function normalizeTrainingInput(
 export function createTrainingOutputTemplate(
   input: TrainingPackageInput,
 ): TrainingPackageOutputs {
-  const contextLine = input.context
-    ? `Context to weave through the program: ${input.context}`
-    : "Context to weave through the program: practical DG Academy examples, executive decision-making, and hands-on AI workflow design.";
-
   const proposalContent: ProposalContent = {
     coverTitle: input.proposalBrief?.coverHeading || "Customized Training Proposal",
     coverSubtitle: input.proposalBrief?.coverSubtitle ?? "",
@@ -168,9 +165,9 @@ export function createTrainingOutputTemplate(
       : [],
     schedule: {
       duration: input.duration,
-      date: "TBC",
-      time: "TBC",
-      venue: "TBC",
+      date: input.proposalBrief?.scheduleDate || "TBC",
+      time: input.proposalBrief?.scheduleTime || "TBC",
+      venue: input.proposalBrief?.scheduleVenue || "TBC",
       participants: input.audience,
     },
     trainer: {
@@ -214,48 +211,7 @@ export function createTrainingOutputTemplate(
   };
 
   return {
-    syllabus: `# ${input.courseTitle}
-
-Audience: ${input.audience}
-Duration: ${input.duration}
-Client or market: ${input.client}
-Promise: ${input.promise}
-Tone: ${input.tone}
-
-## Learning Outcomes
-By the end of the program, participants will be able to:
-1. Explain the business case for the training topic in their own operating context.
-2. Identify high-value use cases and prioritize them with clear criteria.
-3. Practice the core workflows through guided DG Academy exercises.
-4. Convert workshop insights into a 30-day implementation plan.
-
-## Module Flow
-1. Executive framing and success criteria
-   - Why this capability matters now
-   - Baseline assessment and participant expectations
-   - Shared definition of practical outcomes
-
-2. Core concepts and field examples
-   - Concepts translated into business language
-   - ${contextLine}
-   - Discussion: what this means for ${input.client}
-
-3. Applied workshop labs
-   - Lab 1: map current workflow and friction points
-   - Lab 2: redesign the workflow with AI-enabled support
-   - Lab 3: define measures, risks, and owner handoffs
-
-4. Implementation planning
-   - 30-day action plan
-   - Governance checkpoints
-   - Executive readout and next-step commitments
-
-## Suggested Timing
-- Opening and alignment: 10%
-- Teaching and examples: 25%
-- Guided labs: 45%
-- Readout, commitments, and next steps: 20%`,
-
+    syllabus: proposalContentToSyllabusMarkdown(proposalContent),
     proposal: proposalContentToMarkdown(proposalContent),
     proposalContent,
   };
@@ -280,8 +236,8 @@ export function normalizeTrainingOutputs(
   );
 
   return {
-    syllabus: String(outputs.syllabus ?? "").trim(),
-    proposal: fallbackProposal || proposalContentToMarkdown(proposalContent),
+    syllabus: proposalContentToSyllabusMarkdown(proposalContent),
+    proposal: proposalContentToMarkdown(proposalContent),
     proposalContent,
   };
 }

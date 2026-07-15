@@ -583,8 +583,12 @@ function proposalDocxChildren(
   logoData: Buffer | null,
   trainerImageData: TrainerImageData | null,
   signatureImageData: Buffer | null,
+  includeCommercial: boolean,
 ) {
-  const title = content.coverTitle || "Customized Training Proposal";
+  const proposalTitle = content.coverTitle || "Customized Training Proposal";
+  const title = includeCommercial
+    ? proposalTitle
+    : proposalTitle.replace(/proposal/gi, "Syllabus");
   const courseTitleLines = wrapCoverText(content.courseTitle, 18);
   courseTitleLines[0] = `\u201C${courseTitleLines[0]}`;
   courseTitleLines[courseTitleLines.length - 1] = `${courseTitleLines.at(-1)}\u201D`;
@@ -784,132 +788,152 @@ function proposalDocxChildren(
           ),
         ]
       : []),
-    pageBreakParagraph(),
-    proposalHeading(`${toRoman(sectionNumber++)}. Professional Fee & Logistics`, 0, 0),
-    proposalParagraph("The training package includes:", {
-      size: 22,
-      after: 140,
-    }),
-    ...content.professionalFee.included.map((item) =>
-      proposalBullet(item, "Calibri", 22, 40),
-    ),
-    proposalParagraph(totalFee, {
-      bold: true,
-      size: 22,
-      before: 0,
-      after: 120,
-    }),
-    proposalParagraph(`${content.client} will be responsible for the following:`, {
-      size: 22,
-      after: 140,
-    }),
-    ...content.professionalFee.clientResponsibilities.map((item) =>
-      proposalBullet(item, "Calibri", 22, 40),
-    ),
-    new Paragraph({
-      children: [
-        proposalRun("Billing arrangements: ", { bold: true, size: 22 }),
-        proposalRun(content.professionalFee.billingArrangement, { size: 22 }),
-      ],
-      spacing: { before: 620, after: 20, line: 320 },
-    }),
-    ...(content.professionalFee.paymentInstructions
-      ? [proposalParagraph(content.professionalFee.paymentInstructions, { size: 22 })]
-      : []),
-    proposalParagraph("Acknowledgement and Acceptance", {
-      font: "Calibri Light",
-      size: 32,
-      before: 20,
-      after: 120,
-    }),
-    proposalParagraph(content.professionalFee.acceptanceText, {
-      size: 22,
-      after: 160,
-    }),
-    proposalParagraph(
-      `${content.client} confirms engaging DG Academy to conduct the ${content.courseTitle} training described above.`,
-      { size: 22, after: 0 },
-    ),
-    new Paragraph({
-      children: [
-        proposalRun("DG Academy", { bold: true, font: "Arial", size: 24 }),
-        new TextRun({ children: [new Tab()] }),
-        proposalRun(content.client, { bold: true, font: "Arial", size: 24 }),
-      ],
-      tabStops: signatureTabs,
-      spacing: { before: 1400, after: 100 },
-    }),
-    ...(signatureImageData
+    ...(includeCommercial
       ? [
+          pageBreakParagraph(),
+          proposalHeading(
+            `${toRoman(sectionNumber++)}. Professional Fee & Logistics`,
+            0,
+            0,
+          ),
+          proposalParagraph("The training package includes:", {
+            size: 22,
+            after: 140,
+          }),
+          ...content.professionalFee.included.map((item) =>
+            proposalBullet(item, "Calibri", 22, 40),
+          ),
+          proposalParagraph(totalFee, {
+            bold: true,
+            size: 22,
+            before: 0,
+            after: 120,
+          }),
+          proposalParagraph(
+            `${content.client} will be responsible for the following:`,
+            { size: 22, after: 140 },
+          ),
+          ...content.professionalFee.clientResponsibilities.map((item) =>
+            proposalBullet(item, "Calibri", 22, 40),
+          ),
           new Paragraph({
             children: [
-              new ImageRun({
-                type: "png",
-                data: signatureImageData,
-                transformation: { width: 136, height: 102 },
-                altText: {
-                  title: "Hin Sopheap signature",
-                  description: "Signature of Hin Sopheap",
-                  name: "Hin Sopheap signature",
-                },
+              proposalRun("Billing arrangements: ", { bold: true, size: 22 }),
+              proposalRun(content.professionalFee.billingArrangement, { size: 22 }),
+            ],
+            spacing: { before: 620, after: 20, line: 320 },
+          }),
+          ...(content.professionalFee.paymentInstructions
+            ? [
+                proposalParagraph(content.professionalFee.paymentInstructions, {
+                  size: 22,
+                }),
+              ]
+            : []),
+          proposalParagraph("Acknowledgement and Acceptance", {
+            font: "Calibri Light",
+            size: 32,
+            before: 20,
+            after: 120,
+          }),
+          proposalParagraph(content.professionalFee.acceptanceText, {
+            size: 22,
+            after: 160,
+          }),
+          proposalParagraph(
+            `${content.client} confirms engaging DG Academy to conduct the ${content.courseTitle} training described above.`,
+            { size: 22, after: 0 },
+          ),
+          new Paragraph({
+            children: [
+              proposalRun("DG Academy", {
+                bold: true,
+                font: "Arial",
+                size: 24,
+              }),
+              new TextRun({ children: [new Tab()] }),
+              proposalRun(content.client, {
+                bold: true,
+                font: "Arial",
+                size: 24,
               }),
             ],
-            indent: { left: 360 },
-            spacing: { after: 20 },
+            tabStops: signatureTabs,
+            spacing: { before: 1400, after: 100 },
+          }),
+          ...(signatureImageData
+            ? [
+                new Paragraph({
+                  children: [
+                    new ImageRun({
+                      type: "png",
+                      data: signatureImageData,
+                      transformation: { width: 136, height: 102 },
+                      altText: {
+                        title: "Hin Sopheap signature",
+                        description: "Signature of Hin Sopheap",
+                        name: "Hin Sopheap signature",
+                      },
+                    }),
+                  ],
+                  indent: { left: 360 },
+                  spacing: { after: 20 },
+                }),
+              ]
+            : []),
+          new Paragraph({
+            children: [
+              proposalRun(content.signatory.name, {
+                bold: true,
+                font: "Arial",
+                size: 24,
+              }),
+              new TextRun({ children: [new Tab()] }),
+              proposalRun("........................................", {
+                bold: true,
+                font: "Arial",
+                size: 24,
+              }),
+            ],
+            tabStops: signatureTabs,
+            spacing: { after: 80 },
+          }),
+          new Paragraph({
+            children: [
+              proposalRun(content.signatory.title, {
+                bold: true,
+                font: "Arial",
+                size: 24,
+              }),
+              new TextRun({ children: [new Tab()] }),
+              proposalRun("........................................", {
+                bold: true,
+                font: "Arial",
+                size: 24,
+              }),
+            ],
+            tabStops: signatureTabs,
+            spacing: { after: 80 },
+          }),
+          new Paragraph({
+            children: [
+              proposalRun(`Date ${content.signatory.date}`, {
+                bold: true,
+                font: "Arial",
+                size: 24,
+              }),
+              new TextRun({ children: [new Tab()] }),
+              proposalRun("Date:........./............./..........", {
+                bold: true,
+                font: "Arial",
+                size: 24,
+              }),
+            ],
+            tabStops: signatureTabs,
+            spacing: { after: 0 },
           }),
         ]
       : []),
-    new Paragraph({
-      children: [
-        proposalRun(content.signatory.name, {
-          bold: true,
-          font: "Arial",
-          size: 24,
-        }),
-        new TextRun({ children: [new Tab()] }),
-        proposalRun("........................................", {
-          bold: true,
-          font: "Arial",
-          size: 24,
-        }),
-      ],
-      tabStops: signatureTabs,
-      spacing: { after: 80 },
-    }),
-    new Paragraph({
-      children: [
-        proposalRun(content.signatory.title, {
-          bold: true,
-          font: "Arial",
-          size: 24,
-        }),
-        new TextRun({ children: [new Tab()] }),
-        proposalRun("........................................", {
-          bold: true,
-          font: "Arial",
-          size: 24,
-        }),
-      ],
-      tabStops: signatureTabs,
-      spacing: { after: 80 },
-    }),
-    new Paragraph({
-      children: [
-        proposalRun(`Date ${content.signatory.date}`, {
-          bold: true,
-          font: "Arial",
-          size: 24,
-        }),
-        new TextRun({ children: [new Tab()] }),
-        proposalRun("Date:........./............./..........", {
-          bold: true,
-          font: "Arial",
-          size: 24,
-        }),
-      ],
-      tabStops: signatureTabs,
-      spacing: { after: 0 },
-    }),
   ];
 }
 
@@ -928,10 +952,11 @@ export async function createDocx(
   });
   const [logoData, trainerImageData, signatureImageData] = await Promise.all([
     loadLogoData(),
-    target === "proposal" && proposalContent.trainer.imageUrl
+    (target === "proposal" || target === "syllabus") &&
+    proposalContent.trainer.imageUrl
       ? loadTrainerImageData(proposalContent.trainer.imageUrl)
       : Promise.resolve(null),
-    loadSignatureImageData(),
+    target === "proposal" ? loadSignatureImageData() : Promise.resolve(null),
   ]);
   const pricingInputs = normalizePricingInputs(pkg.pricingInputs);
   const deterministicFee =
@@ -942,7 +967,7 @@ export async function createDocx(
         )}.`
       : proposalContent.professionalFee.totalFee;
   const children =
-    target === "proposal" && pkg.proposalContent
+    (target === "proposal" || target === "syllabus") && pkg.proposalContent
       ? proposalDocxChildren(
           proposalContent,
           deterministicFee,
@@ -950,6 +975,7 @@ export async function createDocx(
           logoData,
           trainerImageData,
           signatureImageData,
+          target === "proposal",
         )
       : [
           logoParagraph(logoData, 64, { after: 240 }),

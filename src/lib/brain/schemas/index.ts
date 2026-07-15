@@ -206,10 +206,8 @@ export const proposalContentSchema: JsonSchema = {
 
 export const trainingPackageOutputSchema: JsonSchema = {
   type: "object",
-  required: ["syllabus", "proposalContent"],
+  required: ["proposalContent"],
   properties: {
-    syllabus: { type: "string" },
-    proposal: { type: "string" },
     proposalContent: proposalContentSchema,
   },
 };

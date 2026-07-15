@@ -137,7 +137,10 @@ function sectionLines(markdown: string, title: string) {
     .filter(Boolean);
 }
 
-export function proposalContentToMarkdown(content: ProposalContent) {
+function documentContentToMarkdown(
+  content: ProposalContent,
+  { includeCommercial }: { includeCommercial: boolean },
+) {
   const schedule = [
     `Course Duration: ${content.schedule.duration}`,
     `Date: ${content.schedule.date}`,
@@ -163,8 +166,13 @@ export function proposalContentToMarkdown(content: ProposalContent) {
     .filter(Boolean)
     .join("\n");
 
+  const coverTitle = includeCommercial
+    ? content.coverTitle
+    : content.coverTitle.replace(/proposal/gi, "Syllabus") ||
+      "Customized Training Syllabus";
+
   return [
-    `# ${content.coverTitle}`,
+    `# ${coverTitle}`,
     "",
     `On ${content.courseTitle}`,
     content.coverSubtitle,
@@ -190,13 +198,28 @@ export function proposalContentToMarkdown(content: ProposalContent) {
         .filter(Boolean)
         .join("\n\n"),
     ),
-    section("Professional Fee", professionalFee),
-    section("DG Academy Signatory", [
-      content.signatory.name,
-      content.signatory.title,
-      content.signatory.date,
-    ].filter(Boolean)),
+    ...(includeCommercial
+      ? [
+          section("Professional Fee", professionalFee),
+          section(
+            "DG Academy Signatory",
+            [
+              content.signatory.name,
+              content.signatory.title,
+              content.signatory.date,
+            ].filter(Boolean),
+          ),
+        ]
+      : []),
   ].join("\n\n");
+}
+
+export function proposalContentToMarkdown(content: ProposalContent) {
+  return documentContentToMarkdown(content, { includeCommercial: true });
+}
+
+export function proposalContentToSyllabusMarkdown(content: ProposalContent) {
+  return documentContentToMarkdown(content, { includeCommercial: false });
 }
 
 export function proposalContentFromMarkdown(

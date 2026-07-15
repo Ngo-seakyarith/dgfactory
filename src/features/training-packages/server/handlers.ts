@@ -2,7 +2,10 @@ import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
 import { routeBrainTask } from "@/lib/brain/routing/router";
-import type { CoursePackageBrainInput } from "@/lib/brain/agents";
+import type {
+  CoursePackageBrainInput,
+  ProposalAgentOutput,
+} from "@/lib/brain/agents";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import { knowledgeSourceNotesFromResults } from "@/lib/knowledge";
 import {
@@ -21,7 +24,6 @@ import {
   type ExportTarget,
   type PricingInputs,
   type TrainingPackage,
-  type TrainingPackageOutputs,
 } from "@/features/training-packages";
 import { exportTrainingPackage } from "@/features/training-packages/export/export-package";
 import {
@@ -214,7 +216,7 @@ export async function generateTrainingPackageRequest(request: Request) {
       context: [input.context, knowledgeContext].filter(Boolean).join("\n\n"),
       pricingSummary: clientPricingSummaryToMarkdown(pricingInputs, pricingOutputs),
     };
-    const result = await routeBrainTask<CoursePackageBrainInput, TrainingPackageOutputs>({
+    const result = await routeBrainTask<CoursePackageBrainInput, ProposalAgentOutput>({
       taskType: "course_package",
       input: brainInput,
       retries: 1,
@@ -269,11 +271,14 @@ export async function exportTrainingPackageRequest(request: Request) {
 
     if (
       body.format === "docx" &&
-      target === "proposal" &&
+      (target === "proposal" || target === "syllabus") &&
       !getTrainerById(body.package.proposalBrief?.trainerId ?? "")
     ) {
       return NextResponse.json(
-        { error: "Select a DG Academy trainer before exporting the proposal." },
+        {
+          error:
+            "Select a DG Academy trainer before exporting the proposal or syllabus.",
+        },
         { status: 400 },
       );
     }
