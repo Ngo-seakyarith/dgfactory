@@ -43,11 +43,26 @@ create trigger on_auth_user_created
 after insert on auth.users
 for each row execute function public.handle_new_auth_user();
 
+create table if not exists public.clients (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  sector text,
+  contact_person text,
+  email text,
+  phone text,
+  notes text,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.clients enable row level security;
+
 create table if not exists public.training_packages (
   id uuid primary key default gen_random_uuid(),
   course_title text not null,
   target_learners text not null,
   duration text not null,
+  client_id uuid references public.clients(id) on delete set null,
   client_name text not null,
   program_goal text not null,
   special_requirements text,
@@ -68,19 +83,8 @@ create index if not exists idx_training_packages_updated_at
 create index if not exists idx_training_packages_client_name
   on public.training_packages(client_name);
 
-create table if not exists public.clients (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  sector text,
-  contact_person text,
-  email text,
-  phone text,
-  notes text,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-alter table public.clients enable row level security;
+create index if not exists idx_training_packages_client_id
+  on public.training_packages(client_id);
 
 create table if not exists public.opportunities (
   id uuid primary key default gen_random_uuid(),
@@ -113,6 +117,9 @@ alter table public.opportunities enable row level security;
 
 create index if not exists idx_clients_updated_at
   on public.clients(updated_at desc);
+
+create unique index if not exists idx_clients_normalized_name_unique
+  on public.clients(lower(btrim(name)));
 
 create index if not exists idx_opportunities_status
   on public.opportunities(status);

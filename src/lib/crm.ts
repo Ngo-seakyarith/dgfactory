@@ -23,6 +23,19 @@ export type Client = {
   updatedAt: string;
 };
 
+export type ClientProfileInput = {
+  id?: string;
+  name: string;
+  sector?: string;
+  contactPerson?: string;
+  email?: string;
+  phone?: string;
+};
+
+export function clientNameKey(value: string) {
+  return value.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
 export type Opportunity = {
   id: string;
   clientId: string;

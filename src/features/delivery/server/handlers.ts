@@ -249,6 +249,7 @@ export async function exportDeliveryReportHandler(request: Request) {
     const pricingOutputs = calculatePricing(defaultPricingInputs);
     const reportPackage: TrainingPackage = {
       id: project.id,
+      clientId: project.clientId,
       title: body.packageTitle || project.title,
       audience: "Training participants",
       duration: project.trainingDate || "Completed training",

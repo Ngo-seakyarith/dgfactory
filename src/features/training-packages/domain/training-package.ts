@@ -47,6 +47,7 @@ export type PackageOutputKey = "syllabus" | "proposal";
 export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle" | "proposalBrief"> &
   {
     id: string;
+    clientId: string | null;
     title: string;
     syllabus: string;
     proposal: string;
@@ -289,6 +290,7 @@ export function buildPackageFromParts({
   createdAt = new Date().toISOString(),
   pricingInputs = defaultPricingInputs,
   knowledgeUsed = [],
+  clientId = null,
 }: {
   input: TrainingPackageInput;
   outputs: TrainingPackageOutputs;
@@ -296,6 +298,7 @@ export function buildPackageFromParts({
   createdAt?: string;
   pricingInputs?: PricingInputs;
   knowledgeUsed?: KnowledgeSourceNote[];
+  clientId?: string | null;
 }): TrainingPackage {
   const normalizedPricingInputs = normalizePricingInputs(pricingInputs);
   const pricingOutputs = calculatePricing(normalizedPricingInputs);
@@ -304,6 +307,7 @@ export function buildPackageFromParts({
   const normalizedOutputs = normalizeTrainingOutputs(outputs, normalizedInput);
 
   return {
+    clientId,
     title: input.courseTitle,
     audience: input.audience,
     duration: input.duration,

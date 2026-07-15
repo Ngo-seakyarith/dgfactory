@@ -13,6 +13,8 @@ import {
   retrieveKnowledge,
 } from "@/lib/knowledge/retrieve";
 import { requireApproved } from "@/lib/route-guards";
+import { resolvePackageClient } from "@/lib/crm-storage";
+import type { ClientProfileInput } from "@/lib/crm";
 import {
   calculatePricing,
   clientPricingSummaryToMarkdown,
@@ -81,9 +83,22 @@ export async function saveTrainingPackageRequest(request: Request) {
   if (!auth.ok) return auth.response;
 
   try {
-    const body = (await request.json()) as TrainingPackage;
+    const body = (await request.json()) as
+      | TrainingPackage
+      | { package: TrainingPackage; client?: ClientProfileInput };
+    const packageInput = "package" in body ? body.package : body;
+    const clientInput =
+      "package" in body
+        ? body.client ?? {
+            id: packageInput.clientId ?? undefined,
+            name: packageInput.client,
+          }
+        : {
+            id: packageInput.clientId ?? undefined,
+            name: packageInput.client,
+          };
 
-    if (!body.id || !body.title || !body.syllabus) {
+    if (!packageInput.id || !packageInput.title || !packageInput.syllabus) {
       return NextResponse.json(
         { error: "A generated package with id, title, and outputs is required." },
         { status: 400 },
@@ -92,12 +107,28 @@ export async function saveTrainingPackageRequest(request: Request) {
 
     let existing: TrainingPackage | null = null;
     try {
-      existing = await getTrainingPackage(body.id);
+      existing = await getTrainingPackage(packageInput.id);
     } catch {
       existing = null;
     }
 
-    const result = await saveTrainingPackage(body);
+    const requestedClientName = clientInput.name.trim() || packageInput.client;
+    const clientResult = await resolvePackageClient(clientInput, requestedClientName);
+    const result = await saveTrainingPackage({
+      ...packageInput,
+      clientId: clientResult.client.id,
+      client: clientResult.client.name,
+    });
+    await saveAuditLog({
+      actor: auth.user.actor,
+      action: "client_saved_from_package",
+      entityType: "client",
+      entityId: clientResult.client.id,
+      metadata: {
+        name: clientResult.client.name,
+        packageId: result.package.id,
+      },
+    });
     await saveAuditLog({
       actor: auth.user.actor,
       action: "package_saved",
@@ -127,7 +158,7 @@ export async function saveTrainingPackageRequest(request: Request) {
       });
     }
 
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, client: clientResult.client });
   } catch (error) {
     return NextResponse.json({ error: packageError(error) }, { status: 500 });
   }

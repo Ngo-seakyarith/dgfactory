@@ -591,7 +591,9 @@ V1.7 keeps package generation as a single user action while the Brain Layer crea
 
 Commercial Setup pricing assumptions are calculated deterministically before generation and passed into the proposal prompt.
 
-Package generation stores structured `proposal_content` JSON and deterministic pricing inputs/outputs on `training_packages`. Proposal and syllabus Markdown are derived for browser preview and copy workflows. The proposal includes commercial sections; the syllabus uses the same training content and branded document layout without fee, VAT, billing, payment, acceptance, or signature sections. The existing `syllabus` column remains compatible and requires no database migration.
+Package generation stores structured `proposal_content` JSON and deterministic pricing inputs/outputs on `training_packages`. Proposal and syllabus Markdown are derived for browser preview and copy workflows. The proposal includes commercial sections; the syllabus uses the same training content and branded document layout without fee, VAT, billing, payment, acceptance, or signature sections. The existing `syllabus` column remains compatible.
+
+Each package is linked to a `clients` record through `training_packages.client_id`, while `client_name` remains the historical proposal/export snapshot. The package form can select an existing client or create one with company, sector, contact person, email, and phone details. Package saves resolve clients by ID first and normalized company name second, preventing duplicate CRM records. Client pages show their linked package history; editing a client does not rewrite previously generated proposal content.
 
 Proposal briefs support the DG Academy reference proposal sections without a database migration because the fields live inside `proposal_brief` JSONB:
 
@@ -618,7 +620,7 @@ UI behavior:
 
 State:
 
-- Package persistence happens through the package save APIs after generation.
+- Package persistence happens through the package save APIs after generation, including automatic client creation or update and package-to-client linking.
 
 ## V1.8 DG Academy Knowledge Base
 

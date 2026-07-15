@@ -256,10 +256,11 @@ export function ClientPortalManager({
     const normalizedClientName = client.name.toLowerCase();
     return packages.filter(
       (pkg) =>
+        pkg.clientId === client.id ||
         linkedPackageIds.has(pkg.id) ||
-        pkg.client.toLowerCase().includes(normalizedClientName),
+        (!pkg.clientId && pkg.client.trim().toLowerCase() === normalizedClientName),
     );
-  }, [client.name, linkedPackageIds, packages]);
+  }, [client.id, client.name, linkedPackageIds, packages]);
   const clientDeliveryProjects = deliveryProjects.filter(
     (project) => project.clientId === client.id,
   );

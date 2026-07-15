@@ -8,6 +8,7 @@ import {
   CalendarClock,
   Clipboard,
   DollarSign,
+  FileText,
   Loader2,
   Mail,
   Plus,
@@ -31,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ClientPortalManager } from "@/app/client-portal/_components/client-portal-components";
 import {
   calculatePipelineMetrics,
+  clientNameKey,
   createEmptyClient,
   createEmptyOpportunity,
   formatCrmMoney,
@@ -221,7 +223,24 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
   );
 }
 
-export function ClientCard({ client }: { client: Client }) {
+function packagesForClient(client: Client, packages: TrainingPackage[]) {
+  return packages.filter(
+    (pkg) =>
+      pkg.clientId === client.id ||
+      (!pkg.clientId && clientNameKey(pkg.client) === clientNameKey(client.name)),
+  );
+}
+
+export function ClientCard({
+  client,
+  packages,
+}: {
+  client: Client;
+  packages: TrainingPackage[];
+}) {
+  const clientPackages = packagesForClient(client, packages);
+  const latestPackage = clientPackages[0];
+
   return (
     <Link
       href={`/clients/${client.id}`}
@@ -237,15 +256,23 @@ export function ClientCard({ client }: { client: Client }) {
         <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-teal-100" />
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
+        <Badge variant="teal">
+          {clientPackages.length} {clientPackages.length === 1 ? "package" : "packages"}
+        </Badge>
         {client.email ? <Badge variant="outline">{client.email}</Badge> : null}
         {client.phone ? <Badge variant="outline">{client.phone}</Badge> : null}
       </div>
+      {latestPackage ? (
+        <p className="mt-3 line-clamp-1 text-xs text-muted-foreground">
+          Latest: {latestPackage.title}
+        </p>
+      ) : null}
     </Link>
   );
 }
 
 export function ClientsPageClient() {
-  const { clients, notice } = useCrmData();
+  const { clients, packages, notice } = useCrmData();
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -279,7 +306,7 @@ export function ClientsPageClient() {
           {filtered.length ? (
             <div className="grid gap-3 md:grid-cols-2">
               {filtered.map((client) => (
-                <ClientCard key={client.id} client={client} />
+                <ClientCard key={client.id} client={client} packages={packages} />
               ))}
             </div>
           ) : (
@@ -296,6 +323,7 @@ export function ClientDetailClient({ id }: { id: string }) {
   const { clients, opportunities, packages, isLoading } = useCrmData();
   const client = clients.find((item) => item.id === id);
   const clientOpportunities = opportunities.filter((item) => item.clientId === id);
+  const clientPackages = client ? packagesForClient(client, packages) : [];
 
   async function deleteClient() {
     if (!client || !window.confirm(`Delete "${client.name}"?`)) {
@@ -347,6 +375,49 @@ export function ClientDetailClient({ id }: { id: string }) {
       </Card>
 
       <ClientForm existingClient={client} />
+
+      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+        <CardHeader>
+          <CardTitle>Training Packages</CardTitle>
+          <CardDescription>
+            Proposals and syllabi created for this client.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {clientPackages.length ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {clientPackages.map((pkg) => (
+                <Link
+                  key={pkg.id}
+                  href={`/packages/${pkg.id}`}
+                  className="group flex items-start gap-3 rounded-lg border border-white/10 bg-[#07111f]/55 p-4 transition hover:border-teal-300/35 hover:bg-teal-300/10"
+                >
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-teal-200" />
+                  <div className="min-w-0">
+                    <div className="line-clamp-1 font-semibold text-white">
+                      {pkg.title}
+                    </div>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {pkg.duration} · Updated {new Date(pkg.updatedAt).toLocaleDateString()}
+                    </p>
+                    {pkg.proposalBrief.clientBackground ? (
+                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
+                        {pkg.proposalBrief.clientBackground}
+                      </p>
+                    ) : null}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyCrmState
+              title="No packages for this client"
+              href={`/packages/new?client=${encodeURIComponent(client.name)}`}
+              label="Create Package"
+            />
+          )}
+        </CardContent>
+      </Card>
 
       <ClientPortalManager
         client={client}

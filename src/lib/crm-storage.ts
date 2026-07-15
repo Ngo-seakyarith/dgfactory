@@ -1,9 +1,11 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import {
+  clientNameKey,
   normalizeClient,
   normalizeOpportunity,
   type Client,
+  type ClientProfileInput,
   type Opportunity,
   type OpportunityStatus,
 } from "@/lib/crm";
@@ -158,6 +160,34 @@ export async function saveClient(input: Partial<Client>) {
   }
 
   return { client: clientFromRow(data as ClientRow), storage: "supabase" as const };
+}
+
+export async function resolvePackageClient(
+  input: ClientProfileInput,
+  packageClientName: string,
+) {
+  const name = packageClientName.trim();
+  if (!name) {
+    throw new Error("Client name is required.");
+  }
+
+  const clients = await listClients();
+  const selected = input.id
+    ? clients.find((client) => client.id === input.id)
+    : undefined;
+  const matchingName = clients.find(
+    (client) => clientNameKey(client.name) === clientNameKey(name),
+  );
+  const existing = selected ?? matchingName;
+
+  return saveClient({
+    ...existing,
+    ...input,
+    id: existing?.id,
+    name,
+    notes: existing?.notes ?? "",
+    createdAt: existing?.createdAt,
+  });
 }
 
 export async function deleteClient(id: string) {

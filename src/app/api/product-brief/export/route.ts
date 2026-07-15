@@ -27,6 +27,7 @@ export async function POST(request: Request) {
   const now = new Date().toISOString();
   const productBriefPackage: TrainingPackage = {
     id: "dg-capability-factory-product-brief",
+    clientId: null,
     title: "DG Capability Factory",
     audience: "Executives, HR leaders, L&D teams, training providers",
     duration: "Implementation package",

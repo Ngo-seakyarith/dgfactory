@@ -26,6 +26,7 @@ type PackageRow = {
   course_title: string;
   target_learners: string;
   duration: string;
+  client_id: string | null;
   client_name: string;
   program_goal: string;
   special_requirements: string | null;
@@ -53,6 +54,7 @@ function toRow(pkg: TrainingPackage) {
     course_title: pkg.title,
     target_learners: pkg.audience,
     duration: pkg.duration,
+    client_id: pkg.clientId,
     client_name: pkg.client,
     program_goal: pkg.promise,
     special_requirements: pkg.context,
@@ -84,6 +86,7 @@ function fromRow(row: PackageRow): TrainingPackage {
     title: row.course_title,
     audience: row.target_learners,
     duration: row.duration,
+    clientId: row.client_id ?? null,
     client: row.client_name,
     promise: row.program_goal,
     context: row.special_requirements ?? "",

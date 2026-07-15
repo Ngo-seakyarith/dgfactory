@@ -40,6 +40,7 @@ import {
 } from "@/features/training-packages";
 import type { ExportFormat, ExportTarget } from "@/features/training-packages";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
+import type { Client, ClientProfileInput } from "@/lib/crm";
 import {
   emptyProposalBrief,
   type ProposalBrief,
@@ -97,6 +98,25 @@ const defaultInput: TrainingPackageInput = {
   tone: "Executive, practical, commercially sharp",
 };
 
+const emptyClientProfile: ClientProfileInput = {
+  name: "",
+  sector: "",
+  contactPerson: "",
+  email: "",
+  phone: "",
+};
+
+function profileFromClient(client: Client): ClientProfileInput {
+  return {
+    id: client.id,
+    name: client.name,
+    sector: client.sector,
+    contactPerson: client.contactPerson,
+    email: client.email,
+    phone: client.phone,
+  };
+}
+
 const blankPackagePricingInputs: PricingInputs = {
   ...defaultPricingInputs,
   numberOfParticipants: 0,
@@ -139,6 +159,12 @@ export function PackageForm({
   );
   const [proposalBrief, setProposalBrief] =
     useState<ProposalBrief>(initialPackage?.proposalBrief ?? emptyProposalBrief);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [clientProfile, setClientProfile] = useState<ClientProfileInput>(() => ({
+    ...emptyClientProfile,
+    id: initialPackage?.clientId ?? undefined,
+    name: initialPackage?.client ?? "",
+  }));
   const selectedTrainer = useMemo(
     () => getTrainerById(proposalBrief.trainerId),
     [proposalBrief.trainerId],
@@ -153,6 +179,50 @@ export function PackageForm({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+
+  useEffect(() => {
+    let active = true;
+
+    async function loadClients() {
+      const response = await fetch("/api/clients", { cache: "no-store" });
+      const payload = (await response.json()) as {
+        clients?: Client[];
+        error?: string;
+      };
+      if (!response.ok) {
+        throw new Error(payload.error ?? "Client records could not be loaded.");
+      }
+      if (!active) return;
+
+      const loadedClients = payload.clients ?? [];
+      setClients(loadedClients);
+      const linked = initialPackage?.clientId
+        ? loadedClients.find((client) => client.id === initialPackage.clientId)
+        : loadedClients.find(
+            (client) =>
+              client.name.trim().toLowerCase() ===
+              (initialPackage?.client ?? "").trim().toLowerCase(),
+          );
+      if (linked) {
+        setClientProfile(profileFromClient(linked));
+        setForm((current) => ({ ...current, client: linked.name }));
+      }
+    }
+
+    loadClients().catch((loadError) => {
+      if (active) {
+        setNotice(
+          loadError instanceof Error
+            ? loadError.message
+            : "Client records could not be loaded.",
+        );
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [initialPackage]);
 
   useEffect(() => {
     const prefill = {
@@ -176,6 +246,13 @@ export function PackageForm({
         context: prefill.context || current.context,
         tone: prefill.tone || current.tone,
       }));
+      if (prefill.client) {
+        setClientProfile((current) => ({
+          ...current,
+          id: undefined,
+          name: prefill.client,
+        }));
+      }
       setNotice("Prefilled from Adaptive Growth offer variant.");
     }
   }, [searchParams]);
@@ -189,6 +266,30 @@ export function PackageForm({
 
   function updateProposalBrief(key: keyof ProposalBrief, value: string) {
     setProposalBrief((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateClientField(
+    key: Exclude<keyof ClientProfileInput, "id">,
+    value: string,
+  ) {
+    setClientProfile((current) => ({ ...current, [key]: value }));
+    if (key === "name") {
+      updateField("client", value);
+    }
+  }
+
+  function selectClient(clientId: string) {
+    if (!clientId) {
+      setClientProfile({ ...emptyClientProfile });
+      updateField("client", "");
+      return;
+    }
+
+    const client = clients.find((item) => item.id === clientId);
+    if (client) {
+      setClientProfile(profileFromClient(client));
+      updateField("client", client.name);
+    }
   }
 
   function selectTrainer(trainerId: string) {
@@ -233,17 +334,24 @@ export function PackageForm({
     const response = await fetch("/api/training-packages", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(packageToSave),
+      body: JSON.stringify({ package: packageToSave, client: clientProfile }),
     });
     const payload = (await response.json()) as {
       package?: TrainingPackage;
+      client?: Client;
       storage?: "supabase";
       error?: string;
     };
 
-    if (!response.ok || !payload.package) {
+    if (!response.ok || !payload.package || !payload.client) {
       throw new Error(payload.error ?? "Database save failed.");
     }
+
+    setClientProfile(profileFromClient(payload.client));
+    setClients((current) => {
+      const withoutSaved = current.filter((client) => client.id !== payload.client?.id);
+      return payload.client ? [payload.client, ...withoutSaved] : current;
+    });
 
     return payload.package;
   }
@@ -292,6 +400,7 @@ export function PackageForm({
         outputs,
         id: initialPackage?.id ?? currentPackage?.id,
         createdAt: initialPackage?.createdAt ?? currentPackage?.createdAt,
+        clientId: clientProfile.id ?? currentPackage?.clientId ?? initialPackage?.clientId,
         pricingInputs,
         knowledgeUsed:
           payload.knowledgeUsed ??
@@ -328,6 +437,8 @@ export function PackageForm({
 
     const packageToSave: TrainingPackage = {
       ...currentPackage,
+      clientId: clientProfile.id ?? currentPackage.clientId,
+      client: form.client,
       updatedAt: new Date().toISOString(),
     };
 
@@ -349,18 +460,75 @@ export function PackageForm({
       <div className="space-y-5">
         <Card className="border-white/10 bg-white/[0.04] shadow-executive">
           <CardHeader>
+            <CardTitle>Client Information</CardTitle>
+            <CardDescription>
+              Select an existing client or create one with this package.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Field label="Existing client">
+              <Select
+                value={clientProfile.id ?? ""}
+                onChange={(event) => selectClient(event.target.value)}
+              >
+                <option value="">New client</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </Select>
+            </Field>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <Field label="Company name">
+                <Input
+                  value={clientProfile.name}
+                  onChange={(event) => updateClientField("name", event.target.value)}
+                  placeholder="Nippon Paint"
+                />
+              </Field>
+              <Field label="Sector">
+                <Input
+                  value={clientProfile.sector ?? ""}
+                  onChange={(event) => updateClientField("sector", event.target.value)}
+                  placeholder="Manufacturing, banking, telecom"
+                />
+              </Field>
+              <Field label="Contact person">
+                <Input
+                  value={clientProfile.contactPerson ?? ""}
+                  onChange={(event) => updateClientField("contactPerson", event.target.value)}
+                  placeholder="Decision maker or program sponsor"
+                />
+              </Field>
+              <Field label="Email">
+                <Input
+                  type="email"
+                  value={clientProfile.email ?? ""}
+                  onChange={(event) => updateClientField("email", event.target.value)}
+                  placeholder="name@company.com"
+                />
+              </Field>
+              <Field label="Phone">
+                <Input
+                  value={clientProfile.phone ?? ""}
+                  onChange={(event) => updateClientField("phone", event.target.value)}
+                  placeholder="+855..."
+                />
+              </Field>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+          <CardHeader>
             <CardTitle>Proposal Brief</CardTitle>
             <CardDescription>Client facts and required training content.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Course title">
-                <Input value={form.courseTitle} onChange={(event) => updateField("courseTitle", event.target.value)} placeholder="AI for Marketing Analytics" />
-              </Field>
-              <Field label="Client">
-                <Input value={form.client} onChange={(event) => updateField("client", event.target.value)} placeholder="Nippon Paint" />
-              </Field>
-            </div>
+            <Field label="Course title">
+              <Input value={form.courseTitle} onChange={(event) => updateField("courseTitle", event.target.value)} placeholder="AI for Marketing Analytics" />
+            </Field>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Cover heading">
                 <Input value={proposalBrief.coverHeading} onChange={(event) => updateProposalBrief("coverHeading", event.target.value)} placeholder="AI Capability Development" />
