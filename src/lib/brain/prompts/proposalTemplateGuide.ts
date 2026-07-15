@@ -1,7 +1,7 @@
 export const dgProposalTemplateGuide = [
   "Follow the DG Academy client proposal family shown by the Nippon Paint and LOLC references. Do not force one fixed page count.",
   "Proposal length is driven by the fields the user fills. Required core fields create the short proposal. Optional fields add their own sections only when useful content is supplied.",
-  "1. Cover: use proposalBrief.coverHeading when supplied, then [course title], optional subtitle, optional certification label, and [client]. Nippon-style covers may include certification. LOLC-style covers may simply say Customized Training Proposal and at [client].",
+  "1. Cover: set coverTitle to proposalBrief.coverHeading exactly when supplied, or Customized Training Proposal when it is blank. Never combine the cover heading, course title, or client into one sentence. The application renders coverTitle, then [course title], optional subtitle, optional certification label, and [client] as separate elements.",
   "2. Course Overview: write three short paragraphs explaining the client context, the practical training goal, and the expected business value.",
   "3. Course Objectives: concise bullets beginning with what participants will be able to understand, identify, analyze, build, communicate, handle, or apply.",
   "4. Expected Learning Outcomes: include this section when proposalBrief.expectedLearningOutcomes is supplied; otherwise leave the array empty.",

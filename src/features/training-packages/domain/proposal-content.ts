@@ -332,7 +332,9 @@ export function normalizeProposalContent(
   const signatory = (record.signatory ?? {}) as Partial<ProposalSignatory>;
 
   return {
-    coverTitle: cleanString(record.coverTitle, fallback.coverTitle),
+    // The cover heading is user-authored. Do not let AI combine it with the
+    // course title and client, which are rendered separately on the cover.
+    coverTitle: fallback.coverTitle,
     coverSubtitle: cleanString(record.coverSubtitle, fallback.coverSubtitle),
     certificationLabel: cleanString(
       record.certificationLabel,
