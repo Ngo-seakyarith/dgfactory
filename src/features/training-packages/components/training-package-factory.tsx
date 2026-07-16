@@ -3,7 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Check,
   Clipboard,
@@ -36,11 +36,14 @@ import {
   type PackageOutputKey,
   type TrainingPackage,
   type TrainingPackageInput,
-  type TrainingPackageOutputs,
 } from "@/features/training-packages";
 import type { ExportFormat, ExportTarget } from "@/features/training-packages";
-import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import type { Client, ClientProfileInput } from "@/lib/crm";
+import { useClientsQuery } from "@/features/clients/queries";
+import {
+  useGenerateTrainingPackageMutation,
+  useSaveTrainingPackageMutation,
+} from "@/features/training-packages/queries";
 import {
   emptyProposalBrief,
   type ProposalBrief,
@@ -159,7 +162,11 @@ export function PackageForm({
   );
   const [proposalBrief, setProposalBrief] =
     useState<ProposalBrief>(initialPackage?.proposalBrief ?? emptyProposalBrief);
-  const [clients, setClients] = useState<Client[]>([]);
+  const clientsQuery = useClientsQuery();
+  const clients = clientsQuery.data ?? [];
+  const saveMutation = useSaveTrainingPackageMutation();
+  const generateMutation = useGenerateTrainingPackageMutation();
+  const initialClientResolved = useRef(false);
   const [clientProfile, setClientProfile] = useState<ClientProfileInput>(() => ({
     ...emptyClientProfile,
     id: initialPackage?.clientId ?? undefined,
@@ -175,54 +182,31 @@ export function PackageForm({
     );
   const [currentPackage, setCurrentPackage] =
     useState<TrainingPackage | null>(initialPackage ?? null);
-  const [isGenerating, setIsGenerating] = useState(false);
-  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    let active = true;
+    if (initialClientResolved.current || !clientsQuery.data || clientsQuery.isFetching) return;
+    initialClientResolved.current = true;
 
-    async function loadClients() {
-      const response = await fetch("/api/clients", { cache: "no-store" });
-      const payload = (await response.json()) as {
-        clients?: Client[];
-        error?: string;
-      };
-      if (!response.ok) {
-        throw new Error(payload.error ?? "Client records could not be loaded.");
-      }
-      if (!active) return;
-
-      const loadedClients = payload.clients ?? [];
-      setClients(loadedClients);
-      const linked = initialPackage?.clientId
-        ? loadedClients.find((client) => client.id === initialPackage.clientId)
-        : loadedClients.find(
-            (client) =>
-              client.name.trim().toLowerCase() ===
-              (initialPackage?.client ?? "").trim().toLowerCase(),
-          );
-      if (linked) {
-        setClientProfile(profileFromClient(linked));
-        setForm((current) => ({ ...current, client: linked.name }));
-      }
-    }
-
-    loadClients().catch((loadError) => {
-      if (active) {
-        setNotice(
-          loadError instanceof Error
-            ? loadError.message
-            : "Client records could not be loaded.",
+    const linked = initialPackage?.clientId
+      ? clientsQuery.data.find((client) => client.id === initialPackage.clientId)
+      : clientsQuery.data.find(
+          (client) =>
+            client.name.trim().toLowerCase() ===
+            (initialPackage?.client ?? "").trim().toLowerCase(),
         );
-      }
-    });
+    if (linked) {
+      setClientProfile(profileFromClient(linked));
+      setForm((current) => ({ ...current, client: linked.name }));
+    }
+  }, [clientsQuery.data, clientsQuery.isFetching, initialPackage]);
 
-    return () => {
-      active = false;
-    };
-  }, [initialPackage]);
+  useEffect(() => {
+    if (clientsQuery.isError) {
+      setNotice(clientsQuery.error.message);
+    }
+  }, [clientsQuery.error, clientsQuery.isError]);
 
   useEffect(() => {
     const prefill = {
@@ -331,57 +315,28 @@ export function PackageForm({
   }
 
   async function persistPackage(packageToSave: TrainingPackage) {
-    const response = await fetch("/api/training-packages", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ package: packageToSave, client: clientProfile }),
+    const payload = await saveMutation.mutateAsync({
+      package: packageToSave,
+      client: clientProfile,
     });
-    const payload = (await response.json()) as {
-      package?: TrainingPackage;
-      client?: Client;
-      storage?: "supabase";
-      error?: string;
-    };
-
-    if (!response.ok || !payload.package || !payload.client) {
-      throw new Error(payload.error ?? "Database save failed.");
-    }
 
     setClientProfile(profileFromClient(payload.client));
-    setClients((current) => {
-      const withoutSaved = current.filter((client) => client.id !== payload.client?.id);
-      return payload.client ? [payload.client, ...withoutSaved] : current;
-    });
-
     return payload.package;
   }
 
   async function generatePackage() {
     setError("");
     setNotice("");
-    setIsGenerating(true);
-
     try {
       if (!selectedTrainer) {
         throw new Error("Select a trainer before generating the package.");
       }
 
       const generationInput: TrainingPackageInput = { ...form, proposalBrief };
-      const response = await fetch("/api/training-packages/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ...generationInput, pricingInputs }),
+      const payload = await generateMutation.mutateAsync({
+        ...generationInput,
+        pricingInputs,
       });
-
-      const payload = (await response.json()) as {
-        outputs?: TrainingPackageOutputs;
-        syllabus?: string;
-        proposal?: string;
-        knowledgeUsed?: KnowledgeSourceNote[];
-        mode?: "openai";
-        notice?: string;
-        error?: string;
-      };
       const outputs =
         payload.outputs ??
         (payload.syllabus && payload.proposal
@@ -391,8 +346,8 @@ export function PackageForm({
             }
           : undefined);
 
-      if (!response.ok || !outputs) {
-        throw new Error(payload.error ?? "Generation failed.");
+      if (!outputs) {
+        throw new Error("Generation returned no package outputs.");
       }
 
       const pkg = buildPackageFromParts({
@@ -421,8 +376,6 @@ export function PackageForm({
           ? generationError.message
           : "Generation failed.",
       );
-    } finally {
-      setIsGenerating(false);
     }
   }
 
@@ -431,7 +384,6 @@ export function PackageForm({
       return;
     }
 
-    setIsSaving(true);
     setError("");
     setNotice("");
 
@@ -450,8 +402,6 @@ export function PackageForm({
       router.push(`/packages/${savedPackage.id}`);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Database save failed.");
-    } finally {
-      setIsSaving(false);
     }
   }
 
@@ -741,9 +691,9 @@ export function PackageForm({
               size="lg"
               className="w-full sm:w-auto"
               onClick={generatePackage}
-              disabled={isGenerating || !selectedTrainer}
+              disabled={generateMutation.isPending || saveMutation.isPending || !selectedTrainer}
             >
-              {isGenerating ? (
+              {generateMutation.isPending ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="h-4 w-4" />
@@ -756,9 +706,9 @@ export function PackageForm({
               size="lg"
               className="w-full sm:w-auto"
               onClick={savePackage}
-              disabled={!currentPackage || isSaving || isGenerating}
+              disabled={!currentPackage || saveMutation.isPending || generateMutation.isPending}
             >
-              {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Package
             </Button>
           </div>

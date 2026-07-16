@@ -29,6 +29,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { QueryErrorState } from "@/components/query-error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import { ClientPortalManager } from "@/app/client-portal/_components/client-portal-components";
 import {
   calculatePipelineMetrics,
@@ -46,72 +48,48 @@ import {
 } from "@/lib/crm";
 import type { TrainingPackage } from "@/features/training-packages";
 import type { IntelligentSystemProposal } from "@/features/intelligent-system-proposals";
+import { useSystemProposalsQuery } from "@/features/intelligent-system-proposals/queries";
+import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
+import {
+  useClientsQuery,
+  useDeleteClientMutation,
+  useDeleteOpportunityMutation,
+  useOpportunitiesQuery,
+  useSaveClientMutation,
+  useSaveOpportunityMutation,
+} from "@/features/clients/queries";
 
 function useCrmData() {
-  const [clients, setClients] = useState<Client[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [packages, setPackages] = useState<TrainingPackage[]>([]);
-  const [systemProposals, setSystemProposals] = useState<IntelligentSystemProposal[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [notice, setNotice] = useState("Loading CRM records...");
+  const clientsQuery = useClientsQuery();
+  const opportunitiesQuery = useOpportunitiesQuery();
+  const packagesQuery = useTrainingPackagesQuery();
+  const systemProposalsQuery = useSystemProposalsQuery();
+  const queries = [clientsQuery, opportunitiesQuery, packagesQuery, systemProposalsQuery];
+  const isLoading = queries.some((query) => query.isPending);
+  const isFetching = queries.some((query) => query.isFetching);
+  const error = queries.find((query) => query.isError)?.error ?? null;
+  const notice = error
+    ? error.message
+    : isLoading
+      ? "Loading CRM records..."
+      : isFetching
+        ? "Refreshing CRM records..."
+        : "Showing Supabase-backed CRM records.";
 
   async function refresh() {
-    try {
-      const [clientsResponse, opportunitiesResponse, packagesResponse, systemProposalsResponse] =
-        await Promise.all([
-          fetch("/api/clients", { cache: "no-store" }),
-          fetch("/api/opportunities", { cache: "no-store" }),
-          fetch("/api/training-packages", { cache: "no-store" }),
-          fetch("/api/system-proposals", { cache: "no-store" }),
-        ]);
-      const clientsPayload = (await clientsResponse.json()) as {
-        clients?: Client[];
-        error?: string;
-      };
-      const opportunitiesPayload = (await opportunitiesResponse.json()) as {
-        opportunities?: Opportunity[];
-        error?: string;
-      };
-      const packagesPayload = (await packagesResponse.json()) as {
-        packages?: TrainingPackage[];
-        error?: string;
-      };
-      const systemProposalsPayload = (await systemProposalsResponse.json()) as {
-        proposals?: IntelligentSystemProposal[];
-        error?: string;
-      };
-
-      if (!clientsResponse.ok) {
-        throw new Error(clientsPayload.error ?? "Client database read failed.");
-      }
-      if (!opportunitiesResponse.ok) {
-        throw new Error(opportunitiesPayload.error ?? "Opportunity database read failed.");
-      }
-      if (!packagesResponse.ok) {
-        throw new Error(packagesPayload.error ?? "Package database read failed.");
-      }
-      if (!systemProposalsResponse.ok) {
-        throw new Error(systemProposalsPayload.error ?? "System proposal database read failed.");
-      }
-
-      setClients(clientsPayload.clients ?? []);
-      setOpportunities(opportunitiesPayload.opportunities ?? []);
-      setPackages(packagesPayload.packages ?? []);
-      setSystemProposals(systemProposalsPayload.proposals ?? []);
-      setNotice("Showing Supabase-backed CRM records.");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Database read was unavailable.");
-    } finally {
-      setIsLoading(false);
-    }
+    await Promise.all(queries.map((query) => query.refetch()));
   }
 
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return { clients, opportunities, packages, systemProposals, isLoading, notice, refresh };
+  return {
+    clients: clientsQuery.data ?? [],
+    opportunities: opportunitiesQuery.data ?? [],
+    packages: packagesQuery.data ?? [],
+    systemProposals: systemProposalsQuery.data ?? [],
+    isLoading,
+    notice,
+    error,
+    refresh,
+  };
 }
 
 export function OpportunityStatusBadge({ status }: { status: OpportunityStatus }) {
@@ -123,10 +101,10 @@ export function OpportunityStatusBadge({ status }: { status: OpportunityStatus }
 
 export function ClientForm({ existingClient }: { existingClient?: Client }) {
   const router = useRouter();
+  const saveMutation = useSaveClientMutation();
   const [client, setClient] = useState<Client>(
     existingClient ?? createEmptyClient(),
   );
-  const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState("");
 
   function updateField<K extends keyof Client>(key: K, value: Client[K]) {
@@ -134,7 +112,6 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
   }
 
   async function saveClient() {
-    setIsSaving(true);
     setNotice("");
 
     const clientToSave = normalizeClient({
@@ -143,26 +120,11 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
     });
 
     try {
-      const response = await fetch("/api/clients", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(clientToSave),
-      });
-      const payload = (await response.json()) as {
-        client?: Client;
-        storage?: "supabase";
-        error?: string;
-      };
-
-      if (!response.ok || !payload.client) {
-        throw new Error(payload.error ?? "Client save failed.");
-      }
+      const payload = await saveMutation.mutateAsync(clientToSave);
 
       router.push(`/clients/${payload.client.id}`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Client save failed.");
-    } finally {
-      setIsSaving(false);
     }
   }
 
@@ -225,8 +187,8 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
             {notice}
           </p>
         ) : null}
-        <Button type="button" variant="gold" onClick={saveClient} disabled={isSaving}>
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+        <Button type="button" variant="gold" onClick={saveClient} disabled={saveMutation.isPending}>
+          {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Save Client
         </Button>
       </CardContent>
@@ -293,7 +255,7 @@ export function ClientCard({
 }
 
 export function ClientsPageClient() {
-  const { clients, packages, systemProposals, notice } = useCrmData();
+  const { clients, packages, systemProposals, notice, isLoading, error, refresh } = useCrmData();
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -324,7 +286,11 @@ export function ClientsPageClient() {
           <CardDescription>{notice}</CardDescription>
         </CardHeader>
         <CardContent>
-          {filtered.length ? (
+          {error && !clients.length ? (
+            <QueryErrorState detail={error.message} onRetry={() => void refresh()} />
+          ) : isLoading ? (
+            <CrmGridSkeleton />
+          ) : filtered.length ? (
             <div className="grid gap-3 md:grid-cols-2">
               {filtered.map((client) => (
                 <ClientCard key={client.id} client={client} packages={packages} systemProposals={systemProposals} />
@@ -341,6 +307,7 @@ export function ClientsPageClient() {
 
 export function ClientDetailClient({ id }: { id: string }) {
   const router = useRouter();
+  const deleteMutation = useDeleteClientMutation();
   const { clients, opportunities, packages, systemProposals, isLoading } = useCrmData();
   const client = clients.find((item) => item.id === id);
   const clientOpportunities = opportunities.filter((item) => item.clientId === id);
@@ -356,10 +323,10 @@ export function ClientDetailClient({ id }: { id: string }) {
       return;
     }
 
-    const response = await fetch(`/api/clients/${client.id}`, { method: "DELETE" });
-    if (response.ok) {
+    try {
+      await deleteMutation.mutateAsync(client.id);
       router.push("/clients");
-    }
+    } catch {}
   }
 
   if (isLoading && !client) {
@@ -387,7 +354,7 @@ export function ClientDetailClient({ id }: { id: string }) {
                 New Opportunity
               </Link>
             </Button>
-            <Button type="button" variant="destructive" onClick={deleteClient}>
+            <Button type="button" variant="destructive" onClick={deleteClient} disabled={deleteMutation.isPending}>
               <Trash2 className="h-4 w-4" />
               Delete
             </Button>
@@ -517,6 +484,7 @@ export function OpportunityForm({
   existingOpportunity?: Opportunity;
 }) {
   const router = useRouter();
+  const saveMutation = useSaveOpportunityMutation();
   const searchParams = useSearchParams();
   const { clients, packages } = useCrmData();
   const clientIdFromQuery = searchParams.get("clientId") ?? "";
@@ -533,7 +501,6 @@ export function OpportunityForm({
       status: sourcePackage ? "Proposal Draft" : "Lead",
     }),
   );
-  const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
@@ -558,7 +525,6 @@ export function OpportunityForm({
   }
 
   async function saveOpportunity() {
-    setIsSaving(true);
     setNotice("");
 
     const opportunityToSave = normalizeOpportunity({
@@ -567,26 +533,11 @@ export function OpportunityForm({
     });
 
     try {
-      const response = await fetch("/api/opportunities", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(opportunityToSave),
-      });
-      const payload = (await response.json()) as {
-        opportunity?: Opportunity;
-        storage?: "supabase";
-        error?: string;
-      };
-
-      if (!response.ok || !payload.opportunity) {
-        throw new Error(payload.error ?? "Opportunity save failed.");
-      }
+      const payload = await saveMutation.mutateAsync(opportunityToSave);
 
       router.push(`/opportunities/${payload.opportunity.id}`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Opportunity save failed.");
-    } finally {
-      setIsSaving(false);
     }
   }
 
@@ -709,9 +660,9 @@ export function OpportunityForm({
           type="button"
           variant="gold"
           onClick={saveOpportunity}
-          disabled={isSaving}
+          disabled={saveMutation.isPending}
         >
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+          {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
           Save Opportunity
         </Button>
       </CardContent>
@@ -760,7 +711,7 @@ export function OpportunityCard({
 }
 
 export function OpportunitiesPageClient() {
-  const { clients, opportunities, notice } = useCrmData();
+  const { clients, opportunities, notice, isLoading, error, refresh } = useCrmData();
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -791,7 +742,11 @@ export function OpportunitiesPageClient() {
           <CardDescription>{notice}</CardDescription>
         </CardHeader>
         <CardContent>
-          {filtered.length ? (
+          {error && !opportunities.length ? (
+            <QueryErrorState detail={error.message} onRetry={() => void refresh()} />
+          ) : isLoading ? (
+            <CrmGridSkeleton />
+          ) : filtered.length ? (
             <div className="grid gap-3 md:grid-cols-2">
               {filtered.map((opportunity) => (
                 <OpportunityCard
@@ -816,6 +771,7 @@ export function OpportunitiesPageClient() {
 
 export function OpportunityDetailClient({ id }: { id: string }) {
   const router = useRouter();
+  const deleteMutation = useDeleteOpportunityMutation();
   const { clients, opportunities, packages, isLoading } = useCrmData();
   const opportunity = opportunities.find((item) => item.id === id);
   const client = clients.find((item) => item.id === opportunity?.clientId);
@@ -831,10 +787,10 @@ export function OpportunityDetailClient({ id }: { id: string }) {
       return;
     }
 
-    const response = await fetch(`/api/opportunities/${opportunity.id}`, { method: "DELETE" });
-    if (response.ok) {
+    try {
+      await deleteMutation.mutateAsync(opportunity.id);
       router.push("/opportunities");
-    }
+    } catch {}
   }
 
   async function generateFollowUp() {
@@ -909,7 +865,7 @@ export function OpportunityDetailClient({ id }: { id: string }) {
                 New Opportunity
               </Link>
             </Button>
-            <Button type="button" variant="destructive" onClick={deleteOpportunity}>
+            <Button type="button" variant="destructive" onClick={deleteOpportunity} disabled={deleteMutation.isPending}>
               <Trash2 className="h-4 w-4" />
               Delete
             </Button>
@@ -1085,7 +1041,8 @@ export function FollowUpReminder({
 }
 
 export function PackageOpportunityPanel({ pkg }: { pkg: TrainingPackage }) {
-  const { clients, opportunities, refresh } = useCrmData();
+  const { clients, opportunities } = useCrmData();
+  const saveMutation = useSaveOpportunityMutation();
   const linkedOpportunity = opportunities.find(
     (opportunity) => opportunity.linkedPackageId === pkg.id,
   );
@@ -1108,19 +1065,12 @@ export function PackageOpportunityPanel({ pkg }: { pkg: TrainingPackage }) {
       linkedPackageId: pkg.id,
       updatedAt: new Date().toISOString(),
     });
-    const response = await fetch("/api/opportunities", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(updated),
-    });
-    if (!response.ok) {
-      const payload = (await response.json().catch(() => ({}))) as { error?: string };
-      setNotice(payload.error ?? "Opportunity link save failed.");
-      return;
+    try {
+      await saveMutation.mutateAsync(updated);
+      setNotice("Package linked to opportunity.");
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Opportunity link save failed.");
     }
-
-    await refresh();
-    setNotice("Package linked to opportunity.");
   }
 
   return (
@@ -1160,7 +1110,7 @@ export function PackageOpportunityPanel({ pkg }: { pkg: TrainingPackage }) {
               </option>
             ))}
           </Select>
-          <Button type="button" variant="outline" onClick={linkExistingOpportunity}>
+          <Button type="button" variant="outline" onClick={linkExistingOpportunity} disabled={saveMutation.isPending}>
             Link to Opportunity
           </Button>
         </div>
@@ -1270,6 +1220,24 @@ function EmptyCrmState({
           {label}
         </Link>
       </Button>
+    </div>
+  );
+}
+
+function CrmGridSkeleton() {
+  return (
+    <div className="grid gap-3 md:grid-cols-2" aria-label="Loading records" aria-busy="true">
+      {Array.from({ length: 4 }, (_, index) => (
+        <div key={index} className="rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
+          <Skeleton className="h-5 w-2/3" />
+          <Skeleton className="mt-3 h-4 w-full" />
+          <Skeleton className="mt-2 h-4 w-4/5" />
+          <div className="mt-4 flex gap-2">
+            <Skeleton className="h-6 w-20" />
+            <Skeleton className="h-6 w-28" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }

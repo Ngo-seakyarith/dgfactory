@@ -4,6 +4,7 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 
 import "./globals.css";
+import { AppProviders } from "@/app/providers";
 import { SidebarNavigation, type SidebarItem } from "@/components/sidebar-navigation";
 import { hasAppAccess } from "@/lib/auth";
 import { getAuthenticatedCookieUser } from "@/lib/auth-production";
@@ -69,21 +70,23 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   return (
     <html lang="en" className="dark">
       <body>
-        <div className="min-h-screen bg-[#07111f] text-slate-50">
-          {isClientPortal ? (
-            <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
-          ) : (
-            <div className="min-h-screen lg:flex">
-              <SidebarNavigation
-                items={resolvedNavItems}
-                isAuthenticated={Boolean(user?.userId)}
-              />
-              <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
-                <div className="mx-auto max-w-7xl">{children}</div>
-              </main>
-            </div>
-          )}
-        </div>
+        <AppProviders>
+          <div className="min-h-screen bg-[#07111f] text-slate-50">
+            {isClientPortal ? (
+              <main className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">{children}</main>
+            ) : (
+              <div className="min-h-screen lg:flex">
+                <SidebarNavigation
+                  items={resolvedNavItems}
+                  isAuthenticated={Boolean(user?.userId)}
+                />
+                <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-8">
+                  <div className="mx-auto max-w-7xl">{children}</div>
+                </main>
+              </div>
+            )}
+          </div>
+        </AppProviders>
       </body>
     </html>
   );

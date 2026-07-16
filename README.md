@@ -14,6 +14,19 @@ This app is separate from DG Command OS.
 - Existing `Select` is currently the native-select pattern because app screens use `<option>` children; migrate to Radix shadcn `Select` only when refactoring each caller to the trigger/content/item API.
 - Shared form wrappers should use `Field`, `Label`, `Input`, `Textarea`, `Select`, and `Checkbox` from `src/components/ui`.
 
+## Client Server-State Standard
+
+- TanStack Query is the standard client-side server-state layer for active internal workflows.
+- `src/app/providers.tsx` owns the app-wide `QueryClientProvider`, with a 30-second stale window, one retry for network or server failures, and no retries for 4xx responses.
+- `src/lib/api-client.ts` provides typed JSON requests and preserves API status codes and server error messages.
+- Query keys and request hooks stay with their owning feature. Training packages, clients and opportunities, and intelligent-system proposals each use stable list and detail keys.
+- Mutations update or invalidate related caches after package generation/save/delete, client and opportunity changes, and system-proposal changes.
+- Editable form drafts remain in React component state. TanStack Query owns persisted server data only.
+- Initial requests use stable skeleton layouts, successful empty responses use explicit empty states, and failures provide retry actions. Background refreshes keep existing content visible.
+- The Query cache is cleared before Supabase sign-out so internal records cannot remain visible across account changes.
+- React Query Devtools are available only in development and are not rendered in production.
+- Legacy product areas awaiting product review keep their current data-loading code until they are retained and migrated deliberately.
+
 ## Features
 
 - Generate full training packages through OpenRouter

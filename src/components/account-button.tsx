@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Loader2, LogIn, LogOut } from "lucide-react";
+import { useQueryClient } from "@tanstack/react-query";
 
 import { Button } from "@/components/ui/button";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -12,6 +13,7 @@ type AccountButtonProps = {
 };
 
 export function AccountButton({ isAuthenticated, className }: AccountButtonProps) {
+  const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
 
   async function signIn() {
@@ -41,6 +43,7 @@ export function AccountButton({ isAuthenticated, className }: AccountButtonProps
     try {
       const supabase = createSupabaseBrowserClient();
       await supabase?.auth.signOut();
+      queryClient.clear();
       window.location.href = "/login";
     } finally {
       setIsLoading(false);

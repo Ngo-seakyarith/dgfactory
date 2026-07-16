@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { useEffect, useMemo, useRef, useState, type Dispatch, type SetStateAction } from "react";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { AlertTriangle, ArrowLeft, BarChart3, Clipboard, Database, Download, FileSpreadsheet, Loader2, Plus, RefreshCw, Save, Sparkles, Trash2, Upload } from "lucide-react";
 
 import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
@@ -15,9 +16,19 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Client } from "@/lib/crm";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
+import { requestJson } from "@/lib/api-client";
+import { useClientsQuery } from "@/features/clients/queries";
+import { QueryErrorState } from "@/components/query-error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 
 import { createSystemProposal, systemProposalContentToMarkdown } from "../domain/proposal";
 import type { AnalystReview, IntelligentSystemProposal, SystemSourceFile } from "../domain/types";
+import {
+  setSystemProposalQueryData,
+  useDeleteSystemProposalMutation,
+  useSaveSystemProposalMutation,
+  useSystemProposalQuery,
+} from "../queries";
 
 type Stage = "brief" | "review" | "proposal";
 const stages: Array<{ id: Stage; label: string; icon: typeof Database }> = [
@@ -29,36 +40,33 @@ const toLines = (value: string) => value.split(/\r?\n/).map((item) => item.trim(
 
 export function SystemProposalWorkspace({ id }: { id?: string }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
+  const clientsQuery = useClientsQuery();
+  const proposalQuery = useSystemProposalQuery(id);
+  const saveMutation = useSaveSystemProposalMutation();
+  const deleteMutation = useDeleteSystemProposalMutation();
+  const commandMutation = useMutation({
+    mutationFn: ({ url, init }: { url: string; init?: RequestInit }) =>
+      requestJson<{ proposal: IntelligentSystemProposal }>(url, init),
+  });
+  const loadedProposal = useRef(false);
   const [proposal, setProposal] = useState<IntelligentSystemProposal>(() => createSystemProposal());
-  const [clients, setClients] = useState<Client[]>([]);
+  const clients = clientsQuery.data ?? [];
   const [stage, setStage] = useState<Stage>("brief");
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState<{ text: string; error: boolean }>({ text: "", error: false });
   const markdown = useMemo(() => proposal.proposalContent ? systemProposalContentToMarkdown(proposal.proposalContent, proposal.commercialInputs) : "", [proposal]);
 
-  async function json<T>(response: Response) {
-    const payload = (await response.json()) as T & { error?: string };
-    if (!response.ok) throw new Error(payload.error ?? "Request failed.");
-    return payload;
-  }
   function fail(error: unknown) { setNotice({ text: error instanceof Error ? error.message : "Request failed.", error: true }); }
   function success(text: string) { setNotice({ text, error: false }); }
 
   useEffect(() => {
-    setBusy("Loading project...");
-    Promise.all([
-      fetch("/api/clients", { cache: "no-store" }).then((response) => json<{ clients: Client[] }>(response)),
-      id ? fetch(`/api/system-proposals/${id}`, { cache: "no-store" }).then((response) => json<{ proposal: IntelligentSystemProposal }>(response)) : Promise.resolve(null),
-    ]).then(([clientData, proposalData]) => {
-      setClients(clientData.clients ?? []);
-      if (proposalData) {
-        setProposal(proposalData.proposal);
-        if (proposalData.proposal.proposalContent) setStage("proposal");
-        else if (proposalData.proposal.combinedAnalysis) setStage("review");
-      }
-    }).catch(fail).finally(() => setBusy(""));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id]);
+    if (!proposalQuery.data || loadedProposal.current) return;
+    loadedProposal.current = true;
+    setProposal(proposalQuery.data);
+    if (proposalQuery.data.proposalContent) setStage("proposal");
+    else if (proposalQuery.data.combinedAnalysis) setStage("review");
+  }, [proposalQuery.data]);
 
   function updateBrief(key: keyof IntelligentSystemProposal["brief"], value: string | null) {
     setProposal((current) => ({ ...current, brief: { ...current.brief, [key]: value } }));
@@ -67,7 +75,7 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
   async function save(message = "Project saved.") {
     setBusy("Saving project...");
     try {
-      const data = await fetch(id ? `/api/system-proposals/${id}` : "/api/system-proposals", { method: id ? "PATCH" : "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ proposal }) }).then((response) => json<{ proposal: IntelligentSystemProposal }>(response));
+      const data = await saveMutation.mutateAsync({ id, proposal });
       setProposal(data.proposal);
       if (message) success(message);
       if (!id) router.replace(`/system-proposals/${data.proposal.id}`);
@@ -85,15 +93,16 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
       if (!supabase) throw new Error("Supabase browser configuration is missing.");
       let latest = proposal;
       for (const file of Array.from(files)) {
-        const token = await fetch(`/api/system-proposals/${id}/files/upload-token`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name, mimeType: file.type, sizeBytes: file.size }) }).then((response) => json<{ file: SystemSourceFile; path: string; token: string }>(response));
+        const token = await requestJson<{ file: SystemSourceFile; path: string; token: string }>(`/api/system-proposals/${id}/files/upload-token`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ name: file.name, mimeType: file.type, sizeBytes: file.size }) });
         const { error } = await supabase.storage.from("system-proposal-inputs").uploadToSignedUrl(token.path, token.token, file, { contentType: file.type || undefined });
         if (error) {
           await fetch(`/api/system-proposals/${id}/files/${token.file.id}`, { method: "DELETE" });
           throw error;
         }
-        const analyzed = await fetch(`/api/system-proposals/${id}/files/${token.file.id}/analyze`, { method: "POST" }).then((response) => json<{ proposal: IntelligentSystemProposal }>(response));
+        const analyzed = await commandMutation.mutateAsync({ url: `/api/system-proposals/${id}/files/${token.file.id}/analyze`, init: { method: "POST" } });
         latest = analyzed.proposal;
         setProposal(latest);
+        setSystemProposalQueryData(queryClient, latest);
       }
       setStage("review"); success("Files uploaded and profiled without executing formulas or macros.");
     } catch (error) { fail(error); } finally { setBusy(""); }
@@ -103,8 +112,8 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
     if (!id || !window.confirm(`Remove "${file.originalName}" and invalidate its analysis?`)) return;
     setBusy("Removing file...");
     try {
-      const data = await fetch(`/api/system-proposals/${id}/files/${file.id}`, { method: "DELETE" }).then((response) => json<{ proposal: IntelligentSystemProposal }>(response));
-      setProposal(data.proposal); success("File removed. Run analyst discovery again.");
+      const data = await commandMutation.mutateAsync({ url: `/api/system-proposals/${id}/files/${file.id}`, init: { method: "DELETE" } });
+      setProposal(data.proposal); setSystemProposalQueryData(queryClient, data.proposal); success("File removed. Run analyst discovery again.");
     } catch (error) { fail(error); } finally { setBusy(""); }
   }
 
@@ -113,8 +122,8 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
     const saved = await save(""); if (!saved) return;
     setBusy("Preparing analyst findings...");
     try {
-      const data = await fetch(`/api/system-proposals/${id}/analysis`, { method: "POST" }).then((response) => json<{ proposal: IntelligentSystemProposal }>(response));
-      setProposal(data.proposal); success("Analyst findings are ready for human review.");
+      const data = await commandMutation.mutateAsync({ url: `/api/system-proposals/${id}/analysis`, init: { method: "POST" } });
+      setProposal(data.proposal); setSystemProposalQueryData(queryClient, data.proposal); success("Analyst findings are ready for human review.");
     } catch (error) { fail(error); } finally { setBusy(""); }
   }
 
@@ -123,8 +132,8 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
     const saved = await save(""); if (!saved) return;
     setBusy("Generating proposal...");
     try {
-      const data = await fetch(`/api/system-proposals/${id}/generate`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ proposal: saved }) }).then((response) => json<{ proposal: IntelligentSystemProposal }>(response));
-      setProposal(data.proposal); setStage("proposal"); success("Proposal generated and saved.");
+      const data = await commandMutation.mutateAsync({ url: `/api/system-proposals/${id}/generate`, init: { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ proposal: saved }) } });
+      setProposal(data.proposal); setSystemProposalQueryData(queryClient, data.proposal); setStage("proposal"); success("Proposal generated and saved.");
     } catch (error) { fail(error); } finally { setBusy(""); }
   }
 
@@ -143,13 +152,16 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
     if (!id || !window.confirm(`Delete "${proposal.brief.projectTitle}" and all private source files?`)) return;
     setBusy("Deleting project and private files...");
     try {
-      await fetch(`/api/system-proposals/${id}`, { method: "DELETE" }).then((response) => json<{ deleted: boolean }>(response));
+      await deleteMutation.mutateAsync(id);
       router.push("/system-proposals");
     } catch (error) {
       fail(error);
       setBusy("");
     }
   }
+
+  if (id && proposalQuery.isPending) return <SystemProposalWorkspaceSkeleton />;
+  if (id && proposalQuery.isError) return <QueryErrorState title="System proposal could not be loaded" detail={proposalQuery.error.message} onRetry={() => void proposalQuery.refetch()} />;
 
   return <div className="space-y-5">
     <header className="flex flex-wrap items-start justify-between gap-3"><div><Button asChild variant="ghost" className="mb-2 -ml-3"><Link href="/system-proposals"><ArrowLeft className="h-4 w-4" />System Proposals</Link></Button><h1 className="text-2xl font-semibold text-white">{id ? proposal.brief.projectTitle || "Intelligent System Proposal" : "New Intelligent System Proposal"}</h1><p className="mt-2 text-sm text-muted-foreground">Turn client data and reviewed evidence into a practical system recommendation.</p></div><div className="flex gap-2">{id ? <Badge variant="teal">{proposal.status}</Badge> : null}<Button variant="outline" onClick={() => void save()} disabled={Boolean(busy)}><Save className="h-4 w-4" />Save</Button>{id ? <Button variant="destructive" size="icon" title="Delete project" onClick={() => void deleteProject()} disabled={Boolean(busy)}><Trash2 className="h-4 w-4" /></Button> : null}</div></header>
@@ -160,6 +172,24 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
     {stage === "review" ? <><RelationshipSummary proposal={proposal} /><Review proposal={proposal} setProposal={setProposal} discover={discover} save={save} busy={Boolean(busy)} /><DataQualityEditor proposal={proposal} setProposal={setProposal} /></> : null}
     {stage === "proposal" ? <Proposal proposal={proposal} setProposal={setProposal} markdown={markdown} generate={generate} exportDocx={exportDocx} busy={Boolean(busy)} /> : null}
   </div>;
+}
+
+function SystemProposalWorkspaceSkeleton() {
+  return (
+    <div className="space-y-5" aria-label="Loading system proposal" aria-busy="true">
+      <div className="space-y-3">
+        <Skeleton className="h-9 w-56" />
+        <Skeleton className="h-7 w-2/3" />
+        <Skeleton className="h-4 w-1/2" />
+      </div>
+      <div className="grid gap-2 rounded-md border border-white/10 p-2 sm:grid-cols-3">
+        {Array.from({ length: 3 }, (_, index) => <Skeleton key={index} className="h-10" />)}
+      </div>
+      <div className="grid gap-4 md:grid-cols-2">
+        {Array.from({ length: 6 }, (_, index) => <Skeleton key={index} className="h-24" />)}
+      </div>
+    </div>
+  );
 }
 
 function Brief({ proposal, clients, update, upload, remove, saved, busy }: { proposal: IntelligentSystemProposal; clients: Client[]; update: (key: keyof IntelligentSystemProposal["brief"], value: string | null) => void; upload: (files: FileList | null) => void; remove: (file: SystemSourceFile) => void; saved: boolean; busy: boolean }) {

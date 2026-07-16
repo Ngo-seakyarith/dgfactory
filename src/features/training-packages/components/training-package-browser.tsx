@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   Clock3,
@@ -24,69 +25,31 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { QueryErrorState } from "@/components/query-error-state";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   ErrorState,
   LoadingState,
   PackageForm,
 } from "@/features/training-packages/components";
 import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
-import type { TrainingPackage } from "@/features/training-packages";
+import type { TrainingPackage } from "@/features/training-packages/domain/training-package";
+import {
+  trainingPackageKeys,
+  useDeleteTrainingPackageMutation,
+  useTrainingPackageQuery,
+  useTrainingPackagesQuery,
+} from "@/features/training-packages/queries";
 import { PackageOpportunityPanel } from "@/app/crm/_components/crm-components";
 import { AdaptiveGrowthPackageLinkPanel } from "@/app/adaptive-growth/_components/adaptive-growth-components";
 
-function usePackages() {
-  const [packages, setPackages] = useState<TrainingPackage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [storageNotice, setStorageNotice] = useState("Loading saved packages...");
-
-  useEffect(() => {
-    let active = true;
-
-    async function loadPackages() {
-      try {
-        const response = await fetch("/api/training-packages", {
-          cache: "no-store",
-        });
-        const payload = (await response.json()) as {
-          packages?: TrainingPackage[];
-          error?: string;
-        };
-
-        if (!active) {
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(payload.error ?? "Database read failed.");
-        }
-
-        setPackages(payload.packages ?? []);
-        setStorageNotice("Showing Supabase-backed packages.");
-      } catch (error) {
-        if (active) {
-          setStorageNotice(
-            error instanceof Error ? error.message : "Database read was unavailable.",
-          );
-        }
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadPackages();
-
-    return () => {
-      active = false;
-    };
-  }, []);
-
-  return { packages, isLoading, storageNotice };
-}
-
 export function TrainingDashboardClient() {
-  const { packages, isLoading, storageNotice } = usePackages();
+  const packagesQuery = useTrainingPackagesQuery();
+  const packages = packagesQuery.data ?? [];
+  const isLoading = packagesQuery.isPending;
+  const storageNotice = packagesQuery.isFetching && packagesQuery.data
+    ? "Refreshing saved packages..."
+    : "Showing Supabase-backed packages.";
   const latest = packages.slice(0, 4);
   const generatedCount = packages.length;
   const openMarkets = new Set(packages.map((pkg) => pkg.client).filter(Boolean)).size;
@@ -133,21 +96,30 @@ export function TrainingDashboardClient() {
         </CardContent>
       </Card>
 
-      <SavedPackageGrid
-        packages={latest}
-        storageNotice={storageNotice}
-        emptyTitle="No packages yet"
-        emptyDetail="Create your first DG Academy training package to populate the factory."
-      />
+      {packagesQuery.isError ? (
+        <QueryErrorState
+          detail={packagesQuery.error.message}
+          onRetry={() => void packagesQuery.refetch()}
+        />
+      ) : (
+        <SavedPackageGrid
+          packages={latest}
+          storageNotice={storageNotice}
+          isLoading={isLoading}
+          emptyTitle="No packages yet"
+          emptyDetail="Create your first DG Academy training package to populate the factory."
+        />
+      )}
     </div>
   );
 }
 
 export function SavedPackagesClient() {
-  const { packages, isLoading, storageNotice } = usePackages();
+  const packagesQuery = useTrainingPackagesQuery();
   const [query, setQuery] = useState("");
 
   const filteredPackages = useMemo(() => {
+    const packages = packagesQuery.data ?? [];
     const normalized = query.trim().toLowerCase();
 
     if (!normalized) {
@@ -160,7 +132,7 @@ export function SavedPackagesClient() {
         .toLowerCase()
         .includes(normalized),
     );
-  }, [packages, query]);
+  }, [packagesQuery.data, query]);
 
   return (
     <div className="space-y-5">
@@ -184,71 +156,55 @@ export function SavedPackagesClient() {
         </CardContent>
       </Card>
 
-      <SavedPackageGrid
-        packages={filteredPackages}
-        storageNotice={isLoading ? "Loading saved packages..." : storageNotice}
-        emptyTitle="No matching packages"
-        emptyDetail="Try a different search or generate a new package."
-      />
+      {packagesQuery.isError ? (
+        <QueryErrorState
+          title="Saved packages could not be loaded"
+          detail={packagesQuery.error.message}
+          onRetry={() => void packagesQuery.refetch()}
+        />
+      ) : (
+        <SavedPackageGrid
+          packages={filteredPackages}
+          storageNotice={
+            packagesQuery.isPending
+              ? "Loading saved packages..."
+              : packagesQuery.isFetching
+                ? "Refreshing saved packages..."
+                : "Showing Supabase-backed packages."
+          }
+          isLoading={packagesQuery.isPending}
+          emptyTitle={query.trim() ? "No matching packages" : "No packages yet"}
+          emptyDetail={
+            query.trim()
+              ? "Try a different search or generate a new package."
+              : "Create your first DG Academy training package."
+          }
+        />
+      )}
     </div>
   );
 }
 
 export function PackageDetailClient({ id }: { id: string }) {
   const router = useRouter();
-  const [pkg, setPkg] = useState<TrainingPackage | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [error, setError] = useState("");
+  const queryClient = useQueryClient();
+  const packageQuery = useTrainingPackageQuery(id);
+  const deleteMutation = useDeleteTrainingPackageMutation();
+  const pkg = packageQuery.data ?? null;
+  const error = packageQuery.error?.message ?? deleteMutation.error?.message ?? "";
 
-  useEffect(() => {
-    let active = true;
-
-    async function loadPackage() {
-      try {
-        const response = await fetch(`/api/training-packages/${id}`, {
-          cache: "no-store",
-        });
-        const payload = (await response.json()) as {
-          package?: TrainingPackage;
-          error?: string;
-        };
-
-        if (!active) {
-          return;
-        }
-
-        if (!response.ok || !payload.package) {
-          throw new Error(payload.error ?? "Training package was not found.");
-        }
-
-        setPkg(payload.package);
-      } catch (error) {
-        if (active) {
-          setError(error instanceof Error ? error.message : "Training package was not found.");
-        }
-      } finally {
-        if (active) {
-          setIsLoading(false);
-        }
-      }
-    }
-
-    loadPackage();
-
-    return () => {
-      active = false;
-    };
-  }, [id]);
-
-  if (isLoading && !pkg) {
+  if (packageQuery.isPending && !pkg) {
     return <LoadingState label="Loading package..." />;
   }
 
   if (!pkg) {
     return (
       <>
-        <ErrorState title="Package not found" detail={error} />
+        <QueryErrorState
+          title="Package not found"
+          detail={error || "Training package was not found."}
+          onRetry={() => void packageQuery.refetch()}
+        />
         <Card className="mt-4 border-white/10 bg-white/[0.04] shadow-executive">
           <CardContent className="p-6">
             <Button asChild variant="gold">
@@ -265,28 +221,24 @@ export function PackageDetailClient({ id }: { id: string }) {
       return;
     }
 
-    setIsDeleting(true);
-
     try {
-      const response = await fetch(`/api/training-packages/${pkg.id}`, { method: "DELETE" });
-
-      if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(payload.error ?? "Delete failed.");
-      }
-
+      await deleteMutation.mutateAsync(pkg.id);
       router.push("/packages");
-      router.refresh();
-    } catch (error) {
-      setError(error instanceof Error ? error.message : "Delete failed.");
-    } finally {
-      setIsDeleting(false);
-    }
+    } catch {}
   }
 
   return (
     <div className="space-y-5">
-      <PackageForm initialPackage={pkg} onPackageSaved={setPkg} />
+      <PackageForm
+        initialPackage={pkg}
+        onPackageSaved={(savedPackage) =>
+          queryClient.setQueryData(trainingPackageKeys.detail(id), savedPackage)
+        }
+      />
+
+      {deleteMutation.isError ? (
+        <ErrorState title="Delete failed" detail={deleteMutation.error.message} />
+      ) : null}
 
       <div className="flex flex-wrap gap-2">
         <Button asChild variant="outline">
@@ -299,10 +251,10 @@ export function PackageDetailClient({ id }: { id: string }) {
           type="button"
           variant="destructive"
           onClick={deletePackage}
-          disabled={isDeleting}
+          disabled={deleteMutation.isPending}
         >
           <Trash2 className="h-4 w-4" />
-          {isDeleting ? "Deleting" : "Delete"}
+          {deleteMutation.isPending ? "Deleting" : "Delete"}
         </Button>
       </div>
 
@@ -323,11 +275,13 @@ export function PackageDetailClient({ id }: { id: string }) {
 function SavedPackageGrid({
   packages,
   storageNotice,
+  isLoading,
   emptyTitle,
   emptyDetail,
 }: {
   packages: TrainingPackage[];
   storageNotice: string;
+  isLoading?: boolean;
   emptyTitle: string;
   emptyDetail: string;
 }) {
@@ -338,10 +292,12 @@ function SavedPackageGrid({
           <CardTitle>Saved Packages</CardTitle>
           <CardDescription>{storageNotice}</CardDescription>
         </div>
-        <Badge variant="teal">{packages.length} visible</Badge>
+        <Badge variant="teal">{isLoading ? "Loading" : `${packages.length} visible`}</Badge>
       </CardHeader>
       <CardContent>
-        {packages.length > 0 ? (
+        {isLoading ? (
+          <PackageGridSkeleton />
+        ) : packages.length > 0 ? (
           <div className="grid gap-3 lg:grid-cols-2">
             {packages.map((pkg) => (
               <Link
@@ -388,6 +344,30 @@ function SavedPackageGrid({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function PackageGridSkeleton() {
+  return (
+    <div className="grid gap-3 lg:grid-cols-2" aria-label="Loading saved packages" aria-busy="true">
+      {Array.from({ length: 4 }, (_, index) => (
+        <div key={index} className="rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
+          <div className="flex items-start justify-between gap-3">
+            <div className="w-full space-y-3">
+              <Skeleton className="h-5 w-2/3" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-4/5" />
+            </div>
+            <Skeleton className="h-4 w-4 shrink-0" />
+          </div>
+          <div className="mt-4 flex gap-2">
+            <Skeleton className="h-6 w-24" />
+            <Skeleton className="h-6 w-16" />
+          </div>
+          <Skeleton className="mt-4 h-3 w-40" />
+        </div>
+      ))}
+    </div>
   );
 }
 
