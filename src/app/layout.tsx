@@ -19,6 +19,8 @@ const navItems: SidebarItem[] = [
   { label: "Dashboard", href: "/dashboard" },
   { label: "New Package", href: "/packages/new" },
   { label: "Saved Packages", href: "/packages" },
+  { label: "New System Proposal", href: "/system-proposals/new" },
+  { label: "System Proposals", href: "/system-proposals" },
   { label: "Clients", href: "/clients" },
   { label: "Product", href: "/product" },
   { label: "ROI", href: "/roi-calculator" },

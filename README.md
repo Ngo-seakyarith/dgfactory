@@ -17,6 +17,7 @@ This app is separate from DG Command OS.
 ## Features
 
 - Generate full training packages through OpenRouter
+- Build Intelligent System Proposals from reviewed Excel and CSV evidence, with private Supabase uploads, deterministic data profiling, editable analyst findings, structured generation, and branded DOCX export
 - Capture a structured proposal brief aligned to DG Academy cover, course design, schedule, trainer, fee, logistics, and acceptance sections
 - Proposal DOCX export mirrors the approved DG Academy format with a full-page cover, numbered course sections, complete trainer profile, no-table acceptance layout, and deterministic Commercial Setup fee. Long trainer profiles continue onto additional pages.
 - Every DOCX export embeds the DG Academy logo from `public/app-logo.png`.
@@ -69,6 +70,48 @@ bun run dev
 ```
 
 Open `http://localhost:3000/dashboard`.
+
+## Intelligent System Proposals
+
+The Intelligent System Proposal feature is separate from training packages and is available to approved internal users at:
+
+- `/system-proposals/new`
+- `/system-proposals`
+- `/system-proposals/[id]`
+
+Workflow:
+
+1. Select an existing client and save the project brief.
+2. Upload up to five `.xlsx` or `.csv` files, with a 10 MB limit per file.
+3. Review deterministic workbook profiles, exclude irrelevant sheets, mark sensitive columns, and correct field meanings.
+4. Generate editable analyst findings from aggregate profiles and masked samples only.
+5. Review the evidence, assumptions, risks, opportunities, and client confirmation questions.
+6. Generate, save, copy, and export the branded Intelligent System Proposal DOCX.
+
+Data handling:
+
+- Browser uploads use short-lived signed upload tokens for the private `system-proposal-inputs` Supabase Storage bucket.
+- `.xls`, `.xlsm`, encrypted, corrupted, unsupported, and oversized files are rejected.
+- Excel formulas are counted and cached results may be profiled, but formulas and macros are never executed.
+- Analysis is limited to 250,000 rows per project, 20 sheets per workbook, and 200 columns per sheet. Sampled results are marked partial.
+- Likely email, phone, ID, account-number, and personal-data fields are masked before Brain Layer calls.
+- Original files and complete raw rows are never sent to OpenRouter.
+- The Brain Layer uses `data_discovery` for reviewed analyst findings and `intelligent_system_proposal` for final structured content.
+- Commercial pricing is optional. Code calculates line-item totals; AI cannot create prices.
+- Removing a file invalidates the combined review. Deleting a project also removes its private source files and writes an audit record.
+
+Persistence uses `intelligent_system_proposals` and `intelligent_system_files`. Both tables have RLS enabled and are accessible only through approved server routes. Client pages show linked training packages and intelligent-system proposal history.
+
+API routes:
+
+- `GET/POST /api/system-proposals`
+- `GET/PATCH/DELETE /api/system-proposals/[id]`
+- `POST /api/system-proposals/[id]/files/upload-token`
+- `POST /api/system-proposals/[id]/files/[fileId]/analyze`
+- `DELETE /api/system-proposals/[id]/files/[fileId]`
+- `POST /api/system-proposals/[id]/analysis`
+- `POST /api/system-proposals/[id]/generate`
+- `POST /api/system-proposals/[id]/export`
 
 ## Environment Variables
 

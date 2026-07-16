@@ -86,6 +86,83 @@ create index if not exists idx_training_packages_client_name
 create index if not exists idx_training_packages_client_id
   on public.training_packages(client_id);
 
+create table if not exists public.intelligent_system_proposals (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid references public.clients(id) on delete set null,
+  client_name text not null,
+  title text not null,
+  brief jsonb not null default '{}'::jsonb,
+  status text not null default 'Draft' check (
+    status in ('Draft', 'Analyzing', 'Analysis Ready', 'Generated', 'Failed')
+  ),
+  combined_analysis jsonb,
+  analyst_review jsonb,
+  proposal_content jsonb,
+  commercial_inputs jsonb not null default '{}'::jsonb,
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.intelligent_system_proposals enable row level security;
+
+create index if not exists idx_intelligent_system_proposals_client_id
+  on public.intelligent_system_proposals(client_id);
+create index if not exists idx_intelligent_system_proposals_updated_at
+  on public.intelligent_system_proposals(updated_at desc);
+create index if not exists idx_intelligent_system_proposals_status
+  on public.intelligent_system_proposals(status);
+
+create table if not exists public.intelligent_system_files (
+  id uuid primary key default gen_random_uuid(),
+  proposal_id uuid not null references public.intelligent_system_proposals(id) on delete cascade,
+  original_name text not null,
+  storage_path text not null unique,
+  mime_type text not null,
+  size_bytes bigint not null check (size_bytes > 0 and size_bytes <= 10485760),
+  sha256 text not null default '',
+  parse_status text not null default 'Uploaded' check (
+    parse_status in ('Uploaded', 'Analyzing', 'Ready', 'Failed')
+  ),
+  analysis_snapshot jsonb,
+  error_message text not null default '',
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.intelligent_system_files enable row level security;
+
+create index if not exists idx_intelligent_system_files_proposal_id
+  on public.intelligent_system_files(proposal_id);
+create index if not exists idx_intelligent_system_files_parse_status
+  on public.intelligent_system_files(parse_status);
+create unique index if not exists idx_intelligent_system_files_project_sha256
+  on public.intelligent_system_files(proposal_id, sha256)
+  where sha256 <> '';
+
+revoke all on table public.intelligent_system_proposals from anon, authenticated;
+revoke all on table public.intelligent_system_files from anon, authenticated;
+grant all on table public.intelligent_system_proposals to service_role;
+grant all on table public.intelligent_system_files to service_role;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'system-proposal-inputs',
+  'system-proposal-inputs',
+  false,
+  10485760,
+  array[
+    'text/csv',
+    'application/csv',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/octet-stream'
+  ]
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
 create table if not exists public.opportunities (
   id uuid primary key default gen_random_uuid(),
   client_id uuid references public.clients(id) on delete set null,

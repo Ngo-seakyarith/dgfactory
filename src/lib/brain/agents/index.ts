@@ -1,9 +1,11 @@
 import type { TrainingPackageInput } from "@/features/training-packages";
 import {
   adaptiveGrowthRecommendationsOutputSchema,
+  dataDiscoveryOutputSchema,
   deliveryDraftOutputSchema,
   followUpOutputSchema,
   improvementOpportunityOutputSchema,
+  intelligentSystemProposalOutputSchema,
   offerReplicationOutputSchema,
   offerMutationOutputSchema,
   proposalAgentOutputSchema,
@@ -15,6 +17,12 @@ import {
 import { masterAgent } from "@/lib/brain/agents/masterAgent";
 import { dgProposalTemplateGuide } from "@/lib/brain/prompts/proposalTemplateGuide";
 import type { ProposalContent } from "@/features/training-packages";
+import type {
+  DataDiscoveryBrainInput,
+  DataDiscoveryBrainOutput,
+  SystemProposalBrainInput,
+  SystemProposalBrainOutput,
+} from "@/features/intelligent-system-proposals";
 
 export const brainTaskTypes = [
   "course_package",
@@ -38,6 +46,8 @@ export const brainTaskTypes = [
   "expansion_strategy",
   "learning_genome",
   "extinction_recommendation",
+  "data_discovery",
+  "intelligent_system_proposal",
 ] as const;
 
 export type BrainTaskType = (typeof brainTaskTypes)[number];
@@ -63,6 +73,13 @@ export type CoursePackageBrainInput = TrainingPackageInput & {
 
 export type ProposalAgentOutput = {
   proposalContent: ProposalContent;
+};
+
+export type {
+  DataDiscoveryBrainInput,
+  DataDiscoveryBrainOutput,
+  SystemProposalBrainInput,
+  SystemProposalBrainOutput,
 };
 
 export type QaReviewInput = {
@@ -358,6 +375,43 @@ export const proposalAgent: BrainAgentDefinition = {
   outputSchema: proposalAgentOutputSchema,
 };
 
+export const dataDiscoveryAgent: BrainAgentDefinition<
+  DataDiscoveryBrainInput,
+  DataDiscoveryBrainOutput
+> = {
+  taskType: "data_discovery",
+  name: "dataDiscoveryAgent",
+  role: "Senior business data analyst and intelligent-system discovery consultant",
+  instructions: [
+    "Analyze only the supplied deterministic dataset profiles and masked samples.",
+    "Never claim to have seen raw rows, never reconstruct redacted values, and never invent metrics or business facts.",
+    "Separate observed evidence from interpretation. Use low confidence when meaning cannot be confirmed from field names and aggregates.",
+    "Identify practical processes, data-quality issues, candidate KPIs, intelligent-system opportunities, risks, and questions that a consultant must validate with the client.",
+    "Keep the output editable, concise, and suitable for review before a proposal is generated.",
+  ].join("\n\n"),
+  inputSchema: { type: "object" },
+  outputSchema: dataDiscoveryOutputSchema,
+};
+
+export const intelligentSystemProposalAgent: BrainAgentDefinition<
+  SystemProposalBrainInput,
+  SystemProposalBrainOutput
+> = {
+  taskType: "intelligent_system_proposal",
+  name: "intelligentSystemProposalAgent",
+  role: "Enterprise intelligent-system solution architect and proposal writer",
+  instructions: [
+    "Create a client-ready DG Academy consulting proposal for an intelligent system.",
+    "Use only the supplied project brief, deterministic analysis, and reviewed analyst findings as evidence.",
+    "Clearly label assumptions, risks, and items requiring discovery. Do not promise results or claim the final architecture has already been validated.",
+    "Recommend practical modules, workflows, dashboards, AI capabilities, integrations, governance, implementation phases, deliverables, and next steps.",
+    "Use commercial numbers only when they appear in commercialSummary. Never create prices, discounts, taxes, timelines, data volumes, or performance metrics that were not supplied.",
+    "Set coverHeading to Intelligent System Proposal, solutionTitle to the supplied project title, and client to the supplied client name.",
+  ].join("\n\n"),
+  inputSchema: { type: "object" },
+  outputSchema: intelligentSystemProposalOutputSchema,
+};
+
 export const pricingNarrativeAgent: BrainAgentDefinition = {
   taskType: "pricing_narrative",
   name: "pricingNarrativeAgent",
@@ -562,6 +616,8 @@ export const brainAgents = [
   chiefBrainAgent,
   courseArchitectAgent,
   proposalAgent,
+  dataDiscoveryAgent,
+  intelligentSystemProposalAgent,
   pricingNarrativeAgent,
   slideAgent,
   workbookAgent,

@@ -55,6 +55,8 @@ function outputTypeForTask(taskType: BrainTaskType): OutputEvaluationType {
     expansion_strategy: "full_package",
     learning_genome: "full_package",
     extinction_recommendation: "full_package",
+    data_discovery: "full_package",
+    intelligent_system_proposal: "proposal",
   };
 
   return map[taskType];

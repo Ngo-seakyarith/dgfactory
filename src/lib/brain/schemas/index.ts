@@ -106,6 +106,142 @@ const stringArraySchema: JsonSchema = {
   items: { type: "string" },
 };
 
+const analystFindingSchema: JsonSchema = {
+  type: "object",
+  required: ["title", "detail", "evidence", "severity"],
+  properties: {
+    title: { type: "string" },
+    detail: { type: "string" },
+    evidence: { type: "string" },
+    severity: { type: "string", enum: ["low", "medium", "high"] },
+  },
+};
+
+const systemOpportunitySchema: JsonSchema = {
+  type: "object",
+  required: [
+    "title",
+    "problem",
+    "evidence",
+    "capability",
+    "expectedValue",
+    "confidence",
+  ],
+  properties: {
+    title: { type: "string" },
+    problem: { type: "string" },
+    evidence: { type: "string" },
+    capability: { type: "string" },
+    expectedValue: { type: "string" },
+    confidence: { type: "string", enum: ["low", "medium", "high"] },
+  },
+};
+
+export const dataDiscoveryOutputSchema: JsonSchema = {
+  type: "object",
+  required: ["analystReview"],
+  properties: {
+    analystReview: {
+      type: "object",
+      required: [
+        "executiveSummary",
+        "detectedProcesses",
+        "dataQualityFindings",
+        "candidateKpis",
+        "opportunities",
+        "risks",
+        "questions",
+        "userNotes",
+      ],
+      properties: {
+        executiveSummary: { type: "string" },
+        detectedProcesses: stringArraySchema,
+        dataQualityFindings: { type: "array", items: analystFindingSchema },
+        candidateKpis: stringArraySchema,
+        opportunities: { type: "array", items: systemOpportunitySchema },
+        risks: stringArraySchema,
+        questions: stringArraySchema,
+        userNotes: { type: "string" },
+      },
+    },
+  },
+};
+
+const systemModuleSchema: JsonSchema = {
+  type: "object",
+  required: ["name", "purpose", "inputs", "outputs", "userValue"],
+  properties: {
+    name: { type: "string" },
+    purpose: { type: "string" },
+    inputs: stringArraySchema,
+    outputs: stringArraySchema,
+    userValue: { type: "string" },
+  },
+};
+
+const implementationPhaseSchema: JsonSchema = {
+  type: "object",
+  required: ["name", "duration", "activities", "deliverables"],
+  properties: {
+    name: { type: "string" },
+    duration: { type: "string" },
+    activities: stringArraySchema,
+    deliverables: stringArraySchema,
+  },
+};
+
+export const intelligentSystemProposalOutputSchema: JsonSchema = {
+  type: "object",
+  required: ["proposalContent"],
+  properties: {
+    proposalContent: {
+      type: "object",
+      required: [
+        "coverHeading",
+        "solutionTitle",
+        "client",
+        "executiveSummary",
+        "clientSituation",
+        "evidenceFindings",
+        "objectives",
+        "recommendedSystem",
+        "modules",
+        "userWorkflows",
+        "dashboardsAndAi",
+        "dataFlowAndIntegrations",
+        "securityAndGovernance",
+        "implementationPhases",
+        "deliverables",
+        "clientResponsibilities",
+        "assumptions",
+        "risks",
+        "nextSteps",
+      ],
+      properties: {
+        coverHeading: { type: "string" },
+        solutionTitle: { type: "string" },
+        client: { type: "string" },
+        executiveSummary: stringArraySchema,
+        clientSituation: stringArraySchema,
+        evidenceFindings: stringArraySchema,
+        objectives: stringArraySchema,
+        recommendedSystem: stringArraySchema,
+        modules: { type: "array", items: systemModuleSchema },
+        userWorkflows: stringArraySchema,
+        dashboardsAndAi: stringArraySchema,
+        dataFlowAndIntegrations: stringArraySchema,
+        securityAndGovernance: stringArraySchema,
+        implementationPhases: { type: "array", items: implementationPhaseSchema },
+        deliverables: stringArraySchema,
+        clientResponsibilities: stringArraySchema,
+        assumptions: stringArraySchema,
+        risks: stringArraySchema,
+        nextSteps: stringArraySchema,
+      },
+    },
+  },
+};
+
 export const proposalContentSchema: JsonSchema = {
   type: "object",
   required: [

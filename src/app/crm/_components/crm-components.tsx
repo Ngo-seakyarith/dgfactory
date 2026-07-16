@@ -45,21 +45,24 @@ import {
   type OpportunityStatus,
 } from "@/lib/crm";
 import type { TrainingPackage } from "@/features/training-packages";
+import type { IntelligentSystemProposal } from "@/features/intelligent-system-proposals";
 
 function useCrmData() {
   const [clients, setClients] = useState<Client[]>([]);
   const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
   const [packages, setPackages] = useState<TrainingPackage[]>([]);
+  const [systemProposals, setSystemProposals] = useState<IntelligentSystemProposal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [notice, setNotice] = useState("Loading CRM records...");
 
   async function refresh() {
     try {
-      const [clientsResponse, opportunitiesResponse, packagesResponse] =
+      const [clientsResponse, opportunitiesResponse, packagesResponse, systemProposalsResponse] =
         await Promise.all([
           fetch("/api/clients", { cache: "no-store" }),
           fetch("/api/opportunities", { cache: "no-store" }),
           fetch("/api/training-packages", { cache: "no-store" }),
+          fetch("/api/system-proposals", { cache: "no-store" }),
         ]);
       const clientsPayload = (await clientsResponse.json()) as {
         clients?: Client[];
@@ -73,6 +76,10 @@ function useCrmData() {
         packages?: TrainingPackage[];
         error?: string;
       };
+      const systemProposalsPayload = (await systemProposalsResponse.json()) as {
+        proposals?: IntelligentSystemProposal[];
+        error?: string;
+      };
 
       if (!clientsResponse.ok) {
         throw new Error(clientsPayload.error ?? "Client database read failed.");
@@ -83,10 +90,14 @@ function useCrmData() {
       if (!packagesResponse.ok) {
         throw new Error(packagesPayload.error ?? "Package database read failed.");
       }
+      if (!systemProposalsResponse.ok) {
+        throw new Error(systemProposalsPayload.error ?? "System proposal database read failed.");
+      }
 
       setClients(clientsPayload.clients ?? []);
       setOpportunities(opportunitiesPayload.opportunities ?? []);
       setPackages(packagesPayload.packages ?? []);
+      setSystemProposals(systemProposalsPayload.proposals ?? []);
       setNotice("Showing Supabase-backed CRM records.");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Database read was unavailable.");
@@ -100,7 +111,7 @@ function useCrmData() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return { clients, opportunities, packages, isLoading, notice, refresh };
+  return { clients, opportunities, packages, systemProposals, isLoading, notice, refresh };
 }
 
 export function OpportunityStatusBadge({ status }: { status: OpportunityStatus }) {
@@ -234,11 +245,18 @@ function packagesForClient(client: Client, packages: TrainingPackage[]) {
 export function ClientCard({
   client,
   packages,
+  systemProposals,
 }: {
   client: Client;
   packages: TrainingPackage[];
+  systemProposals: IntelligentSystemProposal[];
 }) {
   const clientPackages = packagesForClient(client, packages);
+  const clientSystemProposals = systemProposals.filter(
+    (proposal) =>
+      proposal.brief.clientId === client.id ||
+      (!proposal.brief.clientId && clientNameKey(proposal.brief.clientName) === clientNameKey(client.name)),
+  );
   const latestPackage = clientPackages[0];
 
   return (
@@ -259,6 +277,9 @@ export function ClientCard({
         <Badge variant="teal">
           {clientPackages.length} {clientPackages.length === 1 ? "package" : "packages"}
         </Badge>
+        <Badge variant="outline">
+          {clientSystemProposals.length} system {clientSystemProposals.length === 1 ? "proposal" : "proposals"}
+        </Badge>
         {client.email ? <Badge variant="outline">{client.email}</Badge> : null}
         {client.phone ? <Badge variant="outline">{client.phone}</Badge> : null}
       </div>
@@ -272,7 +293,7 @@ export function ClientCard({
 }
 
 export function ClientsPageClient() {
-  const { clients, packages, notice } = useCrmData();
+  const { clients, packages, systemProposals, notice } = useCrmData();
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -306,7 +327,7 @@ export function ClientsPageClient() {
           {filtered.length ? (
             <div className="grid gap-3 md:grid-cols-2">
               {filtered.map((client) => (
-                <ClientCard key={client.id} client={client} packages={packages} />
+                <ClientCard key={client.id} client={client} packages={packages} systemProposals={systemProposals} />
               ))}
             </div>
           ) : (
@@ -320,10 +341,15 @@ export function ClientsPageClient() {
 
 export function ClientDetailClient({ id }: { id: string }) {
   const router = useRouter();
-  const { clients, opportunities, packages, isLoading } = useCrmData();
+  const { clients, opportunities, packages, systemProposals, isLoading } = useCrmData();
   const client = clients.find((item) => item.id === id);
   const clientOpportunities = opportunities.filter((item) => item.clientId === id);
   const clientPackages = client ? packagesForClient(client, packages) : [];
+  const clientSystemProposals = systemProposals.filter(
+    (proposal) =>
+      proposal.brief.clientId === id ||
+      (client && !proposal.brief.clientId && clientNameKey(proposal.brief.clientName) === clientNameKey(client.name)),
+  );
 
   async function deleteClient() {
     if (!client || !window.confirm(`Delete "${client.name}"?`)) {
@@ -415,6 +441,35 @@ export function ClientDetailClient({ id }: { id: string }) {
               href={`/packages/new?client=${encodeURIComponent(client.name)}`}
               label="Create Package"
             />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+        <CardHeader>
+          <CardTitle>Intelligent System Proposals</CardTitle>
+          <CardDescription>Data assessments and system recommendations prepared for this client.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {clientSystemProposals.length ? (
+            <div className="grid gap-3 md:grid-cols-2">
+              {clientSystemProposals.map((proposal) => (
+                <Link
+                  key={proposal.id}
+                  href={`/system-proposals/${proposal.id}`}
+                  className="group flex items-start gap-3 rounded-lg border border-white/10 bg-[#07111f]/55 p-4 transition hover:border-teal-300/35 hover:bg-teal-300/10"
+                >
+                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-teal-200" />
+                  <div className="min-w-0 flex-1">
+                    <div className="line-clamp-1 font-semibold text-white">{proposal.brief.projectTitle}</div>
+                    <p className="mt-1 text-sm text-muted-foreground">{proposal.status} · Updated {new Date(proposal.updatedAt).toLocaleDateString()}</p>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{proposal.brief.businessGoal}</p>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <EmptyCrmState title="No system proposals for this client" href="/system-proposals/new" label="Create System Proposal" />
           )}
         </CardContent>
       </Card>

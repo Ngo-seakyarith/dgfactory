@@ -13,6 +13,7 @@ import {
   CalendarCheck,
   ChartNoAxesCombined,
   ClipboardCheck,
+  FileCog,
   FlaskConical,
   Gauge,
   LayoutDashboard,
@@ -53,6 +54,8 @@ const icons: Record<string, LucideIcon> = {
   Improvements: Lightbulb,
   "New Package": PackagePlus,
   "Saved Packages": Archive,
+  "New System Proposal": FileCog,
+  "System Proposals": FileCog,
 };
 
 type SidebarNavigationProps = {

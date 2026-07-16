@@ -97,7 +97,7 @@
     <div class="header-inner">
       <div class="eyebrow">DG Academy Factory</div>
       <h1>Database Schema</h1>
-      <p class="subtitle">Visual mirror of <code>supabase/schema.sql</code></p>
+      <p class="subtitle">Visual mirror of <code>schema.sql</code></p>
       <div class="stats">
         <div class="stat"><strong id="tableCount">0</strong><span>tables</span></div>
         <div class="stat"><strong id="fieldCount">0</strong><span>columns</span></div>
@@ -124,6 +124,7 @@
     const groups = {
       "Access": "Authentication profiles and activity history",
       "Packages & CRM": "Training packages, clients, opportunities, and delivery",
+      "Intelligent Systems": "Data sources, deterministic analysis, reviewed findings, and system proposals",
       "Knowledge & Quality": "Knowledge retrieval, evaluations, prompts, and QA evidence",
       "Operations": "Approvals, loops, improvements, and pilot operations",
       "Client Portal": "Token-based client access, published items, and feedback",
@@ -139,6 +140,9 @@
       {g:"Packages & CRM",n:"opportunities",d:"Commercial pipeline opportunities linked to clients.",f:["id:uuid:PK","client_id:uuid:FK=clients.id","title:text","training_need:text","estimated_value:numeric","status:text","probability_percent:numeric","expected_close_date:date","next_follow_up_date:date","notes:text","linked_package_id:uuid","created_at:timestamptz","updated_at:timestamptz"]},
       {g:"Packages & CRM",n:"delivery_projects",d:"Operational delivery record for sold training work.",f:["id:uuid:PK","opportunity_id:uuid:FK=opportunities.id","package_id:uuid:FK=training_packages.id","client_id:uuid:FK=clients.id","title:text","delivery_status:text","training_date:date","location:text","trainer_name:text","participant_count:numeric","notes:text","evaluation:jsonb","post_training_report:text","created_at:timestamptz","updated_at:timestamptz"]},
       {g:"Packages & CRM",n:"delivery_tasks",d:"Preparation and delivery checklist items.",f:["id:uuid:PK","delivery_project_id:uuid:FK=delivery_projects.id","title:text","category:text","status:text","due_date:date","owner:text","notes:text","created_at:timestamptz","updated_at:timestamptz"]},
+
+      {g:"Intelligent Systems",n:"intelligent_system_proposals",d:"Client-linked system brief, reviewed data assessment, structured proposal, and optional commercial inputs.",f:["id:uuid:PK","client_id:uuid:FK=clients.id","client_name:text","title:text","brief:jsonb","status:text","combined_analysis:jsonb","analyst_review:jsonb","proposal_content:jsonb","commercial_inputs:jsonb","created_by:uuid:FK=profiles.id","created_at:timestamptz","updated_at:timestamptz"]},
+      {g:"Intelligent Systems",n:"intelligent_system_files",d:"Private source-file ownership, parsing state, checksum, and deterministic profile snapshot.",f:["id:uuid:PK","proposal_id:uuid:FK=intelligent_system_proposals.id","original_name:text","storage_path:text","mime_type:text","size_bytes:bigint","sha256:text","parse_status:text","analysis_snapshot:jsonb","error_message:text","created_at:timestamptz","updated_at:timestamptz"]},
 
       {g:"Knowledge & Quality",n:"knowledge_documents",d:"Internal or client-safe source material for generation.",f:["id:uuid:PK","title:text","type:text","content:text","tags:text[]","source:text","visibility:text","created_at:timestamptz","updated_at:timestamptz"]},
       {g:"Knowledge & Quality",n:"knowledge_chunks",d:"Searchable segments derived from knowledge documents.",f:["id:uuid:PK","document_id:uuid:FK=knowledge_documents.id","chunk_index:numeric","content:text","embedding:jsonb","metadata:jsonb","created_at:timestamptz"]},
