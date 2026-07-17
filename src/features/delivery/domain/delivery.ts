@@ -1,11 +1,9 @@
 import { normalizeNumber } from "@/lib/crm";
 
 export const deliveryStatuses = [
-  "Planning",
-  "Materials Preparation",
+  "Preparing",
   "Confirmed",
   "Delivered",
-  "Report Sent",
   "Completed",
   "Cancelled",
 ] as const;
@@ -19,8 +17,6 @@ export const deliveryTaskCategories = [
   "Trainer Preparation",
   "Attendance",
   "Evaluation",
-  "Certificates",
-  "Post-training Report",
   "Follow-up",
 ] as const;
 
@@ -69,12 +65,6 @@ export type DeliveryTask = {
   createdAt: string;
   updatedAt: string;
 };
-
-export type DeliveryDraftKind =
-  | "trainer-checklist"
-  | "participant-email"
-  | "training-day-agenda"
-  | "post-training-report";
 
 export type DeliveryDraft = {
   title: string;
@@ -134,7 +124,7 @@ export function createEmptyDeliveryProject(
     packageId: null,
     clientId: null,
     title: "",
-    deliveryStatus: "Planning",
+    deliveryStatus: "Preparing",
     trainingDate: "",
     location: "",
     trainerName: "",
@@ -161,7 +151,7 @@ export function normalizeDeliveryProject(
     title: String(value.title ?? "").trim(),
     deliveryStatus: isDeliveryStatus(value.deliveryStatus)
       ? value.deliveryStatus
-      : "Planning",
+      : "Preparing",
     trainingDate: String(value.trainingDate ?? "").trim(),
     location: String(value.location ?? "").trim(),
     trainerName: String(value.trainerName ?? "").trim(),
@@ -219,22 +209,12 @@ export function createDefaultDeliveryTasks(projectId: string): DeliveryTask[] {
     {
       title: "Set up attendance capture",
       category: "Attendance",
-      notes: "Required for certificates and reporting.",
+      notes: "Record the actual participant count for client reporting.",
     },
     {
       title: "Prepare evaluation form and feedback capture",
       category: "Evaluation",
       notes: "Collect satisfaction score, comments, and improvement suggestions.",
-    },
-    {
-      title: "Prepare certificate placeholder and participant name source",
-      category: "Certificates",
-      notes: "Certificate automation can come in a later version.",
-    },
-    {
-      title: "Draft post-training report",
-      category: "Post-training Report",
-      notes: "Include outcomes, feedback, recommendations, and next opportunities.",
     },
     {
       title: "Schedule post-training follow-up with client sponsor",
@@ -283,7 +263,7 @@ Location: ${project.location || "To be confirmed"}
 Trainer: ${project.trainerName || "DG Academy trainer"}
 
 ## Participant Count
-${project.participantCount || 0} participants attended or are expected.
+${project.participantCount || 0} participants attended.
 
 ## Learning Objectives
 ${learningObjectives || "The program focused on practical capability building, business application, and clear next-step planning for the client team."}
@@ -316,87 +296,4 @@ ${evaluation.learnerFeedback || "No learner feedback recorded yet."}
 
 ## Next Training Opportunities
 DG Academy can support the client with deeper practice, executive coaching, workflow implementation, or a follow-up masterclass based on the feedback and business priorities captured during delivery.`;
-}
-
-export function createDeliveryDraftTemplate({
-  kind,
-  project,
-  clientName,
-  packageTitle,
-  learningObjectives,
-}: {
-  kind: DeliveryDraftKind;
-  project: DeliveryProject;
-  clientName?: string;
-  packageTitle?: string;
-  learningObjectives?: string;
-}): DeliveryDraft {
-  if (kind === "trainer-checklist") {
-    return {
-      title: "Trainer Preparation Checklist",
-      body: `# Trainer Preparation Checklist
-
-- Review the program promise and client context for ${clientName || "the client"}.
-- Confirm participant profile, seniority, and expected business outcomes.
-- Prepare 2-3 practical examples connected to ${packageTitle || project.title}.
-- Mark discussion points where executives may ask about governance, risk, ROI, or adoption.
-- Prepare timing cues for opening, practice labs, group readout, and closing commitments.
-- Confirm materials, room setup, internet, backup files, and evaluation capture.
-- Prepare a concise closing message with next steps for the client sponsor.`,
-      suggestedNextStep:
-        "Assign trainer owner and review the checklist 48 hours before delivery.",
-    };
-  }
-
-  if (kind === "participant-email") {
-    return {
-      title: "Participant Email Draft",
-      body: `Subject: Preparation for ${packageTitle || project.title}
-
-Hi team,
-
-We look forward to welcoming you to the DG Academy training session for ${clientName || "your organization"}.
-
-Date: ${project.trainingDate || "To be confirmed"}
-Location: ${project.location || "To be confirmed"}
-Trainer: ${project.trainerName || "DG Academy trainer"}
-
-Before the session, please think about one workflow, decision, or business challenge where stronger capability could create immediate value. The session will be practical, discussion-based, and focused on actions you can apply after the training.
-
-Best,
-DG Academy`,
-      suggestedNextStep:
-        "Send only after DG Academy confirms client sponsor approval and final logistics.",
-    };
-  }
-
-  if (kind === "training-day-agenda") {
-    return {
-      title: "Training-Day Agenda",
-      body: `# Training-Day Agenda
-
-1. Arrival, sign-in, and setup check
-2. Welcome, objectives, and client context
-3. Core concepts and practical DG Academy examples
-4. Guided exercise: current workflow or capability gap
-5. Group discussion and facilitator coaching
-6. Applied lab: design the improved way of working
-7. Readout: participant insights and priority actions
-8. Evaluation capture, certificates note, and closing next steps`,
-      suggestedNextStep:
-        "Adjust timing to match the confirmed duration and participant count.",
-    };
-  }
-
-  return {
-    title: "Post-Training Report Draft",
-    body: buildPostTrainingReport({
-      project,
-      clientName,
-      packageTitle,
-      learningObjectives,
-    }),
-    suggestedNextStep:
-      "Review internally before sharing with the client; add real evaluation evidence where available.",
-  };
 }

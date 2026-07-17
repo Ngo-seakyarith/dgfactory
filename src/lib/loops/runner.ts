@@ -254,7 +254,7 @@ async function runMonthlyRevenueSummary(): Promise<LoopResult> {
     ["Proposal Draft", "Proposal Sent", "Negotiation"].includes(opportunity.status),
   );
   const deliveryCompleted = deliveryProjects.filter((project) =>
-    ["Delivered", "Report Sent", "Completed"].includes(project.deliveryStatus),
+    ["Delivered", "Completed"].includes(project.deliveryStatus),
   );
   const estimatedRevenue = won.reduce(
     (total, opportunity) => total + opportunity.estimatedValue,

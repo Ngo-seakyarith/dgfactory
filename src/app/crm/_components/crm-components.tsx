@@ -885,16 +885,16 @@ export function OpportunityDetailClient({ id }: { id: string }) {
         <Card className="border-teal-300/20 bg-teal-300/10 shadow-executive">
           <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div>
-              <CardTitle>Create Delivery Project</CardTitle>
+              <CardTitle>Schedule Training Delivery</CardTitle>
               <CardDescription>
-                This opportunity is won. Start delivery preparation with the client,
-                linked package, and commercial context prefilled where available.
+                This opportunity is won. Open the focused delivery workflow with
+                the client and linked package preselected.
               </CardDescription>
             </div>
             <Button asChild variant="gold">
-              <Link href={`/delivery/new?opportunityId=${opportunity.id}`}>
+              <Link href={`/delivery/new?clientId=${opportunity.clientId}${linkedPackage ? `&packageId=${linkedPackage.id}` : ""}`}>
                 <Plus className="h-4 w-4" />
-                Create Delivery Project
+                Schedule Delivery
               </Link>
             </Button>
           </CardHeader>

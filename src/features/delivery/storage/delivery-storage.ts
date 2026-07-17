@@ -18,7 +18,12 @@ type DeliveryProjectRow = {
   package_id: string | null;
   client_id: string | null;
   title: string;
-  delivery_status: DeliveryStatus | null;
+  delivery_status:
+    | DeliveryStatus
+    | "Planning"
+    | "Materials Preparation"
+    | "Report Sent"
+    | null;
   training_date: string | null;
   location: string | null;
   trainer_name: string | null;
@@ -30,11 +35,31 @@ type DeliveryProjectRow = {
   updated_at: string;
 };
 
+function statusToRow(status: DeliveryStatus): DeliveryProjectRow["delivery_status"] {
+  return status === "Preparing" ? "Planning" : status;
+}
+
+function statusFromRow(status: DeliveryProjectRow["delivery_status"]): DeliveryStatus {
+  if (status === "Planning" || status === "Materials Preparation") {
+    return "Preparing";
+  }
+
+  if (status === "Report Sent") {
+    return "Delivered";
+  }
+
+  return status ?? "Preparing";
+}
+
 type DeliveryTaskRow = {
   id: string;
   delivery_project_id: string;
   title: string;
-  category: DeliveryTaskCategory | null;
+  category:
+    | DeliveryTaskCategory
+    | "Certificates"
+    | "Post-training Report"
+    | null;
   status: DeliveryTaskStatus | null;
   due_date: string | null;
   owner: string | null;
@@ -50,7 +75,7 @@ function projectToRow(project: DeliveryProject) {
     package_id: project.packageId,
     client_id: project.clientId,
     title: project.title,
-    delivery_status: project.deliveryStatus,
+    delivery_status: statusToRow(project.deliveryStatus),
     training_date: project.trainingDate || null,
     location: project.location,
     trainer_name: project.trainerName,
@@ -70,7 +95,7 @@ function projectFromRow(row: DeliveryProjectRow): DeliveryProject {
     packageId: row.package_id,
     clientId: row.client_id,
     title: row.title,
-    deliveryStatus: row.delivery_status ?? "Planning",
+    deliveryStatus: statusFromRow(row.delivery_status),
     trainingDate: row.training_date ?? "",
     location: row.location ?? "",
     trainerName: row.trainer_name ?? "",
@@ -103,7 +128,10 @@ function taskFromRow(row: DeliveryTaskRow): DeliveryTask {
     id: row.id,
     deliveryProjectId: row.delivery_project_id,
     title: row.title,
-    category: row.category ?? "Materials",
+    category:
+      row.category === "Certificates" || row.category === "Post-training Report"
+        ? "Follow-up"
+        : row.category ?? "Materials",
     status: row.status ?? "Open",
     dueDate: row.due_date ?? "",
     owner: row.owner ?? "",
@@ -211,7 +239,13 @@ export async function listDeliveryTasks(deliveryProjectId?: string) {
     throw new Error(error.message);
   }
 
-  return (data as DeliveryTaskRow[]).map(taskFromRow);
+  return (data as DeliveryTaskRow[])
+    .filter(
+      (row) =>
+        row.category !== "Certificates" &&
+        row.category !== "Post-training Report",
+    )
+    .map(taskFromRow);
 }
 
 export async function saveDeliveryTask(input: Partial<DeliveryTask>) {

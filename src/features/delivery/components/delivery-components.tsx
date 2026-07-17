@@ -3,11 +3,13 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import type { FormEvent, ReactNode } from "react";
 import {
-  ArrowRight,
-  Award,
+  ArrowLeft,
   CalendarCheck,
-  Clipboard,
+  CheckCircle2,
+  ClipboardCheck,
+  Download,
   FileText,
   Loader2,
   Plus,
@@ -15,8 +17,11 @@ import {
   Search,
   Sparkles,
   Trash2,
+  Users,
 } from "lucide-react";
 
+import { PageLoadingSkeleton } from "@/components/page-loading-skeleton";
+import { QueryErrorState } from "@/components/query-error-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -27,117 +32,88 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { useClientsQuery } from "@/features/clients/queries";
 import {
   createDefaultDeliveryTasks,
   createEmptyDeliveryProject,
   deliveryStatuses,
   deliveryTaskCategories,
   deliveryTaskStatuses,
-  normalizeDeliveryProject,
   normalizeDeliveryTask,
   type DeliveryDraft,
-  type DeliveryDraftKind,
   type DeliveryProject,
   type DeliveryStatus,
   type DeliveryTask,
 } from "@/features/delivery";
 import {
-  normalizeClient,
-  normalizeOpportunity,
-  type Client,
-  type Opportunity,
-} from "@/lib/crm";
-import type { TrainingPackage } from "@/features/training-packages";
-import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
+  useDeleteDeliveryProjectMutation,
+  useDeleteDeliveryTaskMutation,
+  useDeliveryProjectQuery,
+  useDeliveryProjectsQuery,
+  useDeliveryTasksQuery,
+  useSaveDeliveryProjectMutation,
+  useSaveDeliveryTaskMutation,
+} from "@/features/delivery/queries";
+import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
+import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
+import { errorMessage, requestJson } from "@/lib/api-client";
 
-function useDeliveryData() {
-  const [projects, setProjects] = useState<DeliveryProject[]>([]);
-  const [tasks, setTasks] = useState<DeliveryTask[]>([]);
-  const [clients, setClients] = useState<Client[]>([]);
-  const [opportunities, setOpportunities] = useState<Opportunity[]>([]);
-  const [packages, setPackages] = useState<TrainingPackage[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [notice, setNotice] = useState("Loading delivery projects...");
+type DeliveryStage = "before" | "day" | "after";
 
-  async function refresh() {
-    try {
-      const [
-        projectsResponse,
-        tasksResponse,
-        clientsResponse,
-        opportunitiesResponse,
-        packagesResponse,
-      ] = await Promise.all([
-        fetch("/api/delivery-projects", { cache: "no-store" }),
-        fetch("/api/delivery-tasks", { cache: "no-store" }),
-        fetch("/api/clients", { cache: "no-store" }),
-        fetch("/api/opportunities", { cache: "no-store" }),
-        fetch("/api/training-packages", { cache: "no-store" }),
-      ]);
-      const projectsPayload = (await projectsResponse.json()) as {
-        projects?: DeliveryProject[];
-        error?: string;
-      };
-      const tasksPayload = (await tasksResponse.json()) as {
-        tasks?: DeliveryTask[];
-        error?: string;
-      };
-      const clientsPayload = (await clientsResponse.json()) as {
-        clients?: Client[];
-        error?: string;
-      };
-      const opportunitiesPayload = (await opportunitiesResponse.json()) as {
-        opportunities?: Opportunity[];
-        error?: string;
-      };
-      const packagesPayload = (await packagesResponse.json()) as {
-        packages?: TrainingPackage[];
-        error?: string;
-      };
+const stages: Array<{
+  id: DeliveryStage;
+  label: string;
+  description: string;
+  icon: typeof CalendarCheck;
+}> = [
+  {
+    id: "before",
+    label: "Before Training",
+    description: "Confirm the plan and prepare delivery.",
+    icon: CalendarCheck,
+  },
+  {
+    id: "day",
+    label: "Training Day",
+    description: "Record attendance, notes, and issues.",
+    icon: Users,
+  },
+  {
+    id: "after",
+    label: "After Training",
+    description: "Capture feedback and complete the report.",
+    icon: ClipboardCheck,
+  },
+];
 
-      if (!projectsResponse.ok) throw new Error(projectsPayload.error ?? "Delivery project database read failed.");
-      if (!tasksResponse.ok) throw new Error(tasksPayload.error ?? "Delivery task database read failed.");
-      if (!clientsResponse.ok) throw new Error(clientsPayload.error ?? "Client database read failed.");
-      if (!opportunitiesResponse.ok) throw new Error(opportunitiesPayload.error ?? "Opportunity database read failed.");
-      if (!packagesResponse.ok) throw new Error(packagesPayload.error ?? "Package database read failed.");
+function Field({
+  label,
+  children,
+  className = "",
+}: {
+  label: string;
+  children: ReactNode;
+  className?: string;
+}) {
+  return (
+    <div className={`space-y-2 ${className}`}>
+      <Label>{label}</Label>
+      {children}
+    </div>
+  );
+}
 
-      setProjects(projectsPayload.projects ?? []);
-      setTasks(tasksPayload.tasks ?? []);
-      setClients(clientsPayload.clients ?? []);
-      setOpportunities(opportunitiesPayload.opportunities ?? []);
-      setPackages(packagesPayload.packages ?? []);
-      setNotice("Showing Supabase-backed delivery records.");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Database read was unavailable.");
-    } finally {
-      setIsLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    refresh();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  return {
-    projects,
-    setProjects,
-    tasks,
-    setTasks,
-    clients,
-    opportunities,
-    packages,
-    isLoading,
-    notice,
-    refresh,
-  };
+function statusStage(status: DeliveryStatus): DeliveryStage {
+  if (status === "Completed" || status === "Delivered") return "after";
+  return "before";
 }
 
 export function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
   const variant =
-    status === "Completed" || status === "Delivered" || status === "Report Sent"
+    status === "Completed" || status === "Delivered"
       ? "teal"
       : status === "Cancelled"
         ? "outline"
@@ -146,1218 +122,629 @@ export function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
   return <Badge variant={variant}>{status}</Badge>;
 }
 
-export function DeliveryProjectForm({
-  existingProject,
-}: {
-  existingProject?: DeliveryProject;
-}) {
+export function DeliveryProjectsPageClient() {
+  const projectsQuery = useDeliveryProjectsQuery();
+  const clientsQuery = useClientsQuery();
+  const [search, setSearch] = useState("");
+  const clientsById = useMemo(
+    () => new Map((clientsQuery.data ?? []).map((client) => [client.id, client])),
+    [clientsQuery.data],
+  );
+  const filtered = useMemo(() => {
+    const query = search.trim().toLowerCase();
+    return (projectsQuery.data ?? []).filter((project) => {
+      const clientName = project.clientId
+        ? clientsById.get(project.clientId)?.name ?? ""
+        : "";
+      return !query || `${project.title} ${clientName}`.toLowerCase().includes(query);
+    });
+  }, [clientsById, projectsQuery.data, search]);
+
+  if (projectsQuery.isPending || clientsQuery.isPending) {
+    return <PageLoadingSkeleton label="Loading training deliveries" />;
+  }
+
+  if (projectsQuery.isError || clientsQuery.isError) {
+    return (
+      <QueryErrorState
+        title="Could not load training deliveries"
+        detail={errorMessage(projectsQuery.error ?? clientsQuery.error)}
+        onRetry={() => {
+          void projectsQuery.refetch();
+          void clientsQuery.refetch();
+        }}
+      />
+    );
+  }
+
+  return (
+    <div className="space-y-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            placeholder="Search by training or client"
+            className="pl-9"
+          />
+        </div>
+        <Button asChild variant="gold">
+          <Link href="/delivery/new">
+            <Plus /> New Delivery
+          </Link>
+        </Button>
+      </div>
+
+      {filtered.length ? (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {filtered.map((project) => (
+            <Link key={project.id} href={`/delivery/${project.id}`}>
+              <Card className="h-full transition-colors hover:border-teal-300/40 hover:bg-white/[0.06]">
+                <CardHeader>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <CardTitle>{project.title}</CardTitle>
+                      <CardDescription className="mt-2">
+                        {project.clientId
+                          ? clientsById.get(project.clientId)?.name ?? "Client"
+                          : "No client linked"}
+                      </CardDescription>
+                    </div>
+                    <DeliveryStatusBadge status={project.deliveryStatus} />
+                  </div>
+                </CardHeader>
+                <CardContent className="grid grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <div className="text-xs uppercase text-muted-foreground">Date</div>
+                    <div className="mt-1 font-medium">
+                      {project.trainingDate || "Not scheduled"}
+                    </div>
+                  </div>
+                  <div>
+                    <div className="text-xs uppercase text-muted-foreground">Trainer</div>
+                    <div className="mt-1 font-medium">
+                      {project.trainerName || "Not assigned"}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <div className="rounded-lg border border-dashed border-white/15 py-14 text-center">
+          <FileText className="mx-auto h-8 w-8 text-muted-foreground" />
+          <h2 className="mt-4 font-semibold">
+            {search ? "No matching deliveries" : "No training deliveries yet"}
+          </h2>
+          <p className="mt-2 text-sm text-muted-foreground">
+            {search
+              ? "Try a different training or client name."
+              : "Create a delivery when a client confirms a training package."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function DeliveryProjectForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { clients, opportunities, packages } = useDeliveryData();
-  const opportunityIdFromQuery = searchParams.get("opportunityId") ?? "";
-  const packageIdFromQuery = searchParams.get("packageId") ?? "";
-  const clientIdFromQuery = searchParams.get("clientId") ?? "";
-  const sourceOpportunity = useMemo(
-    () => opportunities.find((item) => item.id === opportunityIdFromQuery),
-    [opportunities, opportunityIdFromQuery],
-  );
-  const sourcePackage = useMemo(
-    () =>
-      packages.find(
-        (pkg) =>
-          pkg.id === (sourceOpportunity?.linkedPackageId ?? packageIdFromQuery),
-      ),
-    [packageIdFromQuery, packages, sourceOpportunity],
-  );
-  const [project, setProject] = useState<DeliveryProject>(() =>
-    existingProject ??
+  const clientsQuery = useClientsQuery();
+  const packagesQuery = useTrainingPackagesQuery();
+  const saveProject = useSaveDeliveryProjectMutation();
+  const saveTask = useSaveDeliveryTaskMutation();
+  const [project, setProject] = useState(() =>
     createEmptyDeliveryProject({
-      opportunityId: opportunityIdFromQuery || null,
-      packageId: (sourcePackage?.id ?? packageIdFromQuery) || null,
-      clientId: sourceOpportunity?.clientId || clientIdFromQuery || null,
-      title: sourcePackage?.title ?? sourceOpportunity?.title ?? "",
-      participantCount: sourcePackage?.pricingInputs.numberOfParticipants ?? 0,
+      clientId: searchParams.get("clientId") || null,
+      packageId: searchParams.get("packageId") || null,
     }),
   );
-  const [isSaving, setIsSaving] = useState(false);
   const [notice, setNotice] = useState("");
 
   useEffect(() => {
-    if (existingProject) {
-      return;
-    }
+    const selected = (packagesQuery.data ?? []).find(
+      (item) => item.id === project.packageId,
+    );
+    if (!selected) return;
 
     setProject((current) => ({
       ...current,
-      opportunityId: current.opportunityId ?? (opportunityIdFromQuery || null),
-      packageId:
-        current.packageId ?? ((sourcePackage?.id ?? packageIdFromQuery) || null),
-      clientId:
-        current.clientId ??
-        sourceOpportunity?.clientId ??
-        (clientIdFromQuery || null),
-      title: current.title || sourcePackage?.title || sourceOpportunity?.title || "",
+      clientId: current.clientId || selected.clientId,
+      title: current.title || selected.title,
+      trainerName:
+        current.trainerName || selected.proposalBrief.trainerName || "",
       participantCount:
-        current.participantCount ||
-        sourcePackage?.pricingInputs.numberOfParticipants ||
-        0,
+        current.participantCount || selected.pricingInputs.numberOfParticipants,
     }));
-  }, [
-    clientIdFromQuery,
-    existingProject,
-    opportunityIdFromQuery,
-    packageIdFromQuery,
-    sourceOpportunity,
-    sourcePackage,
-  ]);
+  }, [packagesQuery.data, project.packageId]);
 
-  function updateField<K extends keyof DeliveryProject>(
+  function update<K extends keyof DeliveryProject>(
     key: K,
     value: DeliveryProject[K],
   ) {
     setProject((current) => ({ ...current, [key]: value }));
   }
 
-  async function saveProject() {
-    setIsSaving(true);
-    setNotice("");
-
-    const projectToSave = normalizeDeliveryProject({
-      ...project,
-      updatedAt: new Date().toISOString(),
-    });
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!project.clientId || !project.title.trim()) {
+      setNotice("Client and training title are required.");
+      return;
+    }
 
     try {
-      const response = await fetch("/api/delivery-projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(projectToSave),
-      });
-      const payload = (await response.json()) as {
-        project?: DeliveryProject;
-        error?: string;
-      };
-
-      if (!response.ok || !payload.project) {
-        throw new Error(payload.error ?? "Delivery project save failed.");
-      }
-
-      if (!existingProject) {
-        const defaultTasks = createDefaultDeliveryTasks(payload.project.id);
-        await Promise.all(
-          defaultTasks.map(async (task) => {
-            const taskResponse = await fetch("/api/delivery-tasks", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(task),
-            });
-            if (!taskResponse.ok) {
-              const taskPayload = (await taskResponse.json().catch(() => ({}))) as { error?: string };
-              throw new Error(taskPayload.error ?? "Default delivery task save failed.");
-            }
-          }),
-        );
-      }
-
+      const payload = await saveProject.mutateAsync(project);
+      const tasks = createDefaultDeliveryTasks(payload.project.id);
+      await Promise.all(tasks.map((task) => saveTask.mutateAsync(task)));
       router.push(`/delivery/${payload.project.id}`);
     } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Delivery project saved locally only.",
-      );
-    } finally {
-      setIsSaving(false);
+      setNotice(errorMessage(error, "Could not create the delivery."));
     }
   }
 
+  if (clientsQuery.isPending || packagesQuery.isPending) {
+    return <PageLoadingSkeleton label="Loading delivery setup" />;
+  }
+
+  if (clientsQuery.isError || packagesQuery.isError) {
+    return (
+      <QueryErrorState
+        title="Could not load delivery setup"
+        detail={errorMessage(clientsQuery.error ?? packagesQuery.error)}
+        onRetry={() => {
+          void clientsQuery.refetch();
+          void packagesQuery.refetch();
+        }}
+      />
+    );
+  }
+
   return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-      <CardHeader>
-        <CardTitle>
-          {existingProject ? "Edit Delivery Project" : "New Delivery Project"}
-        </CardTitle>
-        <CardDescription>
-          Manage preparation, execution, evaluation, certificates, and reporting.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <Field label="Project title">
-          <Input
-            value={project.title}
-            onChange={(event) => updateField("title", event.target.value)}
-            placeholder="AI Leadership Training delivery"
-          />
-        </Field>
-        <div className="grid gap-4 sm:grid-cols-2">
+    <form onSubmit={submit} className="space-y-5">
+      <Card>
+        <CardHeader>
+          <CardTitle>Training Setup</CardTitle>
+          <CardDescription>
+            Select the client and package, then confirm the practical delivery details.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="grid gap-5 md:grid-cols-2">
           <Field label="Client">
             <Select
+              required
               value={project.clientId ?? ""}
-              onChange={(event) => updateField("clientId", event.target.value || null)}
+              onChange={(event) => update("clientId", event.target.value || null)}
             >
-              <option value="">Select client</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
-                </option>
+              <option value="">Select a client</option>
+              {(clientsQuery.data ?? []).map((client) => (
+                <option key={client.id} value={client.id}>{client.name}</option>
               ))}
             </Select>
           </Field>
-          <Field label="Opportunity">
-            <Select
-              value={project.opportunityId ?? ""}
-              onChange={(event) =>
-                updateField("opportunityId", event.target.value || null)
-              }
-            >
-              <option value="">No linked opportunity</option>
-              {opportunities.map((opportunity) => (
-                <option key={opportunity.id} value={opportunity.id}>
-                  {opportunity.title}
-                </option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Training package">
+          <Field label="Saved package">
             <Select
               value={project.packageId ?? ""}
-              onChange={(event) => updateField("packageId", event.target.value || null)}
+              onChange={(event) => {
+                const packageId = event.target.value || null;
+                const selected = (packagesQuery.data ?? []).find(
+                  (item) => item.id === packageId,
+                );
+                setProject((current) => ({
+                  ...current,
+                  packageId,
+                  clientId: selected?.clientId || current.clientId,
+                  title: selected?.title || current.title,
+                  trainerName:
+                    selected?.proposalBrief.trainerName || current.trainerName,
+                  participantCount:
+                    selected?.pricingInputs.numberOfParticipants ||
+                    current.participantCount,
+                }));
+              }}
             >
-              <option value="">No linked package</option>
-              {packages.map((pkg) => (
-                <option key={pkg.id} value={pkg.id}>
-                  {pkg.title}
-                </option>
+              <option value="">No package selected</option>
+              {(packagesQuery.data ?? []).map((item) => (
+                <option key={item.id} value={item.id}>{item.title}</option>
               ))}
             </Select>
           </Field>
-          <Field label="Delivery status">
-            <Select
-              value={project.deliveryStatus}
-              onChange={(event) =>
-                updateField("deliveryStatus", event.target.value as DeliveryStatus)
-              }
-            >
-              {deliveryStatuses.map((status) => (
-                <option key={status} value={status}>
-                  {status}
-                </option>
-              ))}
-            </Select>
+          <Field label="Training title" className="md:col-span-2">
+            <Input
+              required
+              value={project.title}
+              onChange={(event) => update("title", event.target.value)}
+              placeholder="Practical Consultative Selling"
+            />
           </Field>
           <Field label="Training date">
             <Input
               type="date"
               value={project.trainingDate}
-              onChange={(event) => updateField("trainingDate", event.target.value)}
+              onChange={(event) => update("trainingDate", event.target.value)}
             />
           </Field>
-          <Field label="Location">
+          <Field label="Venue">
             <Input
               value={project.location}
-              onChange={(event) => updateField("location", event.target.value)}
-              placeholder="Client office, hotel venue, Zoom"
+              onChange={(event) => update("location", event.target.value)}
+              placeholder="Client office or venue"
             />
           </Field>
-          <Field label="Trainer name">
+          <Field label="Trainer">
             <Input
               value={project.trainerName}
-              onChange={(event) => updateField("trainerName", event.target.value)}
-              placeholder="Lead trainer"
+              onChange={(event) => update("trainerName", event.target.value)}
+              placeholder="Assigned trainer"
             />
           </Field>
-          <Field label="Participant count">
+          <Field label="Expected participants">
             <Input
               type="number"
               min="0"
-              value={project.participantCount}
-              onChange={(event) =>
-                updateField("participantCount", Number(event.target.value))
-              }
+              value={project.participantCount || ""}
+              onChange={(event) => update("participantCount", Number(event.target.value))}
+              placeholder="20"
             />
           </Field>
-        </div>
-        <Field label="Delivery notes">
-          <Textarea
-            value={project.notes}
-            onChange={(event) => updateField("notes", event.target.value)}
-            placeholder="Client expectations, room setup, trainer notes, special risks"
-          />
-        </Field>
-        {notice ? (
-          <p className="rounded-lg border border-red-300/20 bg-red-400/10 p-3 text-sm text-red-100">
-            {notice}
-          </p>
-        ) : null}
-        <Button type="button" variant="gold" onClick={saveProject} disabled={isSaving}>
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Delivery Project
+          <Field label="Preparation notes" className="md:col-span-2">
+            <Textarea
+              value={project.notes}
+              onChange={(event) => update("notes", event.target.value)}
+              placeholder="Access requirements, room setup, materials, or client instructions"
+            />
+          </Field>
+        </CardContent>
+      </Card>
+      <div className="flex items-center gap-3">
+        <Button type="submit" variant="gold" disabled={saveProject.isPending || saveTask.isPending}>
+          {saveProject.isPending || saveTask.isPending ? <Loader2 className="animate-spin" /> : <Save />}
+          Create Delivery
         </Button>
+        {notice ? <p className="text-sm text-red-200">{notice}</p> : null}
+      </div>
+    </form>
+  );
+}
+
+function StageNavigation({ stage, onChange }: { stage: DeliveryStage; onChange: (stage: DeliveryStage) => void }) {
+  return (
+    <div className="grid gap-2 md:grid-cols-3" role="tablist" aria-label="Delivery stages">
+      {stages.map((item, index) => {
+        const Icon = item.icon;
+        const active = stage === item.id;
+        return (
+          <button
+            key={item.id}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(item.id)}
+            className={`flex min-h-24 items-start gap-3 rounded-md border p-4 text-left transition-colors ${
+              active
+                ? "border-teal-300/55 bg-teal-400/10"
+                : "border-white/10 bg-white/[0.03] hover:bg-white/[0.06]"
+            }`}
+          >
+            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white/[0.06]">
+              <Icon className="h-4 w-4" />
+            </div>
+            <div>
+              <div className="text-xs text-muted-foreground">Stage {index + 1}</div>
+              <div className="mt-1 font-semibold">{item.label}</div>
+              <div className="mt-1 text-xs leading-5 text-muted-foreground">{item.description}</div>
+            </div>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function DeliverySetup({ project, onSave }: { project: DeliveryProject; onSave: (project: DeliveryProject) => Promise<void> }) {
+  const clientsQuery = useClientsQuery();
+  const packagesQuery = useTrainingPackagesQuery();
+  const [draft, setDraft] = useState(project);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+
+  useEffect(() => setDraft(project), [project]);
+
+  async function save(status?: DeliveryStatus) {
+    setBusy(true);
+    setNotice("");
+    try {
+      await onSave({ ...draft, deliveryStatus: status ?? draft.deliveryStatus });
+      setNotice(status === "Confirmed" ? "Training confirmed." : "Preparation saved.");
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Delivery Plan</CardTitle>
+        <CardDescription>Keep the confirmed training logistics in one place.</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-5 md:grid-cols-2">
+        <Field label="Client">
+          <Select value={draft.clientId ?? ""} onChange={(event) => setDraft({ ...draft, clientId: event.target.value || null })}>
+            <option value="">Select a client</option>
+            {(clientsQuery.data ?? []).map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
+          </Select>
+        </Field>
+        <Field label="Saved package">
+          <Select value={draft.packageId ?? ""} onChange={(event) => setDraft({ ...draft, packageId: event.target.value || null })}>
+            <option value="">No package selected</option>
+            {(packagesQuery.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
+          </Select>
+        </Field>
+        <Field label="Training title" className="md:col-span-2"><Input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></Field>
+        <Field label="Training date"><Input type="date" value={draft.trainingDate} onChange={(event) => setDraft({ ...draft, trainingDate: event.target.value })} /></Field>
+        <Field label="Venue"><Input value={draft.location} onChange={(event) => setDraft({ ...draft, location: event.target.value })} placeholder="Client office or venue" /></Field>
+        <Field label="Trainer"><Input value={draft.trainerName} onChange={(event) => setDraft({ ...draft, trainerName: event.target.value })} /></Field>
+        <Field label="Expected participants"><Input type="number" min="0" value={draft.participantCount || ""} onChange={(event) => setDraft({ ...draft, participantCount: Number(event.target.value) })} /></Field>
+        <Field label="Preparation notes" className="md:col-span-2"><Textarea value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} /></Field>
+        <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+          <Button type="button" variant="outline" onClick={() => void save()} disabled={busy}><Save /> Save Plan</Button>
+          <Button type="button" variant="gold" onClick={() => void save("Confirmed")} disabled={busy}><CheckCircle2 /> Confirm Training</Button>
+          {notice ? <span className="text-sm text-muted-foreground">{notice}</span> : null}
+        </div>
       </CardContent>
     </Card>
   );
 }
 
-export function DeliveryProjectsPageClient() {
-  const { projects, clients, notice } = useDeliveryData();
-  const [query, setQuery] = useState("");
-  const filtered = useMemo(() => {
-    const normalized = query.trim().toLowerCase();
-    if (!normalized) {
-      return projects;
-    }
+function DeliveryChecklist({ projectId }: { projectId: string }) {
+  const tasksQuery = useDeliveryTasksQuery(projectId);
+  const saveTask = useSaveDeliveryTaskMutation();
+  const deleteTask = useDeleteDeliveryTaskMutation();
+  const [title, setTitle] = useState("");
 
-    return projects.filter((project) =>
-      [project.title, project.deliveryStatus, project.location, project.trainerName]
-        .join(" ")
-        .toLowerCase()
-        .includes(normalized),
-    );
-  }, [projects, query]);
+  if (tasksQuery.isPending) return <PageLoadingSkeleton label="Loading delivery checklist" />;
+  if (tasksQuery.isError) return <QueryErrorState detail={errorMessage(tasksQuery.error)} onRetry={() => void tasksQuery.refetch()} />;
+
+  async function addTask() {
+    if (!title.trim()) return;
+    await saveTask.mutateAsync(normalizeDeliveryTask({ deliveryProjectId: projectId, title, category: "Materials", status: "Open" }));
+    setTitle("");
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Preparation Checklist</CardTitle>
+        <CardDescription>Complete the operational work before the trainer arrives.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {(tasksQuery.data ?? []).map((task) => (
+          <div key={task.id} className="grid gap-3 rounded-md border border-white/10 p-3 lg:grid-cols-[1fr_180px_150px_40px]">
+            <Input defaultValue={task.title} onBlur={(event) => { if (event.target.value.trim() && event.target.value !== task.title) saveTask.mutate({ ...task, title: event.target.value }); }} />
+            <Select value={task.category} onChange={(event) => saveTask.mutate({ ...task, category: event.target.value as DeliveryTask["category"] })}>
+              {deliveryTaskCategories.map((category) => <option key={category}>{category}</option>)}
+            </Select>
+            <Select value={task.status} onChange={(event) => saveTask.mutate({ ...task, status: event.target.value as DeliveryTask["status"] })}>
+              {deliveryTaskStatuses.map((status) => <option key={status}>{status}</option>)}
+            </Select>
+            <Button type="button" variant="ghost" size="icon" title="Delete task" onClick={() => deleteTask.mutate(task)}><Trash2 /></Button>
+          </div>
+        ))}
+        <div className="flex gap-2">
+          <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Add a preparation task" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void addTask(); } }} />
+          <Button type="button" variant="outline" onClick={() => void addTask()} disabled={!title.trim() || saveTask.isPending}><Plus /> Add</Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function TrainingDay({ project, onSave }: { project: DeliveryProject; onSave: (project: DeliveryProject) => Promise<void> }) {
+  const [draft, setDraft] = useState(project);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  useEffect(() => setDraft(project), [project]);
+
+  async function save(delivered = false) {
+    setBusy(true);
+    try {
+      await onSave({ ...draft, deliveryStatus: delivered ? "Delivered" : draft.deliveryStatus });
+      setNotice(delivered ? "Training marked as delivered." : "Training-day record saved.");
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader><CardTitle>Training-Day Record</CardTitle><CardDescription>Capture what actually happened during delivery.</CardDescription></CardHeader>
+      <CardContent className="grid gap-5 md:grid-cols-2">
+        <Field label="Actual participants"><Input type="number" min="0" value={draft.participantCount || ""} onChange={(event) => setDraft({ ...draft, participantCount: Number(event.target.value) })} placeholder="Number attended" /></Field>
+        <Field label="Trainer"><Input value={draft.trainerName} onChange={(event) => setDraft({ ...draft, trainerName: event.target.value })} /></Field>
+        <Field label="Trainer notes and issues" className="md:col-span-2"><Textarea className="min-h-36" value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} placeholder="Participation, timing changes, technical issues, strong discussion points, and follow-up items" /></Field>
+        <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+          <Button type="button" variant="outline" onClick={() => void save()} disabled={busy}><Save /> Save Record</Button>
+          <Button type="button" variant="gold" onClick={() => void save(true)} disabled={busy}><CheckCircle2 /> Mark Delivered</Button>
+          {notice ? <span className="text-sm text-muted-foreground">{notice}</span> : null}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function EvaluationAndReport({ project, clientName, packageTitle, learningObjectives, onSave }: { project: DeliveryProject; clientName: string; packageTitle: string; learningObjectives: string; onSave: (project: DeliveryProject) => Promise<void> }) {
+  const [draft, setDraft] = useState(project);
+  const [busy, setBusy] = useState(false);
+  const [notice, setNotice] = useState("");
+  useEffect(() => setDraft(project), [project]);
+
+  function evaluation(key: keyof DeliveryProject["evaluation"], value: string | number) {
+    setDraft((current) => ({ ...current, evaluation: { ...current.evaluation, [key]: value } }));
+  }
+
+  async function save(status?: DeliveryStatus) {
+    setBusy(true);
+    setNotice("");
+    try {
+      await onSave({ ...draft, deliveryStatus: status ?? draft.deliveryStatus });
+      setNotice(status === "Completed" ? "Delivery completed." : "Evaluation saved.");
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function generate() {
+    setBusy(true);
+    setNotice("");
+    try {
+      const payload = await requestJson<{ draft: DeliveryDraft }>("/api/delivery-projects/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ project: draft, clientName, packageTitle, learningObjectives }),
+      });
+      const updated = { ...draft, postTrainingReport: payload.draft.body };
+      setDraft(updated);
+      await onSave(updated);
+      setNotice("Post-training report generated and saved.");
+    } catch (error) {
+      setNotice(errorMessage(error, "Could not generate the report."));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function exportDocx() {
+    setBusy(true);
+    setNotice("");
+    try {
+      const response = await fetch("/api/delivery-projects/export-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ format: "docx", project: draft, clientName, packageTitle }),
+      });
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => null)) as { error?: string } | null;
+        throw new Error(payload?.error ?? "Report export failed.");
+      }
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `DGAcademy_${draft.title.replace(/[^a-z0-9]+/gi, "_")}_PostTrainingReport.docx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      setNotice(errorMessage(error));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
-      <Toolbar
-        query={query}
-        onQueryChange={setQuery}
-        placeholder="Search delivery projects"
-        href="/delivery/new"
-        label="New Delivery Project"
-      />
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+      <Card>
+        <CardHeader><CardTitle>Evaluation</CardTitle><CardDescription>Use real feedback only. Empty fields remain clearly unrecorded in the report.</CardDescription></CardHeader>
+        <CardContent className="grid gap-5 md:grid-cols-2">
+          <Field label="Average satisfaction score (0-5)"><Input type="number" min="0" max="5" step="0.1" value={draft.evaluation.averageSatisfactionScore || ""} onChange={(event) => evaluation("averageSatisfactionScore", Number(event.target.value))} /></Field>
+          <Field label="Key participant comments"><Textarea value={draft.evaluation.keyComments} onChange={(event) => evaluation("keyComments", event.target.value)} placeholder="What participants said" /></Field>
+          <Field label="Learner feedback"><Textarea value={draft.evaluation.learnerFeedback} onChange={(event) => evaluation("learnerFeedback", event.target.value)} /></Field>
+          <Field label="Client feedback"><Textarea value={draft.evaluation.clientFeedback} onChange={(event) => evaluation("clientFeedback", event.target.value)} /></Field>
+          <Field label="Trainer reflection"><Textarea value={draft.evaluation.trainerReflection} onChange={(event) => evaluation("trainerReflection", event.target.value)} /></Field>
+          <Field label="Improvement suggestions"><Textarea value={draft.evaluation.improvementSuggestions} onChange={(event) => evaluation("improvementSuggestions", event.target.value)} /></Field>
+          <div className="flex flex-wrap items-center gap-3 md:col-span-2">
+            <Button type="button" variant="outline" onClick={() => void save()} disabled={busy}><Save /> Save Evaluation</Button>
+            <Button type="button" variant="gold" onClick={() => void save("Completed")} disabled={busy}><CheckCircle2 /> Complete Delivery</Button>
+            {notice ? <span className="text-sm text-muted-foreground">{notice}</span> : null}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
         <CardHeader>
-          <CardTitle>Training Delivery OS</CardTitle>
-          <CardDescription>{notice}</CardDescription>
+          <div className="flex flex-wrap items-start justify-between gap-3">
+            <div><CardTitle>Post-Training Report</CardTitle><CardDescription className="mt-2">AI drafts the report from the delivery record and feedback above.</CardDescription></div>
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="gold" onClick={() => void generate()} disabled={busy}><Sparkles /> {draft.postTrainingReport ? "Regenerate Report" : "Generate Report"}</Button>
+              {draft.postTrainingReport ? <Button type="button" variant="outline" onClick={() => void exportDocx()} disabled={busy}><Download /> Export DOCX</Button> : null}
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          {filtered.length ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {filtered.map((project) => (
-                <DeliveryProjectCard
-                  key={project.id}
-                  project={project}
-                  client={clients.find((client) => client.id === project.clientId)}
-                />
-              ))}
-            </div>
+          {draft.postTrainingReport ? (
+            <div className="overflow-hidden rounded-md border border-white/10 bg-[#07111f]/55"><MarkdownPreview value={draft.postTrainingReport} /></div>
           ) : (
-            <EmptyDeliveryState
-              title="No delivery projects yet"
-              href="/delivery/new"
-              label="Create Delivery Project"
-            />
+            <div className="border border-dashed border-white/15 p-10 text-center text-sm text-muted-foreground">Save real attendance and feedback, then generate the client report.</div>
           )}
         </CardContent>
       </Card>
     </div>
-  );
-}
-
-export function DeliveryProjectCard({
-  project,
-  client,
-}: {
-  project: DeliveryProject;
-  client?: Client;
-}) {
-  return (
-    <Link
-      href={`/delivery/${project.id}`}
-      className="group rounded-lg border border-white/10 bg-[#07111f]/55 p-4 transition hover:border-teal-300/35 hover:bg-teal-300/10"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0">
-          <div className="line-clamp-2 font-semibold leading-6 text-white">
-            {project.title}
-          </div>
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-            {client?.name ?? "Unassigned client"} - {project.trainingDate || "Date TBD"}
-          </p>
-        </div>
-        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-teal-100" />
-      </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <DeliveryStatusBadge status={project.deliveryStatus} />
-        <Badge variant="outline">{project.participantCount || 0} participants</Badge>
-        {project.location ? <Badge variant="outline">{project.location}</Badge> : null}
-      </div>
-    </Link>
   );
 }
 
 export function DeliveryProjectDetailClient({ id }: { id: string }) {
   const router = useRouter();
-  const {
-    projects,
-    setProjects,
-    tasks,
-    setTasks,
-    clients,
-    opportunities,
-    packages,
-    isLoading,
-  } = useDeliveryData();
-  const project = projects.find((item) => item.id === id);
-  const projectTasks = tasks.filter((task) => task.deliveryProjectId === id);
-  const client = clients.find((item) => item.id === project?.clientId);
-  const opportunity = opportunities.find((item) => item.id === project?.opportunityId);
-  const linkedPackage = packages.find((pkg) => pkg.id === project?.packageId);
+  const projectQuery = useDeliveryProjectQuery(id);
+  const clientsQuery = useClientsQuery();
+  const packagesQuery = useTrainingPackagesQuery();
+  const saveProject = useSaveDeliveryProjectMutation();
+  const deleteProject = useDeleteDeliveryProjectMutation();
+  const [stage, setStage] = useState<DeliveryStage>("before");
+  const [statusInitialized, setStatusInitialized] = useState(false);
 
-  async function saveProjectUpdate(nextProject: DeliveryProject) {
-    const normalized = normalizeDeliveryProject({
-      ...nextProject,
-      updatedAt: new Date().toISOString(),
-    });
-    const response = await fetch("/api/delivery-projects", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(normalized),
-    });
-    const payload = (await response.json().catch(() => ({}))) as {
-      project?: DeliveryProject;
-      error?: string;
-    };
-    if (!response.ok || !payload.project) {
-      throw new Error(payload.error ?? "Delivery project update failed.");
-    }
-    setProjects((current) => [
-      payload.project as DeliveryProject,
-      ...current.filter((item) => item.id !== payload.project?.id),
-    ]);
-  }
-
-  async function saveTask(nextTask: DeliveryTask) {
-    const normalized = normalizeDeliveryTask({
-      ...nextTask,
-      updatedAt: new Date().toISOString(),
-    });
-    const response = await fetch("/api/delivery-tasks", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(normalized),
-    });
-    const payload = (await response.json().catch(() => ({}))) as {
-      task?: DeliveryTask;
-      error?: string;
-    };
-    if (!response.ok || !payload.task) {
-      throw new Error(payload.error ?? "Delivery task update failed.");
-    }
-    setTasks((current) => [
-      payload.task as DeliveryTask,
-      ...current.filter((item) => item.id !== payload.task?.id),
-    ]);
-  }
-
-  async function deleteProject() {
-    if (!project || !window.confirm(`Delete "${project.title}"?`)) {
-      return;
-    }
-
-    const response = await fetch(`/api/delivery-projects/${project.id}`, { method: "DELETE" });
-    if (response.ok) {
-      router.push("/delivery");
-    }
-  }
-
-  async function deleteTask(id: string) {
-    const response = await fetch(`/api/delivery-tasks/${id}`, { method: "DELETE" });
-    if (response.ok) {
-      setTasks((current) => current.filter((task) => task.id !== id));
-    }
-  }
-
-  if (isLoading && !project) {
-    return <LoadingCard label="Loading delivery project..." />;
-  }
-
-  if (!project) {
-    return <MissingCard label="Delivery project not found" href="/delivery" />;
-  }
-
-  return (
-    <div className="space-y-5">
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
-          <div>
-            <div className="mb-3 flex flex-wrap gap-2">
-              <DeliveryStatusBadge status={project.deliveryStatus} />
-              <Badge variant="outline">{project.participantCount || 0} participants</Badge>
-              <Badge variant="outline">{project.trainingDate || "Date TBD"}</Badge>
-            </div>
-            <CardTitle>{project.title}</CardTitle>
-            <CardDescription className="mt-2">
-              {client?.name ?? "No client selected"} - {project.location || "Location TBD"}
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
-              <Link href="/delivery/new">
-                <Plus className="h-4 w-4" />
-                New Delivery Project
-              </Link>
-            </Button>
-            <Button type="button" variant="destructive" onClick={deleteProject}>
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
-          <InfoBlock label="Trainer" value={project.trainerName || "-"} />
-          <InfoBlock
-            label="Opportunity"
-            value={opportunity?.title ?? "No linked opportunity"}
-          />
-          <InfoBlock
-            label="Package"
-            value={linkedPackage?.title ?? "No linked package"}
-          />
-        </CardContent>
-      </Card>
-
-      <DeliveryProjectForm existingProject={project} />
-
-      <DeliveryChecklist
-        projectId={project.id}
-        tasks={projectTasks}
-        onSaveTask={saveTask}
-        onDeleteTask={deleteTask}
-      />
-
-      <PilotFeedbackButton
-        relatedPage={`/delivery/${project.id}`}
-        relatedFeature="Delivery project"
-      />
-
-      <div className="grid gap-5 xl:grid-cols-2">
-        <TrainerNotes project={project} onSave={saveProjectUpdate} />
-        <EvaluationSummary project={project} onSave={saveProjectUpdate} />
-      </div>
-
-      <CertificatePlaceholder project={project} />
-
-      <PostTrainingReportGenerator
-        project={project}
-        tasks={projectTasks}
-        clientName={client?.name ?? ""}
-        packageTitle={linkedPackage?.title ?? ""}
-        learningObjectives={linkedPackage?.promise ?? opportunity?.trainingNeed ?? ""}
-        onSaveProject={saveProjectUpdate}
-      />
-    </div>
-  );
-}
-
-export function DeliveryChecklist({
-  projectId,
-  tasks,
-  onSaveTask,
-  onDeleteTask,
-}: {
-  projectId: string;
-  tasks: DeliveryTask[];
-  onSaveTask: (task: DeliveryTask) => Promise<void>;
-  onDeleteTask: (id: string) => Promise<void>;
-}) {
-  const [draftTasks, setDraftTasks] = useState<DeliveryTask[]>(tasks);
-  const [isSaving, setIsSaving] = useState("");
-
+  const project = projectQuery.data;
   useEffect(() => {
-    setDraftTasks(tasks);
-  }, [tasks]);
+    if (project && !statusInitialized) {
+      setStage(statusStage(project.deliveryStatus));
+      setStatusInitialized(true);
+    }
+  }, [project, statusInitialized]);
 
-  function updateTask<K extends keyof DeliveryTask>(
-    id: string,
-    key: K,
-    value: DeliveryTask[K],
-  ) {
-    setDraftTasks((current) =>
-      current.map((task) => (task.id === id ? { ...task, [key]: value } : task)),
-    );
+  if (projectQuery.isPending) return <PageLoadingSkeleton label="Loading delivery" />;
+  if (projectQuery.isError || !project) return <QueryErrorState title="Could not load this delivery" detail={errorMessage(projectQuery.error)} onRetry={() => void projectQuery.refetch()} />;
+
+  const projectId = project.id;
+  const client = (clientsQuery.data ?? []).find((item) => item.id === project.clientId);
+  const trainingPackage = (packagesQuery.data ?? []).find((item) => item.id === project.packageId);
+
+  async function save(updated: DeliveryProject) {
+    await saveProject.mutateAsync(updated);
   }
 
-  function addTask() {
-    setDraftTasks((current) => [
-      ...current,
-      normalizeDeliveryTask({
-        deliveryProjectId: projectId,
-        title: "",
-        category: "Materials",
-        status: "Open",
-      }),
-    ]);
+  async function remove() {
+    if (!window.confirm("Delete this training delivery and its checklist?")) return;
+    await deleteProject.mutateAsync(projectId);
+    router.push("/delivery");
   }
-
-  async function seedDefaultTasks() {
-    const defaults = createDefaultDeliveryTasks(projectId);
-    setDraftTasks(defaults);
-    await Promise.all(defaults.map(onSaveTask));
-  }
-
-  async function save(task: DeliveryTask) {
-    setIsSaving(task.id);
-    await onSaveTask(task);
-    setIsSaving("");
-  }
-
-  const completed = draftTasks.filter((task) => task.status === "Done").length;
 
   return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-      <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <CardTitle>Delivery Checklist</CardTitle>
-          <CardDescription>
-            {completed} of {draftTasks.length} tasks completed.
-          </CardDescription>
+          <Link href="/delivery" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-white"><ArrowLeft className="h-4 w-4" /> Training Delivery</Link>
+          <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold">{project.title}</h1><DeliveryStatusBadge status={project.deliveryStatus} /></div>
+          <p className="mt-2 text-sm text-muted-foreground">{client?.name || "No client linked"}{project.trainingDate ? ` · ${project.trainingDate}` : ""}</p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Button type="button" variant="outline" onClick={seedDefaultTasks}>
-            <CalendarCheck className="h-4 w-4" />
-            Add Default Checklist
-          </Button>
-          <Button type="button" variant="gold" onClick={addTask}>
-            <Plus className="h-4 w-4" />
-            Add Task
-          </Button>
+        <div className="flex items-center gap-2">
+          <Select value={project.deliveryStatus} onChange={(event) => void save({ ...project, deliveryStatus: event.target.value as DeliveryStatus })} className="w-40">
+            {deliveryStatuses.map((status) => <option key={status}>{status}</option>)}
+          </Select>
+          <Button type="button" variant="destructive" size="icon" title="Delete delivery" onClick={() => void remove()} disabled={deleteProject.isPending}><Trash2 /></Button>
         </div>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {draftTasks.length ? (
-          draftTasks.map((task) => (
-            <div
-              key={task.id}
-              className="grid gap-3 rounded-lg border border-white/10 bg-[#07111f]/55 p-4 xl:grid-cols-[1.5fr_1fr_0.8fr_0.9fr_0.9fr_auto]"
-            >
-              <Field label="Task">
-                <Input
-                  value={task.title}
-                  onChange={(event) => updateTask(task.id, "title", event.target.value)}
-                  placeholder="Task title"
-                />
-              </Field>
-              <Field label="Category">
-                <Select
-                  value={task.category}
-                  onChange={(event) =>
-                    updateTask(
-                      task.id,
-                      "category",
-                      event.target.value as DeliveryTask["category"],
-                    )
-                  }
-                >
-                  {deliveryTaskCategories.map((category) => (
-                    <option key={category} value={category}>
-                      {category}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Status">
-                <Select
-                  value={task.status}
-                  onChange={(event) =>
-                    updateTask(
-                      task.id,
-                      "status",
-                      event.target.value as DeliveryTask["status"],
-                    )
-                  }
-                >
-                  {deliveryTaskStatuses.map((status) => (
-                    <option key={status} value={status}>
-                      {status}
-                    </option>
-                  ))}
-                </Select>
-              </Field>
-              <Field label="Due date">
-                <Input
-                  type="date"
-                  value={task.dueDate}
-                  onChange={(event) =>
-                    updateTask(task.id, "dueDate", event.target.value)
-                  }
-                />
-              </Field>
-              <Field label="Owner">
-                <Input
-                  value={task.owner}
-                  onChange={(event) => updateTask(task.id, "owner", event.target.value)}
-                  placeholder="Owner"
-                />
-              </Field>
-              <div className="flex items-end gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={() => save(task)}
-                  disabled={isSaving === task.id || !task.title.trim()}
-                >
-                  {isSaving === task.id ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Save className="h-4 w-4" />
-                  )}
-                  Save
-                </Button>
-                <Button
-                  type="button"
-                  variant="destructive"
-                  size="sm"
-                  onClick={() => onDeleteTask(task.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-              <div className="xl:col-span-6">
-                <Field label="Notes">
-                  <Textarea
-                    value={task.notes}
-                    onChange={(event) =>
-                      updateTask(task.id, "notes", event.target.value)
-                    }
-                    placeholder="Task details, dependencies, or confirmation notes"
-                  />
-                </Field>
-              </div>
-            </div>
-          ))
-        ) : (
-          <EmptyDeliveryState
-            title="No delivery tasks yet"
-            href="#"
-            label="Add Default Checklist"
-            onClick={seedDefaultTasks}
-          />
-        )}
-      </CardContent>
-    </Card>
-  );
-}
-
-export function TrainerNotes({
-  project,
-  onSave,
-}: {
-  project: DeliveryProject;
-  onSave: (project: DeliveryProject) => Promise<void>;
-}) {
-  const [notes, setNotes] = useState(project.notes);
-  const [isSaving, setIsSaving] = useState(false);
-
-  async function save() {
-    setIsSaving(true);
-    await onSave({ ...project, notes });
-    setIsSaving(false);
-  }
-
-  return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-      <CardHeader>
-        <CardTitle>Trainer Notes</CardTitle>
-        <CardDescription>
-          Internal preparation notes, facilitation cues, and delivery risks.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Textarea
-          value={notes}
-          onChange={(event) => setNotes(event.target.value)}
-          placeholder="Capture trainer reminders and client context."
-        />
-        <Button type="button" variant="outline" onClick={save} disabled={isSaving}>
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Notes
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function EvaluationSummary({
-  project,
-  onSave,
-}: {
-  project: DeliveryProject;
-  onSave: (project: DeliveryProject) => Promise<void>;
-}) {
-  const [evaluation, setEvaluation] = useState(project.evaluation);
-  const [isSaving, setIsSaving] = useState(false);
-
-  async function save() {
-    setIsSaving(true);
-    await onSave({ ...project, evaluation });
-    setIsSaving(false);
-  }
-
-  return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-      <CardHeader>
-        <CardTitle>Evaluation Summary</CardTitle>
-        <CardDescription>
-          Capture evidence for the post-training report and improvement loop.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        <Field label="Average satisfaction score">
-          <Input
-            type="number"
-            min="0"
-            max="5"
-            step="0.1"
-            value={evaluation.averageSatisfactionScore}
-            onChange={(event) =>
-              setEvaluation((current) => ({
-                ...current,
-                averageSatisfactionScore: Number(event.target.value),
-              }))
-            }
-          />
-        </Field>
-        <Field label="Key comments">
-          <Textarea
-            value={evaluation.keyComments}
-            onChange={(event) =>
-              setEvaluation((current) => ({
-                ...current,
-                keyComments: event.target.value,
-              }))
-            }
-          />
-        </Field>
-        <Field label="Improvement suggestions">
-          <Textarea
-            value={evaluation.improvementSuggestions}
-            onChange={(event) =>
-              setEvaluation((current) => ({
-                ...current,
-                improvementSuggestions: event.target.value,
-              }))
-            }
-          />
-        </Field>
-        <Field label="Trainer reflection">
-          <Textarea
-            value={evaluation.trainerReflection}
-            onChange={(event) =>
-              setEvaluation((current) => ({
-                ...current,
-                trainerReflection: event.target.value,
-              }))
-            }
-          />
-        </Field>
-        <Field label="Client feedback">
-          <Textarea
-            value={evaluation.clientFeedback}
-            onChange={(event) =>
-              setEvaluation((current) => ({
-                ...current,
-                clientFeedback: event.target.value,
-              }))
-            }
-          />
-        </Field>
-        <Field label="Learner feedback">
-          <Textarea
-            value={evaluation.learnerFeedback}
-            onChange={(event) =>
-              setEvaluation((current) => ({
-                ...current,
-                learnerFeedback: event.target.value,
-              }))
-            }
-          />
-        </Field>
-        <Button type="button" variant="outline" onClick={save} disabled={isSaving}>
-          {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Evaluation
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function CertificatePlaceholder({ project }: { project: DeliveryProject }) {
-  return (
-    <Card className="border-gold-300/20 bg-gold-300/10 shadow-executive">
-      <CardHeader>
-        <CardTitle>Certificates</CardTitle>
-        <CardDescription>
-          Certificate generation is staged for a later release. Participant names can be
-          prepared here before automation is added.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="flex items-center gap-3 text-sm text-gold-50/85">
-          <Award className="h-5 w-5" />
-          {project.participantCount || 0} certificate placeholders expected.
-        </div>
-        <Button type="button" variant="outline" disabled>
-          Certificate Automation Coming Later
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-export function PostTrainingReportGenerator({
-  project,
-  tasks,
-  clientName,
-  packageTitle,
-  learningObjectives,
-  onSaveProject,
-}: {
-  project: DeliveryProject;
-  tasks: DeliveryTask[];
-  clientName: string;
-  packageTitle: string;
-  learningObjectives: string;
-  onSaveProject: (project: DeliveryProject) => Promise<void>;
-}) {
-  const [drafts, setDrafts] = useState<Partial<Record<DeliveryDraftKind, DeliveryDraft>>>(
-    {},
-  );
-  const [isGenerating, setIsGenerating] = useState<DeliveryDraftKind | "">("");
-  const [isExporting, setIsExporting] = useState<"docx" | "">("");
-  const [notice, setNotice] = useState("");
-
-  async function generate(kind: DeliveryDraftKind) {
-    setIsGenerating(kind);
-    setNotice("");
-
-    try {
-      const response = await fetch("/api/delivery-projects/generate", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          kind,
-          project,
-          tasks,
-          clientName,
-          packageTitle,
-          learningObjectives,
-        }),
-      });
-      const payload = (await response.json()) as {
-        draft?: DeliveryDraft;
-        mode?: "openai";
-        notice?: string;
-        error?: string;
-      };
-
-      if (!response.ok || !payload.draft) {
-        throw new Error(payload.error ?? "Delivery draft generation failed.");
-      }
-
-      setDrafts((current) => ({ ...current, [kind]: payload.draft }));
-      setNotice(payload.notice ?? `Draft generated with ${payload.mode}.`);
-
-      if (kind === "post-training-report") {
-        await onSaveProject({ ...project, postTrainingReport: payload.draft.body });
-      }
-    } catch (error) {
-      setNotice(
-        error instanceof Error ? error.message : "Delivery draft generation failed.",
-      );
-    } finally {
-      setIsGenerating("");
-    }
-  }
-
-  async function exportReport(format: "docx") {
-    setIsExporting(format);
-    setNotice("");
-
-    try {
-      const response = await fetch("/api/delivery-projects/export-report", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          format,
-          project,
-          clientName,
-          packageTitle,
-        }),
-      });
-
-      if (!response.ok) {
-        const payload = (await response.json()) as { error?: string };
-        throw new Error(payload.error ?? "Export failed.");
-      }
-
-      const blob = await response.blob();
-      const disposition = response.headers.get("Content-Disposition") ?? "";
-      const filename =
-        disposition.match(/filename="(.+)"/)?.[1] ??
-        `DGAcademy_${project.title}_PostTrainingReport.${format}`;
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = filename;
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-      URL.revokeObjectURL(url);
-      setNotice("Post-training report export started.");
-    } catch (error) {
-      setNotice(error instanceof Error ? error.message : "Export failed.");
-    } finally {
-      setIsExporting("");
-    }
-  }
-
-  const reportDraft = drafts["post-training-report"]?.body ?? project.postTrainingReport;
-
-  return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-      <CardHeader>
-        <CardTitle>Delivery AI Support + Reporting</CardTitle>
-        <CardDescription>
-          Generate drafts for preparation and reporting. Nothing is sent automatically.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-wrap gap-2">
-          <GenerateButton
-            label="Trainer Checklist"
-            kind="trainer-checklist"
-            active={isGenerating}
-            onClick={generate}
-          />
-          <GenerateButton
-            label="Participant Email"
-            kind="participant-email"
-            active={isGenerating}
-            onClick={generate}
-          />
-          <GenerateButton
-            label="Training-Day Agenda"
-            kind="training-day-agenda"
-            active={isGenerating}
-            onClick={generate}
-          />
-          <GenerateButton
-            label="Post-Training Report"
-            kind="post-training-report"
-            active={isGenerating}
-            onClick={generate}
-          />
-        </div>
-        {notice ? (
-          <p className="rounded-lg border border-teal-300/20 bg-teal-300/10 p-3 text-sm text-teal-50">
-            {notice}
-          </p>
-        ) : null}
-        <div className="grid gap-3 lg:grid-cols-2">
-          {(["trainer-checklist", "participant-email", "training-day-agenda"] as const).map(
-            (kind) =>
-              drafts[kind] ? (
-                <DraftBlock key={kind} draft={drafts[kind] as DeliveryDraft} />
-              ) : null,
-          )}
-          {reportDraft ? (
-            <DraftBlock
-              draft={{
-                title: "Post-Training Report Draft",
-                body: reportDraft,
-                suggestedNextStep:
-                  "Review internally and export once the evaluation details are accurate.",
-              }}
-            />
-          ) : null}
-        </div>
-        <div className="flex flex-wrap gap-2 border-t border-white/10 pt-4">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => exportReport("docx")}
-            disabled={!reportDraft || Boolean(isExporting)}
-          >
-            {isExporting === "docx" ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <FileText className="h-4 w-4" />
-            )}
-            Export Report DOCX
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function GenerateButton({
-  label,
-  kind,
-  active,
-  onClick,
-}: {
-  label: string;
-  kind: DeliveryDraftKind;
-  active: DeliveryDraftKind | "";
-  onClick: (kind: DeliveryDraftKind) => void;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="gold"
-      onClick={() => onClick(kind)}
-      disabled={Boolean(active)}
-    >
-      {active === kind ? (
-        <Loader2 className="h-4 w-4 animate-spin" />
-      ) : (
-        <Sparkles className="h-4 w-4" />
-      )}
-      {label}
-    </Button>
-  );
-}
-
-function Toolbar({
-  query,
-  onQueryChange,
-  placeholder,
-  href,
-  label,
-}: {
-  query: string;
-  onQueryChange: (value: string) => void;
-  placeholder: string;
-  href: string;
-  label: string;
-}) {
-  return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-      <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative w-full sm:max-w-md">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            value={query}
-            onChange={(event) => onQueryChange(event.target.value)}
-            placeholder={placeholder}
-            className="pl-9"
-          />
-        </div>
-        <Button asChild variant="gold" className="w-full sm:w-auto">
-          <Link href={href}>
-            <Plus className="h-4 w-4" />
-            {label}
-          </Link>
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function Field({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="block space-y-2">
-      <span className="text-sm font-medium text-white">{label}</span>
-      {children}
-    </label>
-  );
-}
-
-function InfoBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
-      <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-        {label}
       </div>
-      <div className="mt-2 text-sm font-medium leading-6 text-white">{value}</div>
-    </div>
-  );
-}
 
-function EmptyDeliveryState({
-  title,
-  href,
-  label,
-  onClick,
-}: {
-  title: string;
-  href: string;
-  label: string;
-  onClick?: () => void;
-}) {
-  return (
-    <div className="rounded-lg border border-dashed border-white/15 bg-[#07111f]/45 p-8 text-center">
-      <CalendarCheck className="mx-auto h-8 w-8 text-teal-100" />
-      <div className="mt-4 text-base font-semibold text-white">{title}</div>
-      {onClick ? (
-        <Button type="button" variant="gold" className="mt-5" onClick={onClick}>
-          <Plus className="h-4 w-4" />
-          {label}
-        </Button>
-      ) : (
-        <Button asChild variant="gold" className="mt-5">
-          <Link href={href}>
-            <Plus className="h-4 w-4" />
-            {label}
-          </Link>
-        </Button>
-      )}
-    </div>
-  );
-}
+      <StageNavigation stage={stage} onChange={setStage} />
 
-function LoadingCard({ label }: { label: string }) {
-  return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-      <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        {label}
-      </CardContent>
-    </Card>
-  );
-}
-
-function MissingCard({ label, href }: { label: string; href: string }) {
-  return (
-    <Card className="border-red-300/25 bg-red-400/10 shadow-executive">
-      <CardContent className="p-6">
-        <div className="font-semibold text-red-100">{label}</div>
-        <Button asChild variant="outline" className="mt-4">
-          <Link href={href}>Go Back</Link>
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
-function DraftBlock({ draft }: { draft: DeliveryDraft }) {
-  const [copied, setCopied] = useState(false);
-
-  async function copy() {
-    await navigator.clipboard.writeText(draft.body);
-    setCopied(true);
-    window.setTimeout(() => setCopied(false), 1600);
-  }
-
-  return (
-    <div className="rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div className="text-sm font-semibold text-white">{draft.title}</div>
-        <Button type="button" variant="outline" size="sm" onClick={copy}>
-          <Clipboard className="h-4 w-4" />
-          {copied ? "Copied" : "Copy"}
-        </Button>
-      </div>
-      <pre className="mt-3 max-h-[460px] overflow-auto whitespace-pre-wrap font-sans text-sm leading-6 text-slate-100">
-        {draft.body}
-      </pre>
-      <p className="mt-3 text-sm text-muted-foreground">{draft.suggestedNextStep}</p>
+      {stage === "before" ? <div className="space-y-5"><DeliverySetup project={project} onSave={save} /><DeliveryChecklist projectId={project.id} /></div> : null}
+      {stage === "day" ? <TrainingDay project={project} onSave={save} /> : null}
+      {stage === "after" ? <EvaluationAndReport project={project} clientName={client?.name ?? ""} packageTitle={trainingPackage?.title ?? project.title} learningObjectives={trainingPackage?.promise ?? ""} onSave={save} /> : null}
     </div>
   );
 }

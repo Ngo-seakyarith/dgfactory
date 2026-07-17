@@ -46,7 +46,7 @@ This app is separate from DG Command OS.
 - Export Proposal and Syllabus DOCX plus Markdown package handoff
 - Email handoff and Telegram handoff to `@sopheaphin`
 - Client CRM with clients, opportunities, proposal pipeline, follow-up reminders, and package-to-opportunity linking
-- Training Delivery OS for won opportunities, preparation checklists, evaluation capture, post-training report drafts, and report export
+- Training Delivery for client preparation, training-day records, evaluation capture, post-training reports, and DOCX export
 - GPT-5.5 Brain Layer with structured outputs, schema checks, package QA review, and section regeneration
 - DG Academy Knowledge Base with frameworks, proposal language, Cambodia context, exercises, pricing notes, client notes, keyword retrieval, and internal source notes
 - V2.0 Evaluation + Feedback Loop with output scoring, AI rubric evaluation, improvement suggestions, human approval, and a Quality Dashboard
@@ -869,44 +869,44 @@ The app stores:
 - Eval datasets, examples, runs, and results
 - Agent trace summaries
 
-## V1.5 Training Delivery OS
+## V1.5 Training Delivery
 
-V1.5 adds a simple delivery workspace for managing won training work from preparation through post-training reporting.
+Training Delivery is a focused operational workspace for the work that happens before, during, and after a client training session.
 
 Pages:
 
 - `/delivery` - delivery project list and search
 - `/delivery/new` - create a delivery project
-- `/delivery/[id]` - delivery detail, checklist, evaluation, AI drafts, and report export
+- `/delivery/[id]` - three-stage delivery workspace, evaluation, report generation, and DOCX export
 
 Delivery statuses:
 
-- Planning
-- Materials Preparation
+- Preparing
 - Confirmed
 - Delivered
-- Report Sent
 - Completed
 - Cancelled
 
 Delivery workflow:
 
-- Create a delivery project manually or from a won opportunity.
-- Link the client, opportunity, and generated training package.
-- Use the default checklist for confirmation, materials, logistics, trainer preparation, attendance, evaluation, certificates, reporting, and follow-up.
-- Capture trainer notes and evaluation data.
-- Generate draft trainer checklist, participant email, training-day agenda, and post-training report.
+- Schedule a delivery from the client and saved training package; an opportunity is not required or stored by the current workflow.
+- Before Training: confirm the date, venue, trainer, expected participants, materials, logistics, and preparation checklist.
+- Training Day: record actual attendance, trainer notes, delivery issues, and completion.
+- After Training: capture learner, client, and trainer feedback, then complete the delivery.
+- AI is used only to draft the post-training report from saved delivery evidence.
 - Export the post-training report as DOCX.
 
 Code ownership:
 
 - Delivery domain types, storage, API handlers, and UI components live under `src/features/delivery`.
 - `src/app/delivery` pages and delivery API routes stay as thin wrappers around the feature code.
+- TanStack Query owns delivery project and task server state, loading, errors, and cache invalidation.
+- Existing Supabase rows remain compatible: legacy `Planning` and `Materials Preparation` values load as `Preparing`; the app persists `Preparing` through the legacy `Planning` database value, so no migration is required.
 
 Safety:
 
 - AI support creates drafts only.
-- The app never sends email, Telegram, WhatsApp, certificates, or reports automatically.
+- The app never sends email, Telegram, WhatsApp, or reports automatically.
 - Post-training reports should be reviewed internally before client sharing.
 
 ## V1.4 CRM + Proposal Pipeline

@@ -465,9 +465,9 @@ export const salesFollowUpAgent: BrainAgentDefinition = {
 export const deliveryAgent: BrainAgentDefinition = {
   taskType: "delivery_report",
   name: "deliveryAgent",
-  role: "Training delivery and reporting assistant",
+  role: "Post-training reporting assistant",
   instructions:
-    "Draft practical delivery checklists, participant messages, agendas, and post-training reports. Do not invent evaluation evidence.",
+    "Draft a concise client-ready post-training report from the supplied delivery record. Separate recorded evidence from recommendations, and never invent attendance, outcomes, feedback, or evaluation evidence.",
   inputSchema: genericInputSchema,
   outputSchema: deliveryDraftOutputSchema,
 };

@@ -24,7 +24,6 @@ import {
 import {
   normalizeDeliveryProject,
   type DeliveryDraft,
-  type DeliveryDraftKind,
   type DeliveryProject,
   type DeliveryTask,
 } from "@/features/delivery";
@@ -32,13 +31,6 @@ import {
 type RouteContext = {
   params: Promise<{ id: string }>;
 };
-
-const draftKinds: DeliveryDraftKind[] = [
-  "trainer-checklist",
-  "participant-email",
-  "training-day-agenda",
-  "post-training-report",
-];
 
 const reportExportFormats: ExportFormat[] = ["docx"];
 
@@ -163,20 +155,18 @@ export async function deleteDeliveryProjectHandler(
 }
 
 export async function generateDeliveryDraftHandler(request: Request) {
+  const auth = await requireApproved(request);
+  if (!auth.ok) return auth.response;
+
   const body = (await request.json()) as {
-    kind?: DeliveryDraftKind;
     project?: Partial<DeliveryProject>;
     tasks?: DeliveryTask[];
     clientName?: string;
     packageTitle?: string;
     learningObjectives?: string;
   };
-  const kind = draftKinds.includes(body.kind as DeliveryDraftKind)
-    ? (body.kind as DeliveryDraftKind)
-    : "post-training-report";
   const project = normalizeDeliveryProject(body.project ?? {});
   const input = {
-    kind,
     project,
     tasks: body.tasks ?? [],
     clientName: String(body.clientName ?? "").trim(),
@@ -196,7 +186,7 @@ export async function generateDeliveryDraftHandler(request: Request) {
       taskType: "delivery_report",
       input: {
         task:
-          "Generate a practical delivery support draft for an internal DG Academy training project.",
+          "Generate a client-ready post-training report for a completed DG Academy training delivery.",
         input,
         rules: [
           "Suitable for corporate training delivery in Cambodia.",
@@ -222,6 +212,9 @@ export async function generateDeliveryDraftHandler(request: Request) {
 }
 
 export async function exportDeliveryReportHandler(request: Request) {
+  const auth = await requireApproved(request);
+  if (!auth.ok) return auth.response;
+
   try {
     const body = (await request.json()) as {
       format?: ExportFormat;
