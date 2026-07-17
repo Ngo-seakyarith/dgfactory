@@ -326,7 +326,7 @@ function exportFooter() {
               contactCell(
                 [
                   footerSymbol("\uD83C\uDF10", "009FE3", "Segoe UI Emoji"),
-                  footerLink("www.dgdemy.org"),
+                  footerLink("www.thedgacademy.org"),
                 ],
                 AlignmentType.RIGHT,
               ),

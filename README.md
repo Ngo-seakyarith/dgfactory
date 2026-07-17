@@ -882,6 +882,7 @@ Pages:
 
 - `/delivery` - delivery project list and search
 - `/delivery/[id]` - three-stage delivery workspace, evaluation, report generation, and DOCX export
+- `/evaluate/[token]` - public participant evaluation form reached through a private link (no login)
 
 Delivery statuses:
 
@@ -900,8 +901,10 @@ Delivery workflow:
 - When the client confirms the training, use `Confirm Training` (or set the status) to move the delivery forward.
 - Before Training: confirm the date, venue, trainer, expected participants, materials, logistics, and preparation checklist.
 - Training Day: record actual attendance, trainer notes, delivery issues, and completion.
-- After Training: capture learner, client, and trainer feedback, then complete the delivery.
-- AI is used only to draft the post-training report from saved delivery evidence.
+- After Training: participant scores and comments come from the evaluation form; the team records only client feedback, trainer reflection, and improvement suggestions manually, then completes the delivery.
+- Participant Evaluation: AI drafts a Google-Forms-style question set (`evaluation_questions` Brain task) from the linked proposal; the team edits the questions, opens the form, and shares a private `/evaluate/[token]` link with participants. Tokens are stored only as SHA-256 hashes, the app never sends the link itself, and responses are anonymous unless the participant adds a name.
+- Evaluation results are aggregated deterministically (per-question averages, rating distributions, choice counts, and text answers) with simple charts on the delivery page; the overall average can be applied to the delivery evaluation record with one click.
+- AI is used only to draft evaluation questions and the post-training report; it never invents scores, responses, or attendance. Report generation loads the aggregated participant evaluation results server-side and uses them as the evaluation evidence; when there are no responses yet the report states that results are not recorded.
 - Export the post-training report as DOCX.
 
 Code ownership:

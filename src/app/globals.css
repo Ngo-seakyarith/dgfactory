@@ -126,6 +126,10 @@ textarea {
   color: #176a63;
 }
 
+.app-workspace [class*="text-amber-"] {
+  color: #8a4b12;
+}
+
 .app-workspace .border-white\/10,
 .app-workspace .border-white\/15 {
   border-color: rgba(29, 37, 33, 0.13);

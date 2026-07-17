@@ -364,6 +364,26 @@ export const textOutputSchema: JsonSchema = {
   },
 };
 
+export const evaluationQuestionsOutputSchema: JsonSchema = {
+  type: "object",
+  required: ["questions"],
+  properties: {
+    questions: {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["type", "label", "required"],
+        properties: {
+          type: { type: "string", enum: ["rating", "choice", "text"] },
+          label: { type: "string" },
+          options: { type: "array", items: { type: "string" } },
+          required: { type: "boolean" },
+        },
+      },
+    },
+  },
+};
+
 export const followUpOutputSchema: JsonSchema = {
   type: "object",
   required: ["followUpEmail", "shortMessage", "suggestedNextStep"],

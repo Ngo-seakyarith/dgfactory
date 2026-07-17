@@ -4,6 +4,8 @@ const publicPrefixes = [
   "/login",
   "/auth/callback",
   "/client-portal",
+  "/evaluate",
+  "/api/evaluate",
   "/api/auth",
   "/_next",
 ];

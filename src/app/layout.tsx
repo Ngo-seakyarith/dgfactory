@@ -44,15 +44,17 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   setRequestAuthUser(user);
   const pathname = headerStore.get("x-dg-pathname") ?? "";
   const isClientPortal = pathname.startsWith("/client-portal");
+  const isPublicForm = pathname.startsWith("/evaluate");
+  const isPublicPage = isClientPortal || isPublicForm;
   const isAccessStatusPage =
     pathname.startsWith("/login") ||
     pathname.startsWith("/unauthorized");
 
-  if (!isClientPortal && !isAccessStatusPage && !user) {
+  if (!isPublicPage && !isAccessStatusPage && !user) {
     redirect("/login");
   }
 
-  if (!isClientPortal && !isAccessStatusPage && user && !hasAppAccess(user.role)) {
+  if (!isPublicPage && !isAccessStatusPage && user && !hasAppAccess(user.role)) {
     redirect("/unauthorized");
   }
 
@@ -68,7 +70,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <body>
         <AppProviders>
           <div className="min-h-screen bg-[#141816] text-stone-50">
-            {isClientPortal ? (
+            {isPublicPage ? (
               <main className="app-workspace min-h-screen px-4 py-6 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-7xl">{children}</div>
               </main>

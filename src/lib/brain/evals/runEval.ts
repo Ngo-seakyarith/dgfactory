@@ -41,6 +41,7 @@ function outputTypeForTask(taskType: BrainTaskType): OutputEvaluationType {
     workbook: "workbook",
     follow_up: "follow_up_email",
     delivery_report: "delivery_report",
+    evaluation_questions: "delivery_report",
     qa_review: "full_package",
     improvement_suggestion: "full_package",
     offer_mutation: "full_package",

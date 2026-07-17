@@ -279,6 +279,42 @@ create index if not exists idx_delivery_projects_training_date
 create index if not exists idx_delivery_projects_client_id
   on public.delivery_projects(client_id);
 
+create table if not exists public.evaluation_forms (
+  id uuid primary key default gen_random_uuid(),
+  delivery_project_id uuid not null references public.delivery_projects(id) on delete cascade,
+  title text not null,
+  intro text not null default '',
+  status text not null default 'Draft' check (status in ('Draft', 'Open', 'Closed')),
+  questions jsonb not null default '[]'::jsonb,
+  access_token_hash text unique,
+  created_at timestamptz default now(),
+  updated_at timestamptz default now()
+);
+
+alter table public.evaluation_forms enable row level security;
+
+create unique index if not exists idx_evaluation_forms_delivery_project
+  on public.evaluation_forms(delivery_project_id);
+
+create index if not exists idx_evaluation_forms_token_hash
+  on public.evaluation_forms(access_token_hash);
+
+create table if not exists public.evaluation_responses (
+  id uuid primary key default gen_random_uuid(),
+  form_id uuid not null references public.evaluation_forms(id) on delete cascade,
+  respondent_name text not null default '',
+  answers jsonb not null default '{}'::jsonb,
+  created_at timestamptz default now()
+);
+
+alter table public.evaluation_responses enable row level security;
+
+create index if not exists idx_evaluation_responses_form_id
+  on public.evaluation_responses(form_id);
+
+create index if not exists idx_evaluation_responses_created_at
+  on public.evaluation_responses(created_at desc);
+
 create index if not exists idx_delivery_projects_opportunity_id
   on public.delivery_projects(opportunity_id);
 

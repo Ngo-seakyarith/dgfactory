@@ -3,6 +3,7 @@ import {
   adaptiveGrowthRecommendationsOutputSchema,
   dataDiscoveryOutputSchema,
   deliveryDraftOutputSchema,
+  evaluationQuestionsOutputSchema,
   followUpOutputSchema,
   improvementOpportunityOutputSchema,
   intelligentSystemProposalOutputSchema,
@@ -32,6 +33,7 @@ export const brainTaskTypes = [
   "workbook",
   "follow_up",
   "delivery_report",
+  "evaluation_questions",
   "qa_review",
   "improvement_suggestion",
   "offer_mutation",
@@ -472,6 +474,39 @@ export const deliveryAgent: BrainAgentDefinition = {
   outputSchema: deliveryDraftOutputSchema,
 };
 
+export type EvaluationQuestionsBrainInput = {
+  courseTitle: string;
+  client: string;
+  audience: string;
+  duration: string;
+  promise: string;
+  objectives: string[];
+  outcomes: string[];
+  methodology: string[];
+};
+
+export type EvaluationQuestionsBrainOutput = {
+  questions: Array<{
+    type: "rating" | "choice" | "text";
+    label: string;
+    options?: string[];
+    required?: boolean;
+  }>;
+};
+
+export const evaluationQuestionsAgent: BrainAgentDefinition<
+  EvaluationQuestionsBrainInput,
+  EvaluationQuestionsBrainOutput
+> = {
+  taskType: "evaluation_questions",
+  name: "evaluationQuestionsAgent",
+  role: "Post-training evaluation form designer",
+  instructions:
+    "Design a short post-training participant evaluation form for the supplied DG Academy training. Generate 8 to 12 questions in clear participant-friendly language: 4 to 6 required rating questions on a 1-5 scale covering content relevance, trainer effectiveness, pace, materials, and practical applicability for the participant's daily work; 1 or 2 single-choice questions with 3 to 5 mutually exclusive options; and 2 to 4 optional open-text questions about the most valuable parts, suggested improvements, and how participants plan to apply what they learned. Ground every question in the supplied course context and objectives. Rating and choice questions must be specific to the training topic, not generic. For every question set the required boolean yourself and produce a deliberate mix: mark required=true only for the questions genuinely essential to measuring training quality and satisfaction, and required=false for everything a busy participant may reasonably skip. Never mark all questions of a type required - judge each question on its own importance so the form stays quick to finish. Provide the options array only for single-choice questions. Never ask for confidential business information or personal data.",
+  inputSchema: genericInputSchema,
+  outputSchema: evaluationQuestionsOutputSchema,
+};
+
 export const improvementAgent: BrainAgentDefinition = {
   taskType: "improvement_suggestion",
   name: "improvementAgent",
@@ -624,6 +659,7 @@ export const brainAgents = [
   qaAgent,
   salesFollowUpAgent,
   deliveryAgent,
+  evaluationQuestionsAgent,
   improvementAgent,
   mutationAgent,
   replicationAgent,

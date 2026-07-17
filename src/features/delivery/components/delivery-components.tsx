@@ -54,6 +54,7 @@ import {
   useSaveDeliveryProjectMutation,
   useSaveDeliveryTaskMutation,
 } from "@/features/delivery/queries";
+import { EvaluationFormPanel } from "@/features/delivery/components/evaluation-panel";
 import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
 import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
 import { errorMessage, requestJson } from "@/lib/api-client";
@@ -493,16 +494,13 @@ function EvaluationAndReport({ project, clientName, packageTitle, learningObject
   return (
     <div className="space-y-5">
       <Card>
-        <CardHeader><CardTitle>Evaluation</CardTitle><CardDescription>Use real feedback only. Empty fields remain clearly unrecorded in the report.</CardDescription></CardHeader>
+        <CardHeader><CardTitle>Client &amp; Trainer Notes</CardTitle><CardDescription>Participant scores and comments come from the evaluation form above. Record here what only the client sponsor and trainer can tell you.</CardDescription></CardHeader>
         <CardContent className="grid gap-5 md:grid-cols-2">
-          <Field label="Average satisfaction score (0-5)"><Input type="number" min="0" max="5" step="0.1" value={draft.evaluation.averageSatisfactionScore || ""} onChange={(event) => evaluation("averageSatisfactionScore", Number(event.target.value))} /></Field>
-          <Field label="Key participant comments"><Textarea value={draft.evaluation.keyComments} onChange={(event) => evaluation("keyComments", event.target.value)} placeholder="What participants said" /></Field>
-          <Field label="Learner feedback"><Textarea value={draft.evaluation.learnerFeedback} onChange={(event) => evaluation("learnerFeedback", event.target.value)} /></Field>
-          <Field label="Client feedback"><Textarea value={draft.evaluation.clientFeedback} onChange={(event) => evaluation("clientFeedback", event.target.value)} /></Field>
-          <Field label="Trainer reflection"><Textarea value={draft.evaluation.trainerReflection} onChange={(event) => evaluation("trainerReflection", event.target.value)} /></Field>
-          <Field label="Improvement suggestions"><Textarea value={draft.evaluation.improvementSuggestions} onChange={(event) => evaluation("improvementSuggestions", event.target.value)} /></Field>
+          <Field label="Client feedback"><Textarea value={draft.evaluation.clientFeedback} onChange={(event) => evaluation("clientFeedback", event.target.value)} placeholder="What the client sponsor said after the training" /></Field>
+          <Field label="Trainer reflection"><Textarea value={draft.evaluation.trainerReflection} onChange={(event) => evaluation("trainerReflection", event.target.value)} placeholder="What worked, what to adjust next time" /></Field>
+          <Field label="Improvement suggestions" className="md:col-span-2"><Textarea value={draft.evaluation.improvementSuggestions} onChange={(event) => evaluation("improvementSuggestions", event.target.value)} placeholder="Internal takeaways for the next delivery" /></Field>
           <div className="flex flex-wrap items-center gap-3 md:col-span-2">
-            <Button type="button" variant="outline" onClick={() => void save()} disabled={busy}><Save /> Save Evaluation</Button>
+            <Button type="button" variant="outline" onClick={() => void save()} disabled={busy}><Save /> Save Notes</Button>
             <Button type="button" variant="gold" onClick={() => void save("Completed")} disabled={busy}><CheckCircle2 /> Complete Delivery</Button>
             {notice ? <span className="text-sm text-muted-foreground">{notice}</span> : null}
           </div>
@@ -586,7 +584,12 @@ export function DeliveryProjectDetailClient({ id }: { id: string }) {
 
       {stage === "before" ? <div className="space-y-5"><DeliverySetup project={project} onSave={save} /><DeliveryChecklist projectId={project.id} /></div> : null}
       {stage === "day" ? <TrainingDay project={project} onSave={save} /> : null}
-      {stage === "after" ? <EvaluationAndReport project={project} clientName={client?.name ?? ""} packageTitle={trainingPackage?.title ?? project.title} learningObjectives={trainingPackage?.promise ?? ""} onSave={save} /> : null}
+      {stage === "after" ? (
+        <div className="space-y-5">
+          <EvaluationFormPanel project={project} />
+          <EvaluationAndReport project={project} clientName={client?.name ?? ""} packageTitle={trainingPackage?.title ?? project.title} learningObjectives={trainingPackage?.promise ?? ""} onSave={save} />
+        </div>
+      ) : null}
     </div>
   );
 }

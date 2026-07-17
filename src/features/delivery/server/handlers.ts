@@ -23,10 +23,15 @@ import {
 } from "@/features/delivery/storage/delivery-storage";
 import {
   normalizeDeliveryProject,
+  summarizeEvaluationResponses,
   type DeliveryDraft,
   type DeliveryProject,
   type DeliveryTask,
 } from "@/features/delivery";
+import {
+  getEvaluationFormByDelivery,
+  listEvaluationResponses,
+} from "@/features/delivery/storage/evaluation-storage";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -166,12 +171,58 @@ export async function generateDeliveryDraftHandler(request: Request) {
     learningObjectives?: string;
   };
   const project = normalizeDeliveryProject(body.project ?? {});
+
+  let participantEvaluation: Record<string, unknown> | null = null;
+  try {
+    const form = project.id ? await getEvaluationFormByDelivery(project.id) : null;
+    const responses = form ? await listEvaluationResponses(form.id) : [];
+    const summary = form ? summarizeEvaluationResponses(form, responses) : null;
+
+    if (summary && summary.responseCount > 0) {
+      participantEvaluation = {
+        responseCount: summary.responseCount,
+        averageSatisfactionScore: summary.ratingQuestionCount
+          ? Math.round(summary.overallAverage * 10) / 10
+          : null,
+        ratingResults: summary.questions
+          .filter((question) => question.type === "rating")
+          .map((question) => ({
+            question: question.label,
+            answered: question.answered,
+            average:
+              question.type === "rating"
+                ? Math.round(question.average * 10) / 10
+                : 0,
+          })),
+        choiceResults: summary.questions
+          .filter((question) => question.type === "choice")
+          .map((question) => ({
+            question: question.label,
+            counts: question.type === "choice" ? question.options : [],
+          })),
+        participantComments: summary.questions
+          .filter((question) => question.type === "text")
+          .flatMap((question) =>
+            question.type === "text"
+              ? question.answers.map((answer) => ({
+                  question: question.label,
+                  answer,
+                }))
+              : [],
+          ),
+      };
+    }
+  } catch {
+    participantEvaluation = null;
+  }
+
   const input = {
     project,
     tasks: body.tasks ?? [],
     clientName: String(body.clientName ?? "").trim(),
     packageTitle: String(body.packageTitle ?? "").trim(),
     learningObjectives: String(body.learningObjectives ?? "").trim(),
+    participantEvaluation,
   };
 
   if (!process.env.OPENROUTER_API_KEY) {
@@ -193,6 +244,8 @@ export async function generateDeliveryDraftHandler(request: Request) {
           "Use a professional, concise, client-ready tone where relevant.",
           "Do not invent attendance or evaluation facts beyond provided inputs.",
           "Do not send messages or imply messages were sent.",
+          "participantEvaluation contains aggregated results from the digital participant evaluation form: use its averageSatisfactionScore, rating results, choice counts, and participant comments as the evaluation evidence when it is present.",
+          "When participantEvaluation is null, state that participant evaluation results are not recorded yet instead of inventing them.",
           "For post-training reports, include overview, participant count, objectives, delivery summary, evaluation result, feedback, recommendations, and next opportunities.",
         ],
       },

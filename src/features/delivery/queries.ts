@@ -5,6 +5,11 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { requestJson } from "@/lib/api-client";
 
 import type { DeliveryProject, DeliveryTask } from "./domain/delivery";
+import type {
+  EvaluationForm,
+  EvaluationResponse,
+  EvaluationSummary,
+} from "./domain/evaluation-form";
 
 export const deliveryKeys = {
   all: ["delivery"] as const,
@@ -12,6 +17,14 @@ export const deliveryKeys = {
   project: (id: string) => [...deliveryKeys.projects(), id] as const,
   tasks: (projectId: string) =>
     [...deliveryKeys.all, "tasks", projectId] as const,
+  evaluation: (projectId: string) =>
+    [...deliveryKeys.all, "evaluation", projectId] as const,
+};
+
+export type DeliveryEvaluationPayload = {
+  form: EvaluationForm | null;
+  responses: EvaluationResponse[];
+  summary: EvaluationSummary | null;
 };
 
 export function useDeliveryProjectsQuery() {
@@ -86,6 +99,74 @@ export function useDeleteDeliveryProjectMutation() {
       void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
     },
   });
+}
+
+export function useDeliveryEvaluationQuery(projectId: string) {
+  return useQuery({
+    queryKey: deliveryKeys.evaluation(projectId),
+    queryFn: () =>
+      requestJson<DeliveryEvaluationPayload>(
+        `/api/delivery-projects/${projectId}/evaluation`,
+      ),
+    enabled: Boolean(projectId),
+  });
+}
+
+function useEvaluationMutation<TPayload>(
+  projectId: string,
+  path: string,
+  body?: (variables: unknown) => unknown,
+  invalidate = true,
+) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (variables: unknown) =>
+      requestJson<TPayload>(
+        `/api/delivery-projects/${projectId}/evaluation${path}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body ? body(variables) : variables ?? {}),
+        },
+      ),
+    onSuccess() {
+      if (invalidate) {
+        void queryClient.invalidateQueries({
+          queryKey: deliveryKeys.evaluation(projectId),
+        });
+      }
+    },
+  });
+}
+
+export function useSaveEvaluationFormMutation(projectId: string) {
+  // Saves stay silent so background auto-saves never refetch the form
+  // and clobber question edits the user is still typing.
+  return useEvaluationMutation<{ form: EvaluationForm }>(
+    projectId,
+    "",
+    (form) => ({ form }),
+    false,
+  );
+}
+
+export function useGenerateEvaluationQuestionsMutation(projectId: string) {
+  return useEvaluationMutation<{ form: EvaluationForm; notice?: string }>(
+    projectId,
+    "/generate",
+  );
+}
+
+export function useOpenEvaluationFormMutation(projectId: string) {
+  return useEvaluationMutation<{ form: EvaluationForm; link: string }>(
+    projectId,
+    "/open",
+  );
+}
+
+export function useCloseEvaluationFormMutation(projectId: string) {
+  return useEvaluationMutation<{ form: EvaluationForm }>(projectId, "/close");
 }
 
 export function useSaveDeliveryTaskMutation() {
