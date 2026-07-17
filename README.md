@@ -7,12 +7,17 @@ This app is separate from DG Command OS.
 ## UI System
 
 - The app uses shadcn-style local primitives in `src/components/ui`.
-- `components.json` is configured for a Next.js `src` app with `new-york` style, CSS variables, and `zinc` base color.
-- Tailwind semantic tokens live in `tailwind.config.ts` and `src/app/globals.css`.
-- Internal navigation uses a fixed desktop sidebar and a mobile drawer; client portal routes remain unframed.
+- The visual direction is a DG Academy production desk: graphite navigation, a light working canvas, paper-white records, DG orange primary actions, and teal operational states.
+- `components.json` is configured for a Next.js `src` app with `new-york` style and CSS variables; the product palette is maintained in `src/app/globals.css` rather than inherited from a generic base theme.
+- Display text uses Segoe UI Variable Display, working copy uses Segoe UI Variable Text, and compact data labels use Consolas with system fallbacks.
+- Tailwind semantic tokens live in `tailwind.config.ts` and `src/app/globals.css`. Internal feature code should use semantic foreground, card, border, muted, and input colors.
+- Internal navigation uses a grouped graphite desktop rail and mobile drawer. The groups are Workspace, Training, Systems, Business, Reference, Development, and Control.
+- DG orange is reserved for the active job rail and primary commands. Teal communicates saved, ready, approved, or operational status.
+- Active pages use the shared `page-heading`, `page-eyebrow`, `page-title`, `page-description`, and `data-label` utilities for consistent information hierarchy.
 - New UI should use shared primitives or shadcn CLI additions instead of one-off input styling.
 - Existing `Select` is currently the native-select pattern because app screens use `<option>` children; migrate to Radix shadcn `Select` only when refactoring each caller to the trigger/content/item API.
 - Shared form wrappers should use `Field`, `Label`, `Input`, `Textarea`, `Select`, and `Checkbox` from `src/components/ui`.
+- Controls retain visible keyboard focus, the workspace supports mobile layouts, and reduced-motion preferences disable nonessential transitions.
 
 ## Client Server-State Standard
 

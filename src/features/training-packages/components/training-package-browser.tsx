@@ -136,8 +136,7 @@ export function SavedPackagesClient() {
 
   return (
     <div className="space-y-5">
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-y border-border py-4 sm:flex-row sm:items-center sm:justify-between">
           <div className="relative w-full sm:max-w-md">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
@@ -153,8 +152,7 @@ export function SavedPackagesClient() {
               New Package
             </Link>
           </Button>
-        </CardContent>
-      </Card>
+      </div>
 
       {packagesQuery.isError ? (
         <QueryErrorState
@@ -286,15 +284,16 @@ function SavedPackageGrid({
   emptyDetail: string;
 }) {
   return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-      <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+    <section>
+      <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-border pb-3">
         <div>
-          <CardTitle>Saved Packages</CardTitle>
-          <CardDescription>{storageNotice}</CardDescription>
+          <div className="data-label">Package archive</div>
+          <h2 className="mt-1 text-lg font-semibold">Saved packages</h2>
+          <p className="mt-1 text-sm text-muted-foreground">{storageNotice}</p>
         </div>
         <Badge variant="teal">{isLoading ? "Loading" : `${packages.length} visible`}</Badge>
-      </CardHeader>
-      <CardContent>
+      </div>
+      <div>
         {isLoading ? (
           <PackageGridSkeleton />
         ) : packages.length > 0 ? (
@@ -303,7 +302,7 @@ function SavedPackageGrid({
               <Link
                 key={pkg.id}
                 href={`/packages/${pkg.id}`}
-                className="group rounded-lg border border-white/10 bg-[#07111f]/55 p-4 transition hover:border-teal-300/35 hover:bg-teal-300/10"
+                className="group rounded-lg border border-border bg-card p-4 shadow-sm transition hover:border-[#f4772e]/45 hover:shadow-md"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
@@ -314,7 +313,7 @@ function SavedPackageGrid({
                       {pkg.promise}
                     </p>
                   </div>
-                  <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-teal-100" />
+                  <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-[#a94b18]" />
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
                   <Badge variant="outline">{pkg.client}</Badge>
@@ -328,8 +327,8 @@ function SavedPackageGrid({
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-white/15 bg-[#07111f]/45 p-8 text-center">
-            <FileText className="mx-auto h-8 w-8 text-teal-100" />
+          <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
+            <FileText className="mx-auto h-8 w-8 text-[#20867d]" />
             <div className="mt-4 text-base font-semibold text-white">{emptyTitle}</div>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
               {emptyDetail}
@@ -342,8 +341,8 @@ function SavedPackageGrid({
             </Button>
           </div>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </section>
   );
 }
 
@@ -351,7 +350,7 @@ function PackageGridSkeleton() {
   return (
     <div className="grid gap-3 lg:grid-cols-2" aria-label="Loading saved packages" aria-busy="true">
       {Array.from({ length: 4 }, (_, index) => (
-        <div key={index} className="rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
+        <div key={index} className="rounded-lg border border-border bg-card p-4">
           <div className="flex items-start justify-between gap-3">
             <div className="w-full space-y-3">
               <Skeleton className="h-5 w-2/3" />

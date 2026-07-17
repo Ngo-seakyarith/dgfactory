@@ -63,7 +63,7 @@ const config: Config = {
         },
       },
       boxShadow: {
-        executive: "0 24px 80px rgba(0, 0, 0, 0.28)",
+        executive: "0 10px 30px rgba(24, 32, 28, 0.08)",
       },
     },
   },
