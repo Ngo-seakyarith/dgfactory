@@ -15,6 +15,7 @@ type ClientRow = {
   name: string;
   sector: string | null;
   contact_person: string | null;
+  contact_position: string | null;
   email: string | null;
   phone: string | null;
   notes: string | null;
@@ -44,6 +45,7 @@ function clientToRow(client: Client) {
     name: client.name,
     sector: client.sector,
     contact_person: client.contactPerson,
+    contact_position: client.contactPosition,
     email: client.email,
     phone: client.phone,
     notes: client.notes,
@@ -58,6 +60,7 @@ function clientFromRow(row: ClientRow): Client {
     name: row.name,
     sector: row.sector ?? "",
     contactPerson: row.contact_person ?? "",
+    contactPosition: row.contact_position ?? "",
     email: row.email ?? "",
     phone: row.phone ?? "",
     notes: row.notes ?? "",

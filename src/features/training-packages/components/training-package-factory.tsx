@@ -105,6 +105,7 @@ const emptyClientProfile: ClientProfileInput = {
   name: "",
   sector: "",
   contactPerson: "",
+  contactPosition: "",
   email: "",
   phone: "",
 };
@@ -115,6 +116,7 @@ function profileFromClient(client: Client): ClientProfileInput {
     name: client.name,
     sector: client.sector,
     contactPerson: client.contactPerson,
+    contactPosition: client.contactPosition,
     email: client.email,
     phone: client.phone,
   };
@@ -449,6 +451,13 @@ export function PackageForm({
                   value={clientProfile.contactPerson ?? ""}
                   onChange={(event) => updateClientField("contactPerson", event.target.value)}
                   placeholder="Decision maker or program sponsor"
+                />
+              </Field>
+              <Field label="Contact position">
+                <Input
+                  value={clientProfile.contactPosition ?? ""}
+                  onChange={(event) => updateClientField("contactPosition", event.target.value)}
+                  placeholder="Head of HR, Managing Director"
                 />
               </Field>
               <Field label="Email">

@@ -48,6 +48,7 @@ create table if not exists public.clients (
   name text not null,
   sector text,
   contact_person text,
+  contact_position text,
   email text,
   phone text,
   notes text,

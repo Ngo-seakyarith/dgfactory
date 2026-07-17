@@ -16,6 +16,7 @@ export type Client = {
   name: string;
   sector: string;
   contactPerson: string;
+  contactPosition: string;
   email: string;
   phone: string;
   notes: string;
@@ -28,6 +29,7 @@ export type ClientProfileInput = {
   name: string;
   sector?: string;
   contactPerson?: string;
+  contactPosition?: string;
   email?: string;
   phone?: string;
 };
@@ -90,6 +92,7 @@ export function createEmptyClient(): Client {
     name: "",
     sector: "",
     contactPerson: "",
+    contactPosition: "",
     email: "",
     phone: "",
     notes: "",
@@ -129,6 +132,7 @@ export function normalizeClient(value: Partial<Client>): Client {
     name: String(value.name ?? "").trim(),
     sector: String(value.sector ?? "").trim(),
     contactPerson: String(value.contactPerson ?? "").trim(),
+    contactPosition: String(value.contactPosition ?? "").trim(),
     email: String(value.email ?? "").trim(),
     phone: String(value.phone ?? "").trim(),
     notes: String(value.notes ?? "").trim(),

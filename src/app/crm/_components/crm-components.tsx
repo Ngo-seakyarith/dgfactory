@@ -159,6 +159,13 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
               placeholder="Decision maker or sponsor"
             />
           </Field>
+          <Field label="Contact position">
+            <Input
+              value={client.contactPosition}
+              onChange={(event) => updateField("contactPosition", event.target.value)}
+              placeholder="Head of HR, Managing Director"
+            />
+          </Field>
           <Field label="Email">
             <Input
               type="email"
@@ -230,7 +237,9 @@ export function ClientCard({
         <div className="min-w-0">
           <div className="line-clamp-1 font-semibold text-white">{client.name}</div>
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-            {client.contactPerson || "No contact person yet"} {client.sector ? `- ${client.sector}` : ""}
+            {client.contactPerson || "No contact person yet"}
+            {client.contactPosition ? `, ${client.contactPosition}` : ""}
+            {client.sector ? ` - ${client.sector}` : ""}
           </p>
         </div>
         <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-teal-100" />
@@ -264,7 +273,7 @@ export function ClientsPageClient() {
     }
 
     return clients.filter((client) =>
-      [client.name, client.sector, client.contactPerson, client.email, client.notes]
+      [client.name, client.sector, client.contactPerson, client.contactPosition, client.email, client.notes]
         .join(" ")
         .toLowerCase()
         .includes(normalized),
@@ -344,7 +353,9 @@ export function ClientDetailClient({ id }: { id: string }) {
           <div>
             <CardTitle>{client.name}</CardTitle>
             <CardDescription className="mt-2">
-              {client.contactPerson || "No contact person"} {client.sector ? `- ${client.sector}` : ""}
+              {client.contactPerson || "No contact person"}
+              {client.contactPosition ? `, ${client.contactPosition}` : ""}
+              {client.sector ? ` - ${client.sector}` : ""}
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
@@ -360,7 +371,8 @@ export function ClientDetailClient({ id }: { id: string }) {
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-3">
+        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <InfoBlock label="Contact position" value={client.contactPosition || "-"} />
           <InfoBlock label="Email" value={client.email || "-"} />
           <InfoBlock label="Phone" value={client.phone || "-"} />
           <InfoBlock label="Notes" value={client.notes || "-"} />
