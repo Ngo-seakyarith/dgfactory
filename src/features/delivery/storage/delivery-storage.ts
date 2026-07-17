@@ -1,6 +1,7 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import {
+  createDefaultDeliveryTasks,
   normalizeDeliveryProject,
   normalizeDeliveryTask,
   normalizeEvaluation,
@@ -11,6 +12,7 @@ import {
   type DeliveryTaskCategory,
   type DeliveryTaskStatus,
 } from "@/features/delivery";
+import type { TrainingPackage } from "@/features/training-packages/domain/training-package";
 
 type DeliveryProjectRow = {
   id: string;
@@ -202,6 +204,58 @@ export async function saveDeliveryProject(input: Partial<DeliveryProject>) {
     project: projectFromRow(data as DeliveryProjectRow),
     storage: "supabase" as const,
   };
+}
+
+export async function findDeliveryProjectByPackageId(packageId: string) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    throw new Error("Supabase is required to load delivery projects.");
+  }
+
+  const { data, error } = await scopeAppData(
+    supabase
+      .from("delivery_projects")
+      .select("*")
+      .eq("package_id", packageId)
+      .order("created_at", { ascending: true })
+      .limit(1),
+  );
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const row = (data as DeliveryProjectRow[])[0];
+  return row ? projectFromRow(row) : null;
+}
+
+export async function ensureDeliveryProjectForPackage(pkg: TrainingPackage) {
+  const existing = await findDeliveryProjectByPackageId(pkg.id);
+
+  if (existing) {
+    return { project: existing, created: false as const };
+  }
+
+  const brief = pkg.proposalBrief;
+  const scheduleDate = String(brief?.scheduleDate ?? "").trim();
+  const scheduleVenue = String(brief?.scheduleVenue ?? "").trim();
+  const project = normalizeDeliveryProject({
+    packageId: pkg.id,
+    clientId: pkg.clientId,
+    title: pkg.title,
+    deliveryStatus: "Syllabus Sent",
+    trainingDate: /^\d{4}-\d{2}-\d{2}$/.test(scheduleDate) ? scheduleDate : "",
+    location: scheduleVenue.toUpperCase() === "TBC" ? "" : scheduleVenue,
+    trainerName: String(brief?.trainerName ?? "").trim(),
+    participantCount: pkg.pricingInputs?.numberOfParticipants ?? 0,
+  });
+
+  const saved = await saveDeliveryProject(project);
+  const tasks = createDefaultDeliveryTasks(saved.project.id);
+  await Promise.all(tasks.map((task) => saveDeliveryTask(task)));
+
+  return { project: saved.project, created: true as const };
 }
 
 export async function deleteDeliveryProject(id: string) {

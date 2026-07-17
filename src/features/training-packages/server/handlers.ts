@@ -34,6 +34,7 @@ import {
   listTrainingPackages,
   saveTrainingPackage,
 } from "@/features/training-packages/storage/training-storage";
+import { ensureDeliveryProjectForPackage } from "@/features/delivery/storage/delivery-storage";
 
 const exportFormats: ExportFormat[] = ["docx", "pptx", "md"];
 const exportTargets: ExportTarget[] = [
@@ -158,7 +159,33 @@ export async function saveTrainingPackageRequest(request: Request) {
       });
     }
 
-    return NextResponse.json({ ...result, client: clientResult.client });
+    let deliveryNotice: string | undefined;
+    try {
+      const delivery = await ensureDeliveryProjectForPackage(result.package);
+      if (delivery.created) {
+        await saveAuditLog({
+          actor: auth.user.actor,
+          action: "delivery_created_from_package",
+          entityType: "delivery_project",
+          entityId: delivery.project.id,
+          metadata: {
+            title: delivery.project.title,
+            packageId: result.package.id,
+          },
+        });
+      }
+    } catch (error) {
+      deliveryNotice =
+        error instanceof Error
+          ? `Package saved, but the delivery record could not be created: ${error.message}`
+          : "Package saved, but the delivery record could not be created.";
+    }
+
+    return NextResponse.json({
+      ...result,
+      client: clientResult.client,
+      deliveryNotice,
+    });
   } catch (error) {
     return NextResponse.json({ error: packageError(error) }, { status: 500 });
   }

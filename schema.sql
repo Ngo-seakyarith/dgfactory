@@ -217,8 +217,10 @@ create table if not exists public.delivery_projects (
   package_id uuid references public.training_packages(id) on delete set null,
   client_id uuid references public.clients(id) on delete set null,
   title text not null,
-  delivery_status text not null default 'Planning' check (
+  delivery_status text not null default 'Syllabus Sent' check (
     delivery_status in (
+      'Syllabus Sent',
+      'Proposal Sent',
       'Planning',
       'Materials Preparation',
       'Confirmed',

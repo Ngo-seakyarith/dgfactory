@@ -1,6 +1,8 @@
 import { normalizeNumber } from "@/lib/crm";
 
 export const deliveryStatuses = [
+  "Syllabus Sent",
+  "Proposal Sent",
   "Preparing",
   "Confirmed",
   "Delivered",
@@ -124,7 +126,7 @@ export function createEmptyDeliveryProject(
     packageId: null,
     clientId: null,
     title: "",
-    deliveryStatus: "Preparing",
+    deliveryStatus: "Syllabus Sent",
     trainingDate: "",
     location: "",
     trainerName: "",
@@ -151,7 +153,7 @@ export function normalizeDeliveryProject(
     title: String(value.title ?? "").trim(),
     deliveryStatus: isDeliveryStatus(value.deliveryStatus)
       ? value.deliveryStatus
-      : "Preparing",
+      : "Syllabus Sent",
     trainingDate: String(value.trainingDate ?? "").trim(),
     location: String(value.location ?? "").trim(),
     trainerName: String(value.trainerName ?? "").trim(),

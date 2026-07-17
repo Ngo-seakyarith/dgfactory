@@ -881,11 +881,12 @@ Training Delivery is a focused operational workspace for the work that happens b
 Pages:
 
 - `/delivery` - delivery project list and search
-- `/delivery/new` - create a delivery project
 - `/delivery/[id]` - three-stage delivery workspace, evaluation, report generation, and DOCX export
 
 Delivery statuses:
 
+- Syllabus Sent (syllabus released to the client, not won yet)
+- Proposal Sent (proposal released to the client, not won yet)
 - Preparing
 - Confirmed
 - Delivered
@@ -894,7 +895,9 @@ Delivery statuses:
 
 Delivery workflow:
 
-- Schedule a delivery from the client and saved training package; an opportunity is not required or stored by the current workflow.
+- Deliveries are created automatically when a training package (proposal) is saved. There is no manual `/delivery/new` form.
+- The auto-created delivery starts as `Syllabus Sent` and is prefilled from the package: client, title, trainer, expected participants, and schedule details when available. Move it to `Proposal Sent` once the commercial proposal goes out.
+- When the client confirms the training, use `Confirm Training` (or set the status) to move the delivery forward.
 - Before Training: confirm the date, venue, trainer, expected participants, materials, logistics, and preparation checklist.
 - Training Day: record actual attendance, trainer notes, delivery issues, and completion.
 - After Training: capture learner, client, and trainer feedback, then complete the delivery.
@@ -906,7 +909,8 @@ Code ownership:
 - Delivery domain types, storage, API handlers, and UI components live under `src/features/delivery`.
 - `src/app/delivery` pages and delivery API routes stay as thin wrappers around the feature code.
 - TanStack Query owns delivery project and task server state, loading, errors, and cache invalidation.
-- Existing Supabase rows remain compatible: legacy `Planning` and `Materials Preparation` values load as `Preparing`; the app persists `Preparing` through the legacy `Planning` database value, so no migration is required.
+- Existing Supabase rows remain compatible: legacy `Planning` and `Materials Preparation` values load as `Preparing`; the app persists `Preparing` through the legacy `Planning` database value.
+- The `Proposal Sent` status requires the `delivery_projects.delivery_status` check constraint to include `'Proposal Sent'` (see `schema.sql`). Existing databases need a one-time constraint migration.
 
 Safety:
 

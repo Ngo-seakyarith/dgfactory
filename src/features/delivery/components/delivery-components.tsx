@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent, ReactNode } from "react";
+import type { ReactNode } from "react";
 import {
   ArrowLeft,
   CalendarCheck,
@@ -11,7 +11,6 @@ import {
   ClipboardCheck,
   Download,
   FileText,
-  Loader2,
   Plus,
   Save,
   Search,
@@ -37,8 +36,6 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useClientsQuery } from "@/features/clients/queries";
 import {
-  createDefaultDeliveryTasks,
-  createEmptyDeliveryProject,
   deliveryStatuses,
   deliveryTaskCategories,
   deliveryTaskStatuses,
@@ -115,7 +112,9 @@ export function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
   const variant =
     status === "Completed" || status === "Delivered"
       ? "teal"
-      : status === "Cancelled"
+      : status === "Cancelled" ||
+          status === "Proposal Sent" ||
+          status === "Syllabus Sent"
         ? "outline"
         : "gold";
 
@@ -159,21 +158,14 @@ export function DeliveryProjectsPageClient() {
 
   return (
     <div className="space-y-5">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-          <Input
-            value={search}
-            onChange={(event) => setSearch(event.target.value)}
-            placeholder="Search by training or client"
-            className="pl-9"
-          />
-        </div>
-        <Button asChild variant="gold">
-          <Link href="/delivery/new">
-            <Plus /> New Delivery
-          </Link>
-        </Button>
+      <div className="relative">
+        <Search className="pointer-events-none absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+        <Input
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+          placeholder="Search by training or client"
+          className="pl-9"
+        />
       </div>
 
       {filtered.length ? (
@@ -221,191 +213,11 @@ export function DeliveryProjectsPageClient() {
           <p className="mt-2 text-sm text-muted-foreground">
             {search
               ? "Try a different training or client name."
-              : "Create a delivery when a client confirms a training package."}
+              : "A delivery is created automatically each time you save a training proposal. It starts as Syllabus Sent until the client confirms."}
           </p>
         </div>
       )}
     </div>
-  );
-}
-
-export function DeliveryProjectForm() {
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const clientsQuery = useClientsQuery();
-  const packagesQuery = useTrainingPackagesQuery();
-  const saveProject = useSaveDeliveryProjectMutation();
-  const saveTask = useSaveDeliveryTaskMutation();
-  const [project, setProject] = useState(() =>
-    createEmptyDeliveryProject({
-      clientId: searchParams.get("clientId") || null,
-      packageId: searchParams.get("packageId") || null,
-    }),
-  );
-  const [notice, setNotice] = useState("");
-
-  useEffect(() => {
-    const selected = (packagesQuery.data ?? []).find(
-      (item) => item.id === project.packageId,
-    );
-    if (!selected) return;
-
-    setProject((current) => ({
-      ...current,
-      clientId: current.clientId || selected.clientId,
-      title: current.title || selected.title,
-      trainerName:
-        current.trainerName || selected.proposalBrief.trainerName || "",
-      participantCount:
-        current.participantCount || selected.pricingInputs.numberOfParticipants,
-    }));
-  }, [packagesQuery.data, project.packageId]);
-
-  function update<K extends keyof DeliveryProject>(
-    key: K,
-    value: DeliveryProject[K],
-  ) {
-    setProject((current) => ({ ...current, [key]: value }));
-  }
-
-  async function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!project.clientId || !project.title.trim()) {
-      setNotice("Client and training title are required.");
-      return;
-    }
-
-    try {
-      const payload = await saveProject.mutateAsync(project);
-      const tasks = createDefaultDeliveryTasks(payload.project.id);
-      await Promise.all(tasks.map((task) => saveTask.mutateAsync(task)));
-      router.push(`/delivery/${payload.project.id}`);
-    } catch (error) {
-      setNotice(errorMessage(error, "Could not create the delivery."));
-    }
-  }
-
-  if (clientsQuery.isPending || packagesQuery.isPending) {
-    return <PageLoadingSkeleton label="Loading delivery setup" />;
-  }
-
-  if (clientsQuery.isError || packagesQuery.isError) {
-    return (
-      <QueryErrorState
-        title="Could not load delivery setup"
-        detail={errorMessage(clientsQuery.error ?? packagesQuery.error)}
-        onRetry={() => {
-          void clientsQuery.refetch();
-          void packagesQuery.refetch();
-        }}
-      />
-    );
-  }
-
-  return (
-    <form onSubmit={submit} className="space-y-5">
-      <Card>
-        <CardHeader>
-          <CardTitle>Training Setup</CardTitle>
-          <CardDescription>
-            Select the client and package, then confirm the practical delivery details.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="grid gap-5 md:grid-cols-2">
-          <Field label="Client">
-            <Select
-              required
-              value={project.clientId ?? ""}
-              onChange={(event) => update("clientId", event.target.value || null)}
-            >
-              <option value="">Select a client</option>
-              {(clientsQuery.data ?? []).map((client) => (
-                <option key={client.id} value={client.id}>{client.name}</option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Saved package">
-            <Select
-              value={project.packageId ?? ""}
-              onChange={(event) => {
-                const packageId = event.target.value || null;
-                const selected = (packagesQuery.data ?? []).find(
-                  (item) => item.id === packageId,
-                );
-                setProject((current) => ({
-                  ...current,
-                  packageId,
-                  clientId: selected?.clientId || current.clientId,
-                  title: selected?.title || current.title,
-                  trainerName:
-                    selected?.proposalBrief.trainerName || current.trainerName,
-                  participantCount:
-                    selected?.pricingInputs.numberOfParticipants ||
-                    current.participantCount,
-                }));
-              }}
-            >
-              <option value="">No package selected</option>
-              {(packagesQuery.data ?? []).map((item) => (
-                <option key={item.id} value={item.id}>{item.title}</option>
-              ))}
-            </Select>
-          </Field>
-          <Field label="Training title" className="md:col-span-2">
-            <Input
-              required
-              value={project.title}
-              onChange={(event) => update("title", event.target.value)}
-              placeholder="Practical Consultative Selling"
-            />
-          </Field>
-          <Field label="Training date">
-            <Input
-              type="date"
-              value={project.trainingDate}
-              onChange={(event) => update("trainingDate", event.target.value)}
-            />
-          </Field>
-          <Field label="Venue">
-            <Input
-              value={project.location}
-              onChange={(event) => update("location", event.target.value)}
-              placeholder="Client office or venue"
-            />
-          </Field>
-          <Field label="Trainer">
-            <Input
-              value={project.trainerName}
-              onChange={(event) => update("trainerName", event.target.value)}
-              placeholder="Assigned trainer"
-            />
-          </Field>
-          <Field label="Expected participants">
-            <Input
-              type="number"
-              min="0"
-              value={project.participantCount || ""}
-              onChange={(event) => update("participantCount", Number(event.target.value))}
-              placeholder="20"
-            />
-          </Field>
-          <Field label="Preparation notes" className="md:col-span-2">
-            <Textarea
-              value={project.notes}
-              onChange={(event) => update("notes", event.target.value)}
-              placeholder="Access requirements, room setup, materials, or client instructions"
-            />
-          </Field>
-        </CardContent>
-      </Card>
-      <div className="flex items-center gap-3">
-        <Button type="submit" variant="gold" disabled={saveProject.isPending || saveTask.isPending}>
-          {saveProject.isPending || saveTask.isPending ? <Loader2 className="animate-spin" /> : <Save />}
-          Create Delivery
-        </Button>
-        {notice ? <p className="text-sm text-red-200">{notice}</p> : null}
-      </div>
-    </form>
   );
 }
 
@@ -479,7 +291,37 @@ function DeliverySetup({ project, onSave }: { project: DeliveryProject; onSave: 
           </Select>
         </Field>
         <Field label="Saved package">
-          <Select value={draft.packageId ?? ""} onChange={(event) => setDraft({ ...draft, packageId: event.target.value || null })}>
+          <Select
+            value={draft.packageId ?? ""}
+            onChange={(event) => {
+              const packageId = event.target.value || null;
+              const selected = (packagesQuery.data ?? []).find(
+                (item) => item.id === packageId,
+              );
+              if (!selected) {
+                setDraft({ ...draft, packageId });
+                return;
+              }
+              const venue = selected.proposalBrief.scheduleVenue.trim();
+              const scheduleDate = selected.proposalBrief.scheduleDate.trim();
+              setDraft({
+                ...draft,
+                packageId,
+                clientId: draft.clientId || selected.clientId,
+                title: draft.title || selected.title,
+                trainerName: draft.trainerName || selected.proposalBrief.trainerName,
+                participantCount:
+                  draft.participantCount ||
+                  selected.pricingInputs.numberOfParticipants,
+                location:
+                  draft.location ||
+                  (venue.toUpperCase() === "TBC" ? "" : venue),
+                trainingDate:
+                  draft.trainingDate ||
+                  (/^\d{4}-\d{2}-\d{2}$/.test(scheduleDate) ? scheduleDate : ""),
+              });
+            }}
+          >
             <option value="">No package selected</option>
             {(packagesQuery.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
           </Select>

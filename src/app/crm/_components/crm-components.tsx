@@ -50,6 +50,7 @@ import type { TrainingPackage } from "@/features/training-packages";
 import type { IntelligentSystemProposal } from "@/features/intelligent-system-proposals";
 import { useSystemProposalsQuery } from "@/features/intelligent-system-proposals/queries";
 import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
+import { useDeliveryProjectsQuery } from "@/features/delivery/queries";
 import {
   useClientsQuery,
   useDeleteClientMutation,
@@ -790,6 +791,10 @@ export function OpportunityDetailClient({ id }: { id: string }) {
   const linkedPackage = packages.find(
     (pkg) => pkg.id === opportunity?.linkedPackageId,
   );
+  const deliveriesQuery = useDeliveryProjectsQuery();
+  const linkedDelivery = (deliveriesQuery.data ?? []).find(
+    (project) => project.packageId && project.packageId === linkedPackage?.id,
+  );
   const [draft, setDraft] = useState<FollowUpDraft | null>(null);
   const [draftNotice, setDraftNotice] = useState("");
   const [isGeneratingDraft, setIsGeneratingDraft] = useState(false);
@@ -899,14 +904,14 @@ export function OpportunityDetailClient({ id }: { id: string }) {
             <div>
               <CardTitle>Schedule Training Delivery</CardTitle>
               <CardDescription>
-                This opportunity is won. Open the focused delivery workflow with
-                the client and linked package preselected.
+                This opportunity is won. Open the delivery that was created with
+                the proposal and confirm the training details.
               </CardDescription>
             </div>
             <Button asChild variant="gold">
-              <Link href={`/delivery/new?clientId=${opportunity.clientId}${linkedPackage ? `&packageId=${linkedPackage.id}` : ""}`}>
-                <Plus className="h-4 w-4" />
-                Schedule Delivery
+              <Link href={linkedDelivery ? `/delivery/${linkedDelivery.id}` : "/delivery"}>
+                <ArrowRight className="h-4 w-4" />
+                Open Delivery
               </Link>
             </Button>
           </CardHeader>
