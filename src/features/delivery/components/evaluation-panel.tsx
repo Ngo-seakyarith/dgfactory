@@ -35,6 +35,7 @@ import {
   ratingScaleMax,
   type DeliveryProject,
   type EvaluationForm,
+  type EvaluationFormType,
   type EvaluationQuestion,
   type EvaluationSummary,
 } from "@/features/delivery";
@@ -230,12 +231,43 @@ function ResultsSection({ summary }: { summary: EvaluationSummary }) {
   );
 }
 
-export function EvaluationFormPanel({ project }: { project: DeliveryProject }) {
-  const evaluationQuery = useDeliveryEvaluationQuery(project.id);
-  const saveForm = useSaveEvaluationFormMutation(project.id);
-  const generateQuestions = useGenerateEvaluationQuestionsMutation(project.id);
-  const openForm = useOpenEvaluationFormMutation(project.id);
-  const closeForm = useCloseEvaluationFormMutation(project.id);
+const panelCopy = {
+  pre_training: {
+    title: "Pre-Training Assessment",
+    description:
+      "AI drafts baseline questions from the proposal. Share the private link with participants before the training so the trainer can tailor the session.",
+    emptyState:
+      "No assessment yet. Generate baseline questions from the training proposal, then share the private link before the session.",
+    loading: "Loading pre-training assessment",
+    loadError: "Could not load the pre-training assessment",
+  },
+  post_training: {
+    title: "Participant Evaluation",
+    description:
+      "AI drafts the questions from the proposal. Share the private link with participants after the training and review the results here.",
+    emptyState:
+      "No evaluation form yet. Generate participant questions from the training proposal, then share the private link.",
+    loading: "Loading participant evaluation",
+    loadError: "Could not load the participant evaluation",
+  },
+} as const;
+
+export function EvaluationFormPanel({
+  project,
+  formType = "post_training",
+}: {
+  project: DeliveryProject;
+  formType?: EvaluationFormType;
+}) {
+  const copy = panelCopy[formType];
+  const evaluationQuery = useDeliveryEvaluationQuery(project.id, formType);
+  const saveForm = useSaveEvaluationFormMutation(project.id, formType);
+  const generateQuestions = useGenerateEvaluationQuestionsMutation(
+    project.id,
+    formType,
+  );
+  const openForm = useOpenEvaluationFormMutation(project.id, formType);
+  const closeForm = useCloseEvaluationFormMutation(project.id, formType);
   const saveProject = useSaveDeliveryProjectMutation();
 
   const form = evaluationQuery.data?.form ?? null;
@@ -287,13 +319,13 @@ export function EvaluationFormPanel({ project }: { project: DeliveryProject }) {
   }
 
   if (evaluationQuery.isPending) {
-    return <PageLoadingSkeleton label="Loading participant evaluation" />;
+    return <PageLoadingSkeleton label={copy.loading} />;
   }
 
   if (evaluationQuery.isError) {
     return (
       <QueryErrorState
-        title="Could not load the participant evaluation"
+        title={copy.loadError}
         detail={errorMessage(evaluationQuery.error)}
         onRetry={() => void evaluationQuery.refetch()}
       />
@@ -305,10 +337,9 @@ export function EvaluationFormPanel({ project }: { project: DeliveryProject }) {
       <CardHeader>
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle>Participant Evaluation</CardTitle>
+            <CardTitle>{copy.title}</CardTitle>
             <CardDescription className="mt-2">
-              AI drafts the questions from the proposal. Share the private link
-              with participants after the training and review the results here.
+              {copy.description}
             </CardDescription>
           </div>
           {form ? (
@@ -331,8 +362,7 @@ export function EvaluationFormPanel({ project }: { project: DeliveryProject }) {
           <div className="rounded-md border border-dashed border-white/15 p-8 text-center">
             <BarChart3 className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="mt-3 text-sm text-muted-foreground">
-              No evaluation form yet. Generate participant questions from the
-              training proposal, then share the private link.
+              {copy.emptyState}
             </p>
             <div className="mt-4 flex flex-wrap justify-center gap-2">
               <Button
@@ -360,7 +390,11 @@ export function EvaluationFormPanel({ project }: { project: DeliveryProject }) {
                   void run(
                     saveForm
                       .mutateAsync(
-                        createDefaultEvaluationForm(project.id, project.title),
+                        createDefaultEvaluationForm(
+                          project.id,
+                          project.title,
+                          formType,
+                        ),
                       )
                       .then(() => evaluationQuery.refetch()),
                   )
@@ -545,7 +579,7 @@ export function EvaluationFormPanel({ project }: { project: DeliveryProject }) {
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 className="font-semibold">Results</h3>
-              {summary.ratingQuestionCount > 0 ? (
+              {formType === "post_training" && summary.ratingQuestionCount > 0 ? (
                 <Button
                   type="button"
                   variant="outline"

@@ -2,10 +2,12 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import {
   createDefaultDeliveryTasks,
+  normalizeDeliveryMaterials,
   normalizeDeliveryProject,
   normalizeDeliveryTask,
   normalizeEvaluation,
   type DeliveryEvaluation,
+  type DeliveryMaterials,
   type DeliveryProject,
   type DeliveryStatus,
   type DeliveryTask,
@@ -32,6 +34,7 @@ type DeliveryProjectRow = {
   participant_count: number | null;
   notes: string | null;
   evaluation: Partial<DeliveryEvaluation> | null;
+  materials: Partial<DeliveryMaterials> | null;
   post_training_report: string | null;
   created_at: string;
   updated_at: string;
@@ -84,6 +87,7 @@ function projectToRow(project: DeliveryProject) {
     participant_count: project.participantCount,
     notes: project.notes,
     evaluation: project.evaluation,
+    materials: project.materials,
     post_training_report: project.postTrainingReport,
     created_at: project.createdAt,
     updated_at: project.updatedAt,
@@ -104,6 +108,7 @@ function projectFromRow(row: DeliveryProjectRow): DeliveryProject {
     participantCount: row.participant_count ?? 0,
     notes: row.notes ?? "",
     evaluation: normalizeEvaluation(row.evaluation),
+    materials: normalizeDeliveryMaterials(row.materials),
     postTrainingReport: row.post_training_report ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,

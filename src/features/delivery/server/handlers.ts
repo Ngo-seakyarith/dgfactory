@@ -2,16 +2,8 @@ import { NextResponse } from "next/server";
 
 import { routeBrainTask } from "@/lib/brain/routing/router";
 import { requireApproved } from "@/lib/route-guards";
-import {
-  exportTrainingPackage,
-  type ExportFormat,
-} from "@/features/training-packages/export/export-package";
-import {
-  calculatePricing,
-  defaultPricingInputs,
-  emptyProposalBrief,
-  type TrainingPackage,
-} from "@/features/training-packages";
+import type { ExportFormat } from "@/features/training-packages/export/export-package";
+import type { TrainingPackage } from "@/features/training-packages";
 import {
   deleteDeliveryProject,
   deleteDeliveryTask,
@@ -32,6 +24,9 @@ import {
   getEvaluationFormByDelivery,
   listEvaluationResponses,
 } from "@/features/delivery/storage/evaluation-storage";
+import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
+import { packageGenerationContext } from "@/features/delivery/server/package-generation-context";
+import { createPostTrainingReportDocx } from "@/features/delivery/export/post-training-report-docx";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -165,12 +160,25 @@ export async function generateDeliveryDraftHandler(request: Request) {
 
   const body = (await request.json()) as {
     project?: Partial<DeliveryProject>;
-    tasks?: DeliveryTask[];
-    clientName?: string;
-    packageTitle?: string;
-    learningObjectives?: string;
   };
   const project = normalizeDeliveryProject(body.project ?? {});
+
+  if (!project.packageId) {
+    return NextResponse.json(
+      { error: "A linked saved package is required before generating a post-training report." },
+      { status: 400 },
+    );
+  }
+
+  let trainingPackage: TrainingPackage;
+  try {
+    trainingPackage = await getTrainingPackage(project.packageId);
+  } catch (error) {
+    return NextResponse.json(
+      { error: friendlyError(error, "The linked saved package could not be loaded.") },
+      { status: 500 },
+    );
+  }
 
   let participantEvaluation: Record<string, unknown> | null = null;
   try {
@@ -217,11 +225,24 @@ export async function generateDeliveryDraftHandler(request: Request) {
   }
 
   const input = {
-    project,
-    tasks: body.tasks ?? [],
-    clientName: String(body.clientName ?? "").trim(),
-    packageTitle: String(body.packageTitle ?? "").trim(),
-    learningObjectives: String(body.learningObjectives ?? "").trim(),
+    packageContext: packageGenerationContext(trainingPackage),
+    scheduledDelivery: {
+      date: trainingPackage.proposalBrief.scheduleDate,
+      time: trainingPackage.proposalBrief.scheduleTime,
+      venue: trainingPackage.proposalBrief.scheduleVenue,
+      trainer: trainingPackage.proposalBrief.trainerName,
+    },
+    deliveryEvidence: {
+      status: project.deliveryStatus,
+      actualParticipantCount: project.participantCount,
+      trainingDayNotes: project.notes,
+      recordedSatisfactionScore: project.evaluation.averageSatisfactionScore,
+      recordedKeyComments: project.evaluation.keyComments,
+      clientFeedback: project.evaluation.clientFeedback,
+      trainerReflection: project.evaluation.trainerReflection,
+      learnerFeedback: project.evaluation.learnerFeedback,
+      improvementSuggestions: project.evaluation.improvementSuggestions,
+    },
     participantEvaluation,
   };
 
@@ -242,6 +263,9 @@ export async function generateDeliveryDraftHandler(request: Request) {
         rules: [
           "Suitable for corporate training delivery in Cambodia.",
           "Use a professional, concise, client-ready tone where relevant.",
+          "Treat packageContext as the original planned course context and deliveryEvidence plus participantEvaluation as evidence of what happened.",
+          "Do not claim that planned content was delivered unless the recorded evidence supports it.",
+          "The generated syllabus, generated materials, and any previous report draft are intentionally excluded.",
           "Do not invent attendance or evaluation facts beyond provided inputs.",
           "Do not send messages or imply messages were sent.",
           "participantEvaluation contains aggregated results from the digital participant evaluation form: use its averageSatisfactionScore, rating results, choice counts, and participant comments as the evaluation evidence when it is present.",
@@ -292,37 +316,30 @@ export async function exportDeliveryReportHandler(request: Request) {
       );
     }
 
-    const pricingOutputs = calculatePricing(defaultPricingInputs);
-    const reportPackage: TrainingPackage = {
-      id: project.id,
-      clientId: project.clientId,
-      title: body.packageTitle || project.title,
-      audience: "Training participants",
-      duration: project.trainingDate || "Completed training",
-      client: body.clientName || "Client",
-      promise: "Post-training reporting and follow-up recommendations",
-      context: project.notes,
-      tone: "Professional, clear, executive-friendly",
-      syllabus: "",
-      proposal: project.postTrainingReport,
-      proposalContent: null,
-      proposalBrief: emptyProposalBrief,
-      commercialProposal: "",
-      deckOutline: "",
-      workbook: "",
-      followUpEmail: "",
-      qualityChecklist: [],
-      pricingInputs: defaultPricingInputs,
-      pricingOutputs,
-      createdAt: project.createdAt,
+    const linkedPackage = project.packageId
+      ? await getTrainingPackage(project.packageId).catch(() => null)
+      : null;
+    const title = linkedPackage?.title || body.packageTitle || project.title;
+    const client = linkedPackage?.client || body.clientName || "Client";
+    const buffer = await createPostTrainingReportDocx({
+      title,
+      client,
+      reportMarkdown: project.postTrainingReport,
       updatedAt: project.updatedAt,
-    };
-    const result = await exportTrainingPackage(reportPackage, body.format, "proposal");
-    const filename = `DGAcademy_${filePart(reportPackage.title)}_${filePart(reportPackage.client)}_PostTrainingReport.${body.format}`;
+      participantCount: project.participantCount,
+      trainingDate:
+        project.trainingDate || linkedPackage?.proposalBrief.scheduleDate || "",
+      trainingTime: linkedPackage?.proposalBrief.scheduleTime || "",
+      venue: project.location || linkedPackage?.proposalBrief.scheduleVenue || "",
+      trainerName:
+        project.trainerName || linkedPackage?.proposalBrief.trainerName || "",
+    });
+    const filename = `DGAcademy_${filePart(title)}_${filePart(client)}_PostTrainingReport.${body.format}`;
 
-    return new NextResponse(new Uint8Array(result.buffer), {
+    return new NextResponse(new Uint8Array(buffer), {
       headers: {
-        "Content-Type": result.contentType,
+        "Content-Type":
+          "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         "Content-Disposition": `attachment; filename="${filename}"`,
         "Cache-Control": "no-store",
       },

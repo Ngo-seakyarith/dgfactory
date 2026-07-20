@@ -34,6 +34,8 @@ export const brainTaskTypes = [
   "follow_up",
   "delivery_report",
   "evaluation_questions",
+  "facilitator_guide",
+  "prompt_library",
   "qa_review",
   "improvement_suggestion",
   "offer_mutation",
@@ -475,14 +477,23 @@ export const deliveryAgent: BrainAgentDefinition = {
 };
 
 export type EvaluationQuestionsBrainInput = {
+  purpose: "pre_training_assessment" | "post_training_evaluation";
+  source: string;
   courseTitle: string;
   client: string;
   audience: string;
   duration: string;
   promise: string;
+  businessContext: string;
+  clientBackground: string;
+  trainingNeed: string;
   objectives: string[];
   outcomes: string[];
+  contentPriorities: string[];
+  targetParticipantProfile: string;
   methodology: string[];
+  trainingTools: string[];
+  evaluationApproach: string;
 };
 
 export type EvaluationQuestionsBrainOutput = {
@@ -500,11 +511,31 @@ export const evaluationQuestionsAgent: BrainAgentDefinition<
 > = {
   taskType: "evaluation_questions",
   name: "evaluationQuestionsAgent",
-  role: "Post-training evaluation form designer",
+  role: "Training survey form designer",
   instructions:
-    "Design a short post-training participant evaluation form for the supplied DG Academy training. Generate 8 to 12 questions in clear participant-friendly language: 4 to 6 required rating questions on a 1-5 scale covering content relevance, trainer effectiveness, pace, materials, and practical applicability for the participant's daily work; 1 or 2 single-choice questions with 3 to 5 mutually exclusive options; and 2 to 4 optional open-text questions about the most valuable parts, suggested improvements, and how participants plan to apply what they learned. Ground every question in the supplied course context and objectives. Rating and choice questions must be specific to the training topic, not generic. For every question set the required boolean yourself and produce a deliberate mix: mark required=true only for the questions genuinely essential to measuring training quality and satisfaction, and required=false for everything a busy participant may reasonably skip. Never mark all questions of a type required - judge each question on its own importance so the form stays quick to finish. Provide the options array only for single-choice questions. Never ask for confidential business information or personal data.",
+    "Design a short participant survey for the supplied DG Academy training, following the purpose field. When purpose is post_training_evaluation: generate 8 to 12 questions measuring the completed session - rating questions on a 1-5 scale covering content relevance, trainer effectiveness, pace, materials, and practical applicability; 1 or 2 single-choice questions; and open-text questions about the most valuable parts, suggested improvements, and how participants plan to apply what they learned. When purpose is pre_training_assessment: generate 8 to 12 questions that measure the participant's starting point before the session - current skill and confidence level with the course topic, familiarity with the specific tools and workflows the course covers, how their daily work relates to the topic, single-choice questions about role context and experience level, and open-text questions about their biggest challenges and what they most want to get from the training, so the trainer can tailor the session. In both cases: ground every question in the supplied course context and objectives; rating and choice questions must be specific to the training topic, not generic. For every question set the required boolean yourself and produce a deliberate mix: mark required=true only for the questions genuinely essential to the survey purpose, and required=false for everything a busy participant may reasonably skip. Never mark all questions of a type required - judge each question on its own importance so the form stays quick to finish. Provide the options array only for single-choice questions. Never ask for confidential business information or personal data.",
   inputSchema: genericInputSchema,
   outputSchema: evaluationQuestionsOutputSchema,
+};
+
+export const facilitatorGuideAgent: BrainAgentDefinition = {
+  taskType: "facilitator_guide",
+  name: "facilitatorGuideAgent",
+  role: "Trainer facilitation guide designer",
+  instructions:
+    "Create a practical facilitator guide of roughly five pages in Markdown for the supplied DG Academy training. Include: a session-at-a-glance table with timed agenda blocks; per-section facilitation notes with key talking points, transitions, and timing; step-by-step run instructions for each exercise including setup, grouping, debrief questions, and expected outputs; a materials and room checklist; likely participant questions with strong answers; and contingency guidance for running short on time, low-energy groups, and mixed skill levels. Ground everything in the supplied course content and audience. Do not invent client-specific facts that are not provided.",
+  inputSchema: genericInputSchema,
+  outputSchema: textOutputSchema,
+};
+
+export const promptLibraryAgent: BrainAgentDefinition = {
+  taskType: "prompt_library",
+  name: "promptLibraryAgent",
+  role: "AI prompt library curator for training participants",
+  instructions:
+    "Create a ready-to-use AI prompt library in Markdown for participants of the supplied training. Produce 15 to 25 prompts grouped by practical workflow relevant to the course content and the participants' daily work. For each prompt include: a short title, the full copy-paste prompt text with clear placeholders in [brackets], when to use it, and one tip for adapting it. Keep prompts practical for business users, aligned with the course objectives, and safe: no prompts that request confidential data handling without care. Do not invent client-specific facts that are not provided.",
+  inputSchema: genericInputSchema,
+  outputSchema: textOutputSchema,
 };
 
 export const improvementAgent: BrainAgentDefinition = {
@@ -660,6 +691,8 @@ export const brainAgents = [
   salesFollowUpAgent,
   deliveryAgent,
   evaluationQuestionsAgent,
+  facilitatorGuideAgent,
+  promptLibraryAgent,
   improvementAgent,
   mutationAgent,
   replicationAgent,

@@ -9,6 +9,7 @@ import type {
 import { requireApproved } from "@/lib/route-guards";
 import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
 import { getDeliveryProject } from "@/features/delivery/storage/delivery-storage";
+import { packageGenerationContext } from "@/features/delivery/server/package-generation-context";
 import {
   closeEvaluationForm,
   getEvaluationFormByDelivery,
@@ -20,11 +21,13 @@ import {
 } from "@/features/delivery/storage/evaluation-storage";
 import {
   createDefaultEvaluationForm,
+  isEvaluationFormType,
   normalizeEvaluationForm,
   summarizeEvaluationResponses,
   validateEvaluationAnswers,
   type EvaluationForm,
   type EvaluationFormInput,
+  type EvaluationFormType,
 } from "@/features/delivery/domain/evaluation-form";
 
 type DeliveryRouteContext = {
@@ -37,6 +40,11 @@ type TokenRouteContext = {
 
 function friendlyError(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback;
+}
+
+function formTypeFromRequest(request: Request): EvaluationFormType {
+  const type = new URL(request.url).searchParams.get("type");
+  return isEvaluationFormType(type) ? type : "post_training";
 }
 
 function evaluationLink(request: Request, token: string) {
@@ -62,7 +70,7 @@ export async function getDeliveryEvaluationHandler(
 
   try {
     const { id } = await context.params;
-    const form = await getEvaluationFormByDelivery(id);
+    const form = await getEvaluationFormByDelivery(id, formTypeFromRequest(request));
 
     if (!form) {
       return NextResponse.json({ form: null, responses: [], summary: null });
@@ -91,13 +99,15 @@ export async function saveDeliveryEvaluationFormHandler(
 
   try {
     const { id } = await context.params;
+    const formType = formTypeFromRequest(request);
     const body = (await request.json()) as { form?: EvaluationFormInput };
-    const existing = await getEvaluationFormByDelivery(id);
+    const existing = await getEvaluationFormByDelivery(id, formType);
     const form = await saveEvaluationForm(
       normalizeEvaluationForm({
         ...(body.form ?? {}),
         id: existing?.id ?? body.form?.id,
         deliveryProjectId: id,
+        formType,
         status: existing?.status ?? "Draft",
         createdAt: existing?.createdAt,
       }),
@@ -121,21 +131,22 @@ export async function generateDeliveryEvaluationQuestionsHandler(
 
   try {
     const { id } = await context.params;
+    const formType = formTypeFromRequest(request);
     const project = await getDeliveryProject(id);
-    const trainingPackage = project.packageId
-      ? await getTrainingPackage(project.packageId).catch(() => null)
-      : null;
-    const proposalContent = trainingPackage?.proposalContent;
+    if (!project.packageId) {
+      throw new Error(
+        "A linked saved package is required before generating assessment or evaluation questions.",
+      );
+    }
+    const trainingPackage = await getTrainingPackage(project.packageId);
+    const packageContext = packageGenerationContext(trainingPackage);
 
     const input: EvaluationQuestionsBrainInput = {
-      courseTitle: trainingPackage?.title || project.title,
-      client: trainingPackage?.client ?? "",
-      audience: trainingPackage?.audience ?? "",
-      duration: trainingPackage?.duration ?? "",
-      promise: trainingPackage?.promise ?? "",
-      objectives: proposalContent?.courseObjectives ?? [],
-      outcomes: proposalContent?.expectedLearningOutcomes ?? [],
-      methodology: proposalContent?.trainingMethodology ?? [],
+      purpose:
+        formType === "pre_training"
+          ? "pre_training_assessment"
+          : "post_training_evaluation",
+      ...packageContext,
     };
 
     const result = await routeBrainTask<
@@ -147,9 +158,9 @@ export async function generateDeliveryEvaluationQuestionsHandler(
       retries: 2,
     });
 
-    const existing = await getEvaluationFormByDelivery(id);
+    const existing = await getEvaluationFormByDelivery(id, formType);
     const base =
-      existing ?? createDefaultEvaluationForm(id, input.courseTitle);
+      existing ?? createDefaultEvaluationForm(id, input.courseTitle, formType);
     const form = await saveEvaluationForm({
       ...base,
       questions: result.output.questions.map((question) => ({
@@ -165,6 +176,7 @@ export async function generateDeliveryEvaluationQuestionsHandler(
       entityId: form.id,
       metadata: {
         deliveryProjectId: id,
+        formType,
         questionCount: form.questions.length,
         model: result.model,
       },
@@ -193,7 +205,7 @@ export async function openDeliveryEvaluationFormHandler(
 
   try {
     const { id } = await context.params;
-    const existing = await getEvaluationFormByDelivery(id);
+    const existing = await getEvaluationFormByDelivery(id, formTypeFromRequest(request));
 
     if (!existing || existing.questions.length === 0) {
       return NextResponse.json(
@@ -230,7 +242,7 @@ export async function closeDeliveryEvaluationFormHandler(
 
   try {
     const { id } = await context.params;
-    const existing = await getEvaluationFormByDelivery(id);
+    const existing = await getEvaluationFormByDelivery(id, formTypeFromRequest(request));
 
     if (!existing) {
       return NextResponse.json(

@@ -58,6 +58,8 @@ export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle" | "propos
     commercialProposal: string;
     deckOutline: string;
     workbook: string;
+    facilitatorGuide?: string;
+    promptLibrary?: string;
     followUpEmail: string;
     qualityChecklist: QualityChecklistItem[];
     knowledgeUsed?: KnowledgeSourceNote[];

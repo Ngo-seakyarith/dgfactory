@@ -8,6 +8,19 @@ export const evaluationFormStatuses = ["Draft", "Open", "Closed"] as const;
 
 export type EvaluationFormStatus = (typeof evaluationFormStatuses)[number];
 
+export const evaluationFormTypes = ["pre_training", "post_training"] as const;
+
+export type EvaluationFormType = (typeof evaluationFormTypes)[number];
+
+export function isEvaluationFormType(
+  value: unknown,
+): value is EvaluationFormType {
+  return (
+    typeof value === "string" &&
+    evaluationFormTypes.includes(value as EvaluationFormType)
+  );
+}
+
 export const ratingScaleMax = 5;
 
 const maxTextAnswerLength = 2000;
@@ -24,6 +37,7 @@ export type EvaluationQuestion = {
 export type EvaluationForm = {
   id: string;
   deliveryProjectId: string;
+  formType: EvaluationFormType;
   title: string;
   intro: string;
   status: EvaluationFormStatus;
@@ -122,6 +136,9 @@ export function normalizeEvaluationForm(
   return {
     id: value.id || crypto.randomUUID(),
     deliveryProjectId: String(value.deliveryProjectId ?? "").trim(),
+    formType: isEvaluationFormType(value.formType)
+      ? value.formType
+      : "post_training",
     title: String(value.title ?? "").trim(),
     intro: String(value.intro ?? "").trim(),
     status: isEvaluationFormStatus(value.status) ? value.status : "Draft",
@@ -285,14 +302,21 @@ export function summarizeEvaluationResponses(
 export function createDefaultEvaluationForm(
   deliveryProjectId: string,
   trainingTitle: string,
+  formType: EvaluationFormType = "post_training",
 ): EvaluationForm {
+  const isPre = formType === "pre_training";
+
   return normalizeEvaluationForm({
     deliveryProjectId,
+    formType,
     title: trainingTitle
-      ? `${trainingTitle} - Training Evaluation`
-      : "Training Evaluation",
-    intro:
-      "Thank you for attending the training. Your feedback takes about three minutes and helps us improve future sessions.",
+      ? `${trainingTitle} - ${isPre ? "Pre-Training Assessment" : "Training Evaluation"}`
+      : isPre
+        ? "Pre-Training Assessment"
+        : "Training Evaluation",
+    intro: isPre
+      ? "Please answer a few questions before the training so we can tailor the session to your team. It takes about three minutes."
+      : "Thank you for attending the training. Your feedback takes about three minutes and helps us improve future sessions.",
     status: "Draft",
     questions: [],
   });

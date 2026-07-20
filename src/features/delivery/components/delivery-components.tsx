@@ -55,6 +55,7 @@ import {
   useSaveDeliveryTaskMutation,
 } from "@/features/delivery/queries";
 import { EvaluationFormPanel } from "@/features/delivery/components/evaluation-panel";
+import { MaterialsPanel } from "@/features/delivery/components/materials-panel";
 import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
 import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
 import { errorMessage, requestJson } from "@/lib/api-client";
@@ -70,7 +71,7 @@ const stages: Array<{
   {
     id: "before",
     label: "Before Training",
-    description: "Confirm the plan and prepare delivery.",
+    description: "Assess participants and generate delivery materials.",
     icon: CalendarCheck,
   },
   {
@@ -256,93 +257,6 @@ function StageNavigation({ stage, onChange }: { stage: DeliveryStage; onChange: 
   );
 }
 
-function DeliverySetup({ project, onSave }: { project: DeliveryProject; onSave: (project: DeliveryProject) => Promise<void> }) {
-  const clientsQuery = useClientsQuery();
-  const packagesQuery = useTrainingPackagesQuery();
-  const [draft, setDraft] = useState(project);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
-
-  useEffect(() => setDraft(project), [project]);
-
-  async function save(status?: DeliveryStatus) {
-    setBusy(true);
-    setNotice("");
-    try {
-      await onSave({ ...draft, deliveryStatus: status ?? draft.deliveryStatus });
-      setNotice(status === "Confirmed" ? "Training confirmed." : "Preparation saved.");
-    } catch (error) {
-      setNotice(errorMessage(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Delivery Plan</CardTitle>
-        <CardDescription>Keep the confirmed training logistics in one place.</CardDescription>
-      </CardHeader>
-      <CardContent className="grid gap-5 md:grid-cols-2">
-        <Field label="Client">
-          <Select value={draft.clientId ?? ""} onChange={(event) => setDraft({ ...draft, clientId: event.target.value || null })}>
-            <option value="">Select a client</option>
-            {(clientsQuery.data ?? []).map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}
-          </Select>
-        </Field>
-        <Field label="Saved package">
-          <Select
-            value={draft.packageId ?? ""}
-            onChange={(event) => {
-              const packageId = event.target.value || null;
-              const selected = (packagesQuery.data ?? []).find(
-                (item) => item.id === packageId,
-              );
-              if (!selected) {
-                setDraft({ ...draft, packageId });
-                return;
-              }
-              const venue = selected.proposalBrief.scheduleVenue.trim();
-              const scheduleDate = selected.proposalBrief.scheduleDate.trim();
-              setDraft({
-                ...draft,
-                packageId,
-                clientId: draft.clientId || selected.clientId,
-                title: draft.title || selected.title,
-                trainerName: draft.trainerName || selected.proposalBrief.trainerName,
-                participantCount:
-                  draft.participantCount ||
-                  selected.pricingInputs.numberOfParticipants,
-                location:
-                  draft.location ||
-                  (venue.toUpperCase() === "TBC" ? "" : venue),
-                trainingDate:
-                  draft.trainingDate ||
-                  (/^\d{4}-\d{2}-\d{2}$/.test(scheduleDate) ? scheduleDate : ""),
-              });
-            }}
-          >
-            <option value="">No package selected</option>
-            {(packagesQuery.data ?? []).map((item) => <option key={item.id} value={item.id}>{item.title}</option>)}
-          </Select>
-        </Field>
-        <Field label="Training title" className="md:col-span-2"><Input value={draft.title} onChange={(event) => setDraft({ ...draft, title: event.target.value })} /></Field>
-        <Field label="Training date"><Input type="date" value={draft.trainingDate} onChange={(event) => setDraft({ ...draft, trainingDate: event.target.value })} /></Field>
-        <Field label="Venue"><Input value={draft.location} onChange={(event) => setDraft({ ...draft, location: event.target.value })} placeholder="Client office or venue" /></Field>
-        <Field label="Trainer"><Input value={draft.trainerName} onChange={(event) => setDraft({ ...draft, trainerName: event.target.value })} /></Field>
-        <Field label="Expected participants"><Input type="number" min="0" value={draft.participantCount || ""} onChange={(event) => setDraft({ ...draft, participantCount: Number(event.target.value) })} /></Field>
-        <Field label="Preparation notes" className="md:col-span-2"><Textarea value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} /></Field>
-        <div className="flex flex-wrap items-center gap-3 md:col-span-2">
-          <Button type="button" variant="outline" onClick={() => void save()} disabled={busy}><Save /> Save Plan</Button>
-          <Button type="button" variant="gold" onClick={() => void save("Confirmed")} disabled={busy}><CheckCircle2 /> Confirm Training</Button>
-          {notice ? <span className="text-sm text-muted-foreground">{notice}</span> : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
 function DeliveryChecklist({ projectId }: { projectId: string }) {
   const tasksQuery = useDeliveryTasksQuery(projectId);
   const saveTask = useSaveDeliveryTaskMutation();
@@ -421,7 +335,7 @@ function TrainingDay({ project, onSave }: { project: DeliveryProject; onSave: (p
   );
 }
 
-function EvaluationAndReport({ project, clientName, packageTitle, learningObjectives, onSave }: { project: DeliveryProject; clientName: string; packageTitle: string; learningObjectives: string; onSave: (project: DeliveryProject) => Promise<void> }) {
+function EvaluationAndReport({ project, clientName, packageTitle, onSave }: { project: DeliveryProject; clientName: string; packageTitle: string; onSave: (project: DeliveryProject) => Promise<void> }) {
   const [draft, setDraft] = useState(project);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
@@ -451,7 +365,7 @@ function EvaluationAndReport({ project, clientName, packageTitle, learningObject
       const payload = await requestJson<{ draft: DeliveryDraft }>("/api/delivery-projects/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project: draft, clientName, packageTitle, learningObjectives }),
+        body: JSON.stringify({ project: draft }),
       });
       const updated = { ...draft, postTrainingReport: payload.draft.body };
       setDraft(updated);
@@ -568,7 +482,7 @@ export function DeliveryProjectDetailClient({ id }: { id: string }) {
     <div className="space-y-6">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link href="/delivery" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground hover:text-white"><ArrowLeft className="h-4 w-4" /> Training Delivery</Link>
+          <Link href="/delivery" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-[#a94b18] focus-visible:text-[#a94b18]"><ArrowLeft className="h-4 w-4" /> Training Delivery</Link>
           <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold">{project.title}</h1><DeliveryStatusBadge status={project.deliveryStatus} /></div>
           <p className="mt-2 text-sm text-muted-foreground">{client?.name || "No client linked"}{project.trainingDate ? ` · ${project.trainingDate}` : ""}</p>
         </div>
@@ -582,12 +496,18 @@ export function DeliveryProjectDetailClient({ id }: { id: string }) {
 
       <StageNavigation stage={stage} onChange={setStage} />
 
-      {stage === "before" ? <div className="space-y-5"><DeliverySetup project={project} onSave={save} /><DeliveryChecklist projectId={project.id} /></div> : null}
+      {stage === "before" ? (
+        <div className="space-y-5">
+          <EvaluationFormPanel project={project} formType="pre_training" />
+          <MaterialsPanel project={project} />
+          <DeliveryChecklist projectId={project.id} />
+        </div>
+      ) : null}
       {stage === "day" ? <TrainingDay project={project} onSave={save} /> : null}
       {stage === "after" ? (
         <div className="space-y-5">
           <EvaluationFormPanel project={project} />
-          <EvaluationAndReport project={project} clientName={client?.name ?? ""} packageTitle={trainingPackage?.title ?? project.title} learningObjectives={trainingPackage?.promise ?? ""} onSave={save} />
+          <EvaluationAndReport project={project} clientName={client?.name ?? ""} packageTitle={trainingPackage?.title ?? project.title} onSave={save} />
         </div>
       ) : null}
     </div>

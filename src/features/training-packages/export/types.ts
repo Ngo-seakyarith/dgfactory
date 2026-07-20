@@ -6,6 +6,8 @@ export type ExportTarget =
   | "proposal"
   | "syllabus"
   | "workbook"
+  | "facilitator-guide"
+  | "prompt-library"
   | "follow-up-email"
   | "slides"
   | "summary"

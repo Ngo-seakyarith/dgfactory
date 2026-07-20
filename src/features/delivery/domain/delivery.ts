@@ -37,6 +37,37 @@ export type DeliveryEvaluation = {
   learnerFeedback: string;
 };
 
+export const deliveryMaterialKeys = [
+  "slides",
+  "workbook",
+  "facilitatorGuide",
+  "promptLibrary",
+] as const;
+
+export type DeliveryMaterialKey = (typeof deliveryMaterialKeys)[number];
+
+export type DeliveryMaterials = Record<DeliveryMaterialKey, string>;
+
+export function isDeliveryMaterialKey(
+  value: unknown,
+): value is DeliveryMaterialKey {
+  return (
+    typeof value === "string" &&
+    deliveryMaterialKeys.includes(value as DeliveryMaterialKey)
+  );
+}
+
+export function normalizeDeliveryMaterials(
+  value: Partial<DeliveryMaterials> | null | undefined,
+): DeliveryMaterials {
+  return {
+    slides: String(value?.slides ?? "").trim(),
+    workbook: String(value?.workbook ?? "").trim(),
+    facilitatorGuide: String(value?.facilitatorGuide ?? "").trim(),
+    promptLibrary: String(value?.promptLibrary ?? "").trim(),
+  };
+}
+
 export type DeliveryProject = {
   id: string;
   opportunityId: string | null;
@@ -50,6 +81,7 @@ export type DeliveryProject = {
   participantCount: number;
   notes: string;
   evaluation: DeliveryEvaluation;
+  materials: DeliveryMaterials;
   postTrainingReport: string;
   createdAt: string;
   updatedAt: string;
@@ -133,6 +165,7 @@ export function createEmptyDeliveryProject(
     participantCount: 0,
     notes: "",
     evaluation: normalizeEvaluation(null),
+    materials: normalizeDeliveryMaterials(null),
     postTrainingReport: "",
     createdAt: now,
     updatedAt: now,
@@ -160,6 +193,7 @@ export function normalizeDeliveryProject(
     participantCount: Math.max(0, normalizeNumber(value.participantCount)),
     notes: String(value.notes ?? "").trim(),
     evaluation: normalizeEvaluation(value.evaluation),
+    materials: normalizeDeliveryMaterials(value.materials),
     postTrainingReport: String(value.postTrainingReport ?? "").trim(),
     createdAt: value.createdAt || now,
     updatedAt: value.updatedAt || now,

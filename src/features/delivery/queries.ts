@@ -4,9 +4,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { requestJson } from "@/lib/api-client";
 
-import type { DeliveryProject, DeliveryTask } from "./domain/delivery";
+import type {
+  DeliveryMaterialKey,
+  DeliveryProject,
+  DeliveryTask,
+} from "./domain/delivery";
 import type {
   EvaluationForm,
+  EvaluationFormType,
   EvaluationResponse,
   EvaluationSummary,
 } from "./domain/evaluation-form";
@@ -17,8 +22,8 @@ export const deliveryKeys = {
   project: (id: string) => [...deliveryKeys.projects(), id] as const,
   tasks: (projectId: string) =>
     [...deliveryKeys.all, "tasks", projectId] as const,
-  evaluation: (projectId: string) =>
-    [...deliveryKeys.all, "evaluation", projectId] as const,
+  evaluation: (projectId: string, formType: EvaluationFormType) =>
+    [...deliveryKeys.all, "evaluation", projectId, formType] as const,
 };
 
 export type DeliveryEvaluationPayload = {
@@ -101,12 +106,15 @@ export function useDeleteDeliveryProjectMutation() {
   });
 }
 
-export function useDeliveryEvaluationQuery(projectId: string) {
+export function useDeliveryEvaluationQuery(
+  projectId: string,
+  formType: EvaluationFormType,
+) {
   return useQuery({
-    queryKey: deliveryKeys.evaluation(projectId),
+    queryKey: deliveryKeys.evaluation(projectId, formType),
     queryFn: () =>
       requestJson<DeliveryEvaluationPayload>(
-        `/api/delivery-projects/${projectId}/evaluation`,
+        `/api/delivery-projects/${projectId}/evaluation?type=${formType}`,
       ),
     enabled: Boolean(projectId),
   });
@@ -114,6 +122,7 @@ export function useDeliveryEvaluationQuery(projectId: string) {
 
 function useEvaluationMutation<TPayload>(
   projectId: string,
+  formType: EvaluationFormType,
   path: string,
   body?: (variables: unknown) => unknown,
   invalidate = true,
@@ -123,7 +132,7 @@ function useEvaluationMutation<TPayload>(
   return useMutation({
     mutationFn: (variables: unknown) =>
       requestJson<TPayload>(
-        `/api/delivery-projects/${projectId}/evaluation${path}`,
+        `/api/delivery-projects/${projectId}/evaluation${path}?type=${formType}`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -133,40 +142,82 @@ function useEvaluationMutation<TPayload>(
     onSuccess() {
       if (invalidate) {
         void queryClient.invalidateQueries({
-          queryKey: deliveryKeys.evaluation(projectId),
+          queryKey: deliveryKeys.evaluation(projectId, formType),
         });
       }
     },
   });
 }
 
-export function useSaveEvaluationFormMutation(projectId: string) {
+export function useSaveEvaluationFormMutation(
+  projectId: string,
+  formType: EvaluationFormType,
+) {
   // Saves stay silent so background auto-saves never refetch the form
   // and clobber question edits the user is still typing.
   return useEvaluationMutation<{ form: EvaluationForm }>(
     projectId,
+    formType,
     "",
     (form) => ({ form }),
     false,
   );
 }
 
-export function useGenerateEvaluationQuestionsMutation(projectId: string) {
+export function useGenerateEvaluationQuestionsMutation(
+  projectId: string,
+  formType: EvaluationFormType,
+) {
   return useEvaluationMutation<{ form: EvaluationForm; notice?: string }>(
     projectId,
+    formType,
     "/generate",
   );
 }
 
-export function useOpenEvaluationFormMutation(projectId: string) {
+export function useOpenEvaluationFormMutation(
+  projectId: string,
+  formType: EvaluationFormType,
+) {
   return useEvaluationMutation<{ form: EvaluationForm; link: string }>(
     projectId,
+    formType,
     "/open",
   );
 }
 
-export function useCloseEvaluationFormMutation(projectId: string) {
-  return useEvaluationMutation<{ form: EvaluationForm }>(projectId, "/close");
+export function useCloseEvaluationFormMutation(
+  projectId: string,
+  formType: EvaluationFormType,
+) {
+  return useEvaluationMutation<{ form: EvaluationForm }>(
+    projectId,
+    formType,
+    "/close",
+  );
+}
+
+export function useGenerateDeliveryMaterialMutation(projectId: string) {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (target: DeliveryMaterialKey) =>
+      requestJson<{ project: DeliveryProject; notice?: string }>(
+        `/api/delivery-projects/${projectId}/materials/generate`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ target }),
+        },
+      ),
+    onSuccess(payload) {
+      queryClient.setQueryData(
+        deliveryKeys.project(payload.project.id),
+        payload.project,
+      );
+      void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
+    },
+  });
 }
 
 export function useSaveDeliveryTaskMutation() {

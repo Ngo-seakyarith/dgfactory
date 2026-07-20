@@ -9,6 +9,7 @@ import {
   type EvaluationForm,
   type EvaluationFormInput,
   type EvaluationFormStatus,
+  type EvaluationFormType,
   type EvaluationQuestion,
   type EvaluationResponse,
 } from "@/features/delivery/domain/evaluation-form";
@@ -16,6 +17,7 @@ import {
 type EvaluationFormRow = {
   id: string;
   delivery_project_id: string;
+  form_type: EvaluationFormType | null;
   title: string;
   intro: string | null;
   status: EvaluationFormStatus | null;
@@ -45,6 +47,7 @@ function formFromRow(row: EvaluationFormRow): EvaluationForm {
   return normalizeEvaluationForm({
     id: row.id,
     deliveryProjectId: row.delivery_project_id,
+    formType: row.form_type ?? "post_training",
     title: row.title,
     intro: row.intro ?? "",
     status: row.status ?? "Draft",
@@ -74,7 +77,10 @@ function requireSupabase() {
   return supabase;
 }
 
-export async function getEvaluationFormByDelivery(deliveryProjectId: string) {
+export async function getEvaluationFormByDelivery(
+  deliveryProjectId: string,
+  formType: EvaluationFormType = "post_training",
+) {
   const supabase = requireSupabase();
 
   const { data, error } = await scopeAppData(
@@ -82,6 +88,7 @@ export async function getEvaluationFormByDelivery(deliveryProjectId: string) {
       .from("evaluation_forms")
       .select("*")
       .eq("delivery_project_id", deliveryProjectId)
+      .eq("form_type", formType)
       .limit(1),
   );
 
@@ -111,6 +118,7 @@ export async function saveEvaluationForm(input: EvaluationFormInput) {
       withAppScope({
         id: form.id,
         delivery_project_id: form.deliveryProjectId,
+        form_type: form.formType,
         title: form.title,
         intro: form.intro,
         status: form.status,

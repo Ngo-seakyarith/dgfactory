@@ -236,6 +236,7 @@ create table if not exists public.delivery_projects (
   participant_count numeric default 0,
   notes text,
   evaluation jsonb not null default '{}'::jsonb,
+  materials jsonb not null default '{}'::jsonb,
   post_training_report text not null default '',
   created_at timestamptz default now(),
   updated_at timestamptz default now()
@@ -282,6 +283,7 @@ create index if not exists idx_delivery_projects_client_id
 create table if not exists public.evaluation_forms (
   id uuid primary key default gen_random_uuid(),
   delivery_project_id uuid not null references public.delivery_projects(id) on delete cascade,
+  form_type text not null default 'post_training' check (form_type in ('pre_training', 'post_training')),
   title text not null,
   intro text not null default '',
   status text not null default 'Draft' check (status in ('Draft', 'Open', 'Closed')),
@@ -293,8 +295,8 @@ create table if not exists public.evaluation_forms (
 
 alter table public.evaluation_forms enable row level security;
 
-create unique index if not exists idx_evaluation_forms_delivery_project
-  on public.evaluation_forms(delivery_project_id);
+create unique index if not exists idx_evaluation_forms_delivery_project_type
+  on public.evaluation_forms(delivery_project_id, form_type);
 
 create index if not exists idx_evaluation_forms_token_hash
   on public.evaluation_forms(access_token_hash);
