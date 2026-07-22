@@ -9,9 +9,11 @@ import {
   Clipboard,
   DollarSign,
   FileText,
+  LayoutGrid,
   Loader2,
   Mail,
   Plus,
+  Rows3,
   Save,
   Search,
   Trash2,
@@ -212,6 +214,25 @@ function packagesForClient(client: Client, packages: TrainingPackage[]) {
   );
 }
 
+function getClientActivity(
+  client: Client,
+  packages: TrainingPackage[],
+  systemProposals: IntelligentSystemProposal[],
+) {
+  const clientPackages = packagesForClient(client, packages);
+  const clientSystemProposals = systemProposals.filter(
+    (proposal) =>
+      proposal.brief.clientId === client.id ||
+      (!proposal.brief.clientId && clientNameKey(proposal.brief.clientName) === clientNameKey(client.name)),
+  );
+
+  return {
+    clientPackages,
+    clientSystemProposals,
+    latestPackage: clientPackages[0],
+  };
+}
+
 export function ClientCard({
   client,
   packages,
@@ -221,13 +242,11 @@ export function ClientCard({
   packages: TrainingPackage[];
   systemProposals: IntelligentSystemProposal[];
 }) {
-  const clientPackages = packagesForClient(client, packages);
-  const clientSystemProposals = systemProposals.filter(
-    (proposal) =>
-      proposal.brief.clientId === client.id ||
-      (!proposal.brief.clientId && clientNameKey(proposal.brief.clientName) === clientNameKey(client.name)),
+  const { clientPackages, clientSystemProposals, latestPackage } = getClientActivity(
+    client,
+    packages,
+    systemProposals,
   );
-  const latestPackage = clientPackages[0];
 
   return (
     <Link
@@ -264,9 +283,122 @@ export function ClientCard({
   );
 }
 
+function ClientsTable({
+  clients,
+  packages,
+  systemProposals,
+}: {
+  clients: Client[];
+  packages: TrainingPackage[];
+  systemProposals: IntelligentSystemProposal[];
+}) {
+  return (
+    <div className="max-h-[70vh] overflow-auto rounded-lg border border-border bg-card">
+      <table className="min-w-[2200px] border-separate border-spacing-0 text-left text-xs">
+        <caption className="sr-only">DG Academy client relationship records in spreadsheet view</caption>
+        <thead className="sticky top-0 z-20 bg-muted text-[11px] uppercase tracking-[0.12em] text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]">
+          <tr>
+            <th className="sticky left-0 z-30 w-12 border-b border-r border-border bg-muted px-3 py-2 text-center">#</th>
+            <th className="sticky left-12 z-30 min-w-56 border-b border-r border-border bg-muted px-3 py-2">Client name</th>
+            <th className="min-w-40 border-b border-r border-border px-3 py-2">Sector</th>
+            <th className="min-w-48 border-b border-r border-border px-3 py-2">Contact person</th>
+            <th className="min-w-48 border-b border-r border-border px-3 py-2">Position</th>
+            <th className="min-w-56 border-b border-r border-border px-3 py-2">Email</th>
+            <th className="min-w-40 border-b border-r border-border px-3 py-2">Phone</th>
+            <th className="min-w-80 border-b border-r border-border px-3 py-2">Notes</th>
+            <th className="min-w-28 border-b border-r border-border px-3 py-2 text-right">Packages</th>
+            <th className="min-w-36 border-b border-r border-border px-3 py-2 text-right">System proposals</th>
+            <th className="min-w-72 border-b border-r border-border px-3 py-2">Latest package</th>
+            <th className="min-w-56 border-b border-r border-border px-3 py-2">Created at</th>
+            <th className="min-w-56 border-b border-r border-border px-3 py-2">Updated at</th>
+            <th className="min-w-80 border-b border-r border-border px-3 py-2">Client ID</th>
+            <th className="w-14 border-b border-border px-3 py-2">
+              <span className="sr-only">Open client</span>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {clients.map((client, index) => {
+            const { clientPackages, clientSystemProposals, latestPackage } = getClientActivity(
+              client,
+              packages,
+              systemProposals,
+            );
+            const stickyCellBackground = index % 2 === 0
+              ? "bg-card group-hover:bg-accent"
+              : "bg-muted group-hover:bg-accent";
+
+            return (
+              <tr
+                key={client.id}
+                className="group align-top even:bg-muted/50 hover:bg-accent/60"
+              >
+                <td className={`sticky left-0 z-10 border-b border-r border-border px-3 py-2 text-center font-mono text-muted-foreground ${stickyCellBackground}`}>
+                  {index + 1}
+                </td>
+                <td className={`sticky left-12 z-10 border-b border-r border-border px-3 py-2 ${stickyCellBackground}`}>
+                  <Link
+                    href={`/clients/${client.id}`}
+                    className="font-semibold text-foreground transition hover:text-accent-foreground"
+                  >
+                    {client.name}
+                  </Link>
+                </td>
+                <td className="border-b border-r border-border px-3 py-2 text-muted-foreground">{client.sector || "—"}</td>
+                <td className="border-b border-r border-border px-3 py-2 text-foreground">{client.contactPerson || "—"}</td>
+                <td className="border-b border-r border-border px-3 py-2 text-muted-foreground">{client.contactPosition || "—"}</td>
+                <td className="border-b border-r border-border px-3 py-2 text-muted-foreground">{client.email || "—"}</td>
+                <td className="border-b border-r border-border px-3 py-2 text-muted-foreground">{client.phone || "—"}</td>
+                <td className="max-w-80 whitespace-pre-wrap border-b border-r border-border px-3 py-2 leading-5 text-muted-foreground">{client.notes || "—"}</td>
+                <td className="border-b border-r border-border px-3 py-2 text-right font-mono text-foreground">{clientPackages.length}</td>
+                <td className="border-b border-r border-border px-3 py-2 text-right font-mono text-foreground">{clientSystemProposals.length}</td>
+                <td className="max-w-72 whitespace-normal border-b border-r border-border px-3 py-2 leading-5 text-muted-foreground">{latestPackage?.title || "—"}</td>
+                <td className="border-b border-r border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">{client.createdAt || "—"}</td>
+                <td className="border-b border-r border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">{client.updatedAt || "—"}</td>
+                <td className="border-b border-r border-border px-3 py-2 font-mono text-[11px] text-muted-foreground">{client.id}</td>
+                <td className="border-b border-border px-3 py-2 text-center">
+                  <Link
+                    href={`/clients/${client.id}`}
+                    aria-label={`Open ${client.name}`}
+                    className="inline-flex rounded-md p-1 text-muted-foreground transition hover:bg-teal-300/10 hover:text-teal-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  >
+                    <ArrowRight className="h-4 w-4" />
+                  </Link>
+                </td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+type ClientsViewMode = "grid" | "rows";
+
+const clientsViewStorageKey = "dg-academy.clients-view";
+
 export function ClientsPageClient() {
   const { clients, packages, systemProposals, notice, isLoading, error, refresh } = useCrmData();
   const [query, setQuery] = useState("");
+  const [viewMode, setViewMode] = useState<ClientsViewMode>("grid");
+
+  useEffect(() => {
+    try {
+      const savedView = window.localStorage.getItem(clientsViewStorageKey);
+      if (savedView === "grid" || savedView === "rows") {
+        setViewMode(savedView);
+      }
+    } catch {}
+  }, []);
+
+  function changeViewMode(nextView: ClientsViewMode) {
+    setViewMode(nextView);
+    try {
+      window.localStorage.setItem(clientsViewStorageKey, nextView);
+    } catch {}
+  }
+
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
     if (!normalized) {
@@ -274,7 +406,7 @@ export function ClientsPageClient() {
     }
 
     return clients.filter((client) =>
-      [client.name, client.sector, client.contactPerson, client.contactPosition, client.email, client.notes]
+      [client.name, client.sector, client.contactPerson, client.contactPosition, client.email, client.phone, client.notes]
         .join(" ")
         .toLowerCase()
         .includes(normalized),
@@ -291,9 +423,39 @@ export function ClientsPageClient() {
         label="New Client"
       />
       <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardHeader>
-          <CardTitle>Clients</CardTitle>
-          <CardDescription>{notice}</CardDescription>
+        <CardHeader className="gap-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
+          <div>
+            <CardTitle>Clients</CardTitle>
+            <CardDescription>{notice}</CardDescription>
+          </div>
+          <div
+            className="inline-flex w-fit rounded-lg border border-white/10 bg-[#07111f]/70 p-1"
+            role="group"
+            aria-label="Client display mode"
+          >
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              className="h-8 px-3"
+              aria-pressed={viewMode === "grid"}
+              onClick={() => changeViewMode("grid")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Cards
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant={viewMode === "rows" ? "secondary" : "ghost"}
+              className="h-8 px-3"
+              aria-pressed={viewMode === "rows"}
+              onClick={() => changeViewMode("rows")}
+            >
+              <Rows3 className="h-4 w-4" />
+              Spreadsheet
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {error && !clients.length ? (
@@ -301,11 +463,15 @@ export function ClientsPageClient() {
           ) : isLoading ? (
             <CrmGridSkeleton />
           ) : filtered.length ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {filtered.map((client) => (
-                <ClientCard key={client.id} client={client} packages={packages} systemProposals={systemProposals} />
-              ))}
-            </div>
+            viewMode === "grid" ? (
+              <div className="grid gap-3 md:grid-cols-2">
+                {filtered.map((client) => (
+                  <ClientCard key={client.id} client={client} packages={packages} systemProposals={systemProposals} />
+                ))}
+              </div>
+            ) : (
+              <ClientsTable clients={filtered} packages={packages} systemProposals={systemProposals} />
+            )
           ) : (
             <EmptyCrmState title="No clients yet" href="/clients/new" label="Create Client" />
           )}
