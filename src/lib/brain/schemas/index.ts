@@ -364,6 +364,256 @@ export const textOutputSchema: JsonSchema = {
   },
 };
 
+const slideDeckSlideSchema: JsonSchema = {
+  type: "object",
+  required: [
+    "layout",
+    "title",
+    "intro",
+    "statement",
+    "bullets",
+    "leftTitle",
+    "leftItems",
+    "rightTitle",
+    "rightItems",
+    "speakerNotes",
+  ],
+  properties: {
+    layout: {
+      type: "string",
+      enum: [
+        "section",
+        "statement",
+        "bullets",
+        "numbered",
+        "two-column",
+        "practice",
+        "closing",
+      ],
+    },
+    title: { type: "string" },
+    intro: { type: "string" },
+    statement: { type: "string" },
+    bullets: stringArraySchema,
+    leftTitle: { type: "string" },
+    leftItems: stringArraySchema,
+    rightTitle: { type: "string" },
+    rightItems: stringArraySchema,
+    speakerNotes: { type: "string" },
+  },
+};
+
+export const slideDeckOutputSchema: JsonSchema = {
+  type: "object",
+  required: ["deck"],
+  properties: {
+    deck: {
+      type: "object",
+      required: ["version", "title", "slides"],
+      properties: {
+        version: { type: "integer", minimum: 1, maximum: 1 },
+        title: { type: "string" },
+        slides: { type: "array", items: slideDeckSlideSchema },
+      },
+    },
+  },
+};
+
+const workbookActivitySchema: JsonSchema = {
+  type: "object",
+  required: [
+    "title",
+    "purpose",
+    "instructions",
+    "reflectionQuestions",
+    "expectedOutput",
+    "responseLines",
+  ],
+  properties: {
+    title: { type: "string" },
+    purpose: { type: "string" },
+    instructions: stringArraySchema,
+    reflectionQuestions: stringArraySchema,
+    expectedOutput: { type: "string" },
+    responseLines: { type: "integer", minimum: 3, maximum: 8 },
+  },
+};
+
+export const workbookOutputSchema: JsonSchema = {
+  type: "object",
+  required: ["workbook"],
+  properties: {
+    workbook: {
+      type: "object",
+      required: ["version", "title", "welcome", "howToUse", "modules", "actionPlan"],
+      properties: {
+        version: { type: "integer", minimum: 1, maximum: 1 },
+        title: { type: "string" },
+        welcome: { type: "string" },
+        howToUse: stringArraySchema,
+        modules: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["title", "introduction", "keyPoints", "activities", "applicationPrompt"],
+            properties: {
+              title: { type: "string" },
+              introduction: { type: "string" },
+              keyPoints: stringArraySchema,
+              activities: { type: "array", items: workbookActivitySchema },
+              applicationPrompt: { type: "string" },
+            },
+          },
+        },
+        actionPlan: {
+          type: "object",
+          required: ["introduction", "prompts", "responseLines"],
+          properties: {
+            introduction: { type: "string" },
+            prompts: stringArraySchema,
+            responseLines: { type: "integer", minimum: 3, maximum: 8 },
+          },
+        },
+      },
+    },
+  },
+};
+
+export const facilitatorGuideOutputSchema: JsonSchema = {
+  type: "object",
+  required: ["guide"],
+  properties: {
+    guide: {
+      type: "object",
+      required: [
+        "version",
+        "title",
+        "purpose",
+        "trainerPreparation",
+        "agenda",
+        "sections",
+        "materialsChecklist",
+        "likelyQuestions",
+        "contingencies",
+        "closingChecklist",
+      ],
+      properties: {
+        version: { type: "integer", minimum: 1, maximum: 1 },
+        title: { type: "string" },
+        purpose: { type: "string" },
+        trainerPreparation: stringArraySchema,
+        agenda: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["timing", "duration", "session", "objective", "method"],
+            properties: {
+              timing: { type: "string" },
+              duration: { type: "string" },
+              session: { type: "string" },
+              objective: { type: "string" },
+              method: { type: "string" },
+            },
+          },
+        },
+        sections: {
+          type: "array",
+          items: {
+            type: "object",
+            required: [
+              "title",
+              "timing",
+              "objective",
+              "keyMessages",
+              "runSteps",
+              "debriefQuestions",
+              "expectedOutputs",
+              "transition",
+            ],
+            properties: {
+              title: { type: "string" },
+              timing: { type: "string" },
+              objective: { type: "string" },
+              keyMessages: stringArraySchema,
+              runSteps: stringArraySchema,
+              debriefQuestions: stringArraySchema,
+              expectedOutputs: stringArraySchema,
+              transition: { type: "string" },
+            },
+          },
+        },
+        materialsChecklist: stringArraySchema,
+        likelyQuestions: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["question", "answer"],
+            properties: {
+              question: { type: "string" },
+              answer: { type: "string" },
+            },
+          },
+        },
+        contingencies: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["situation", "response"],
+            properties: {
+              situation: { type: "string" },
+              response: { type: "string" },
+            },
+          },
+        },
+        closingChecklist: stringArraySchema,
+      },
+    },
+  },
+};
+
+export const promptLibraryOutputSchema: JsonSchema = {
+  type: "object",
+  required: ["library"],
+  properties: {
+    library: {
+      type: "object",
+      required: ["version", "title", "introduction", "usageGuidance", "sections", "responsibleUseChecks"],
+      properties: {
+        version: { type: "integer", minimum: 1, maximum: 1 },
+        title: { type: "string" },
+        introduction: { type: "string" },
+        usageGuidance: stringArraySchema,
+        sections: {
+          type: "array",
+          items: {
+            type: "object",
+            required: ["title", "description", "prompts"],
+            properties: {
+              title: { type: "string" },
+              description: { type: "string" },
+              prompts: {
+                type: "array",
+                items: {
+                  type: "object",
+                  required: ["title", "whenToUse", "prompt", "adaptationTips", "reviewChecks"],
+                  properties: {
+                    title: { type: "string" },
+                    whenToUse: { type: "string" },
+                    prompt: { type: "string" },
+                    adaptationTips: stringArraySchema,
+                    reviewChecks: stringArraySchema,
+                  },
+                },
+              },
+            },
+          },
+        },
+        responsibleUseChecks: stringArraySchema,
+      },
+    },
+  },
+};
+
 export const evaluationQuestionsOutputSchema: JsonSchema = {
   type: "object",
   required: ["questions"],

@@ -4,20 +4,36 @@ import {
   dataDiscoveryOutputSchema,
   deliveryDraftOutputSchema,
   evaluationQuestionsOutputSchema,
+  facilitatorGuideOutputSchema,
   followUpOutputSchema,
   improvementOpportunityOutputSchema,
   intelligentSystemProposalOutputSchema,
   offerReplicationOutputSchema,
   offerMutationOutputSchema,
   proposalAgentOutputSchema,
+  promptLibraryOutputSchema,
   qaReviewOutputSchema,
+  slideDeckOutputSchema,
   textOutputSchema,
   trainingPackageOutputSchema,
+  workbookOutputSchema,
   type JsonSchema,
 } from "@/lib/brain/schemas";
 import { masterAgent } from "@/lib/brain/agents/masterAgent";
 import { dgProposalTemplateGuide } from "@/lib/brain/prompts/proposalTemplateGuide";
 import type { ProposalContent } from "@/features/training-packages";
+import {
+  slideDeckGenerationRules,
+  type SlideDeckBrainOutput,
+} from "@/features/training-packages/export/slide-deck-plan";
+import {
+  facilitatorGuideGenerationRules,
+  promptLibraryGenerationRules,
+  workbookGenerationRules,
+  type FacilitatorGuideBrainOutput,
+  type PromptLibraryBrainOutput,
+  type WorkbookBrainOutput,
+} from "@/features/training-packages/export/material-document-plans";
 import type {
   DataDiscoveryBrainInput,
   DataDiscoveryBrainOutput,
@@ -426,24 +442,36 @@ export const pricingNarrativeAgent: BrainAgentDefinition = {
   outputSchema: textOutputSchema,
 };
 
-export const slideAgent: BrainAgentDefinition = {
+export const slideAgent: BrainAgentDefinition<
+  Record<string, unknown>,
+  SlideDeckBrainOutput
+> = {
   taskType: "slide_outline",
   name: "slideAgent",
   role: "Executive slide deck architect",
-  instructions:
-    "Create clear slide outlines with agenda, section flow, executive framing, and facilitator cues.",
+  instructions: [
+    "Create a complete, presentation-ready slide plan for the supplied DG Academy training session. The exporter renders your structured plan directly, so choose a layout that matches the content of every slide.",
+    ...slideDeckGenerationRules,
+    "Let the supplied subject and learning brief determine the narrative. Do not force a generic AI, leadership, sales, finance, or other preset storyline onto the course.",
+    "Ground every slide in the supplied training package and delivery context. Do not invent client facts, statistics, outcomes, tools, policies, or access that were not supplied. You may develop generally valid subject knowledge, explanations, examples, frameworks, and exercises needed to teach the requested topic well.",
+  ].join("\n\n"),
   inputSchema: genericInputSchema,
-  outputSchema: textOutputSchema,
+  outputSchema: slideDeckOutputSchema,
 };
 
-export const workbookAgent: BrainAgentDefinition = {
+export const workbookAgent: BrainAgentDefinition<
+  Record<string, unknown>,
+  WorkbookBrainOutput
+> = {
   taskType: "workbook",
   name: "workbookAgent",
   role: "Participant workbook designer",
-  instructions:
-    "Create practical workbook activities, reflection prompts, and templates for business training participants.",
+  instructions: [
+    "Create a complete participant workbook for the supplied DG Academy training.",
+    ...workbookGenerationRules,
+  ].join("\n\n"),
   inputSchema: genericInputSchema,
-  outputSchema: textOutputSchema,
+  outputSchema: workbookOutputSchema,
 };
 
 export const qaAgent: BrainAgentDefinition<QaReviewInput, QaReviewOutput> = {
@@ -518,24 +546,34 @@ export const evaluationQuestionsAgent: BrainAgentDefinition<
   outputSchema: evaluationQuestionsOutputSchema,
 };
 
-export const facilitatorGuideAgent: BrainAgentDefinition = {
+export const facilitatorGuideAgent: BrainAgentDefinition<
+  Record<string, unknown>,
+  FacilitatorGuideBrainOutput
+> = {
   taskType: "facilitator_guide",
   name: "facilitatorGuideAgent",
   role: "Trainer facilitation guide designer",
-  instructions:
-    "Create a practical facilitator guide of roughly five pages in Markdown for the supplied DG Academy training. Include: a session-at-a-glance table with timed agenda blocks; per-section facilitation notes with key talking points, transitions, and timing; step-by-step run instructions for each exercise including setup, grouping, debrief questions, and expected outputs; a materials and room checklist; likely participant questions with strong answers; and contingency guidance for running short on time, low-energy groups, and mixed skill levels. Ground everything in the supplied course content and audience. Do not invent client-specific facts that are not provided.",
+  instructions: [
+    "Create a complete trainer-facing facilitator guide for the supplied DG Academy training.",
+    ...facilitatorGuideGenerationRules,
+  ].join("\n\n"),
   inputSchema: genericInputSchema,
-  outputSchema: textOutputSchema,
+  outputSchema: facilitatorGuideOutputSchema,
 };
 
-export const promptLibraryAgent: BrainAgentDefinition = {
+export const promptLibraryAgent: BrainAgentDefinition<
+  Record<string, unknown>,
+  PromptLibraryBrainOutput
+> = {
   taskType: "prompt_library",
   name: "promptLibraryAgent",
   role: "AI prompt library curator for training participants",
-  instructions:
-    "Create a ready-to-use AI prompt library in Markdown for participants of the supplied training. Produce 15 to 25 prompts grouped by practical workflow relevant to the course content and the participants' daily work. For each prompt include: a short title, the full copy-paste prompt text with clear placeholders in [brackets], when to use it, and one tip for adapting it. Keep prompts practical for business users, aligned with the course objectives, and safe: no prompts that request confidential data handling without care. Do not invent client-specific facts that are not provided.",
+  instructions: [
+    "Create a complete ready-to-use AI prompt library for participants in the supplied DG Academy training.",
+    ...promptLibraryGenerationRules,
+  ].join("\n\n"),
   inputSchema: genericInputSchema,
-  outputSchema: textOutputSchema,
+  outputSchema: promptLibraryOutputSchema,
 };
 
 export const improvementAgent: BrainAgentDefinition = {

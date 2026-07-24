@@ -1,6 +1,4 @@
 import { contentForTarget, exportFilename } from "./content";
-import { createDocx } from "./docx";
-import { createPptx } from "./pptx";
 import type { ExportFormat, ExportResult, ExportTarget } from "./types";
 import type { TrainingPackage } from "@/features/training-packages/domain/training-package";
 
@@ -20,6 +18,7 @@ export async function exportTrainingPackage(
   }
 
   if (format === "docx") {
+    const { createDocx } = await import("./docx");
     return {
       buffer: await createDocx(pkg, target),
       contentType:
@@ -29,8 +28,9 @@ export async function exportTrainingPackage(
   }
 
   if (format === "pptx") {
+    const { createPptx } = await import("./pptx");
     return {
-      buffer: createPptx(pkg),
+      buffer: await createPptx(pkg),
       contentType:
         "application/vnd.openxmlformats-officedocument.presentationml.presentation",
       filename: exportFilename(pkg, "slides", "pptx"),

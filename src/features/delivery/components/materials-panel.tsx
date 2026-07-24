@@ -27,7 +27,7 @@ const materialMeta: Record<
 > = {
   slides: {
     label: "Slides",
-    description: "Slide deck outline for the session, exportable to PPTX.",
+    description: "Layout-aware slide plan for the session, exportable to PPTX.",
     exportLabel: "Export PPTX",
   },
   workbook: {

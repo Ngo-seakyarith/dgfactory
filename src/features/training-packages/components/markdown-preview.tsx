@@ -31,6 +31,8 @@ export function MarkdownPreview({ value }: { value: string }) {
   const elements: ReactNode[] = [];
   let listType: "ul" | "ol" | null = null;
   let listItems: string[] = [];
+  let inCodeBlock = false;
+  let codeLines: string[] = [];
 
   function flushList() {
     if (!listType || listItems.length === 0) {
@@ -54,11 +56,41 @@ export function MarkdownPreview({ value }: { value: string }) {
     listItems = [];
   }
 
+  function flushCodeBlock() {
+    if (codeLines.length > 0) {
+      elements.push(
+        <pre
+          key={`code-${elements.length}`}
+          className="my-4 overflow-x-auto whitespace-pre-wrap rounded-md border border-white/10 bg-black/20 p-4 font-mono text-sm leading-6 text-slate-100"
+        >
+          {codeLines.join("\n")}
+        </pre>,
+      );
+    }
+    codeLines = [];
+  }
+
   lines.forEach((line, index) => {
     const trimmed = line.trim();
 
+    if (trimmed.startsWith("```")) {
+      flushList();
+      if (inCodeBlock) flushCodeBlock();
+      inCodeBlock = !inCodeBlock;
+      return;
+    }
+
+    if (inCodeBlock) {
+      codeLines.push(line);
+      return;
+    }
+
     if (!trimmed) {
       flushList();
+      return;
+    }
+
+    if (/^<!--\s*dg-(?:slide-deck|workbook|facilitator-guide|prompt-library):.*-->$/.test(trimmed)) {
       return;
     }
 
@@ -109,6 +141,7 @@ export function MarkdownPreview({ value }: { value: string }) {
   });
 
   flushList();
+  flushCodeBlock();
 
   return (
     <div className="max-h-[34rem] overflow-auto p-5">

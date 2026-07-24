@@ -31,6 +31,7 @@ import {
 } from "@/features/training-packages/domain/proposal-content";
 import { isTrustedTrainerImageUrl } from "@/features/training-packages/domain/trainers";
 import { contentForTarget, docTitle, markdownToLines, wrapText } from "./content";
+import { createStructuredMaterialDocx } from "./material-docx";
 import type { ExportTarget } from "./types";
 import {
   dgAcademyFooters,
@@ -810,6 +811,9 @@ export async function createDocx(
   target: ExportTarget,
 ) {
   const body = contentForTarget(pkg, target);
+  const structuredMaterial = await createStructuredMaterialDocx(pkg, target, body);
+  if (structuredMaterial) return structuredMaterial;
+
   const proposalContent = normalizeProposalContent(pkg.proposalContent, body, {
     title: pkg.title,
     client: pkg.client,
