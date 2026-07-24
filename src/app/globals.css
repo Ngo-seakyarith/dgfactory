@@ -122,7 +122,11 @@ textarea {
 
 .app-workspace .text-teal-50,
 .app-workspace .text-teal-100,
-.app-workspace .text-teal-200 {
+.app-workspace .text-teal-200,
+.app-workspace [class~="text-teal-50/75"],
+.app-workspace [class~="text-teal-50/80"],
+.app-workspace [class~="text-teal-50/85"],
+.app-workspace [class~="text-teal-50/90"] {
   color: #176a63;
 }
 
