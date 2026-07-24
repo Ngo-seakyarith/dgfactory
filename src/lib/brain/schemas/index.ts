@@ -6,6 +6,7 @@ export type JsonSchema = {
   enum?: string[];
   minimum?: number;
   maximum?: number;
+  additionalProperties?: boolean;
 };
 
 export type SchemaValidationResult = {

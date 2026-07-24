@@ -12,8 +12,8 @@ const runtimeState =
     lastError: null,
   });
 
-export const brainModel = "openai/gpt-5.5";
-export const brainReasoningEffort = "low" as const;
+export const brainModel = "openai/gpt-5.6-terra";
+export const brainReasoningEffort = "medium" as const;
 
 export function isBrainApiKeyConfigured() {
   return Boolean(process.env.OPENROUTER_API_KEY);

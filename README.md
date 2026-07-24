@@ -52,7 +52,7 @@ This app is separate from DG Command OS.
 - Email handoff and Telegram handoff to `@sopheaphin`
 - Client CRM with clients, opportunities, proposal pipeline, follow-up reminders, and package-to-opportunity linking
 - Training Delivery for client preparation, training-day records, evaluation capture, post-training reports, and DOCX export
-- GPT-5.5 Brain Layer with structured outputs, schema checks, package QA review, and section regeneration
+- GPT-5.6 Terra Brain Layer with structured outputs, schema checks, package QA review, and section regeneration
 - DG Academy Knowledge Base with frameworks, proposal language, Cambodia context, exercises, pricing notes, client notes, keyword retrieval, and internal source notes
 - V2.0 Evaluation + Feedback Loop with output scoring, AI rubric evaluation, improvement suggestions, human approval, and a Quality Dashboard
 - V2.2 Prompt and Template Optimization System with versioned prompts, human approval, rollback, and code-defined Brain Layer instructions
@@ -62,7 +62,7 @@ This app is separate from DG Command OS.
 - V3.2 Agent Reliability and Evaluation Benchmarks with eval datasets, runs, results, regression risks, trace summaries, and smoke checks
 - V3.4 Client Portal with hashed token access, published client-safe documents, feedback capture, revocation, expiry, and audit logging
 - V3.5 Productization Package with `/product`, offer positioning, ROI calculator, and product brief export
-- V3.6 Enterprise Agentic Hardening with GPT-5.5 default model config, Master Agent routing, adaptive specialist agents, concrete RLS policies, Supabase Auth path, and approval rules
+- V3.6 Enterprise Agentic Hardening with GPT-5.6 Terra model config, Master Agent routing, adaptive specialist agents, concrete RLS policies, Supabase Auth path, and approval rules
 - Adaptive Growth OS Foundation with market signals, offer variants, experiments, metrics, selection decisions, learning genome, and offer-to-package handoff
 - Micro-Offer Mutation Factory for generating, comparing, editing, and saving multiple testable offer variants from one market signal or business idea
 - Fitness Score and Selection Engine for deterministic offer ranking, scale/iterate/park/kill recommendations, and human selection decisions
@@ -75,7 +75,7 @@ This app is separate from DG Command OS.
 
 DG Academy AI Training Production Factory is designed to evolve into DG Academy Capability Factory:
 
-- GPT-5.5 Brain Layer for planning, drafting, routing, and evaluation.
+- GPT-5.6 Terra Brain Layer for planning, drafting, routing, and evaluation.
 - Specialist agents for learning design, commercial review, delivery readiness, export QA, and evaluation.
 - Deterministic tools for pricing, storage, export, and leak checks.
 - Codex builder workflow for human-approved product and engineering increments.
@@ -145,7 +145,7 @@ OPENROUTER_API_KEY=
 Required production keys:
 
 - Missing or invalid OpenRouter credentials cause AI generation routes to fail explicitly.
-- All AI generation uses OpenRouter model `openai/gpt-5.5` with low reasoning effort.
+- All AI generation uses OpenRouter model `openai/gpt-5.6-terra` with medium reasoning effort.
 - Missing Supabase server configuration causes persistence routes to fail explicitly. Server persistence requires `SUPABASE_SECRET_KEY`; browser auth requires `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`.
 - `/api/loops/*` uses the normal approved internal app access gate.
 - Production sign-in uses Google OAuth only. Configure Google in Supabase Auth providers and add `/auth/callback` to the allowed redirect URLs.
@@ -186,7 +186,7 @@ V3.6 closes the main gap between the internal adaptive MVP and a safer enterpris
 Brain model:
 
 - `src/lib/brain/core/modelConfig.ts` centralizes model configuration.
-- The Brain Layer uses OpenRouter model `openai/gpt-5.5` with low reasoning effort; only `OPENROUTER_API_KEY` is configured through the environment.
+- The Brain Layer uses OpenRouter model `openai/gpt-5.6-terra` with medium reasoning effort; only `OPENROUTER_API_KEY` is configured through the environment.
 - `/api/brain/status` reports the configured model, API key status, and latest runtime error.
 
 Master Agent:
@@ -609,7 +609,7 @@ Safety:
 - Production UI never runs Codex directly.
 - Approved improvements can be copied as Codex prompts, but implementation and release still require human review.
 
-## V1.6 GPT-5.5 Brain Layer
+## V1.6 Brain Layer
 
 V1.6 refactors AI generation into `src/lib/brain`.
 
@@ -788,10 +788,16 @@ Statuses:
 Brain Layer behavior:
 
 - Agents try to load the active prompt template for their `agent.name`.
-- If Supabase or prompt storage is unavailable, agents fall back to code-defined
-  instructions.
+- An active template is used only when its stored output schema matches the
+  agent's current code schema. Stale templates fall back to the current
+  code-defined instructions so an old prompt cannot conflict with a newer
+  structured output contract.
+- If Supabase or prompt storage is unavailable, agents also fall back to
+  code-defined instructions.
 - User prompt templates support `{{input}}` and `{{input_json}}` placeholders.
-- Output schema stays structured and validated.
+- Output schema stays structured and validated. Layout-aware slides, workbooks,
+  facilitator guides, and prompt libraries use OpenRouter strict structured
+  output so every required document field must be returned by the model.
 
 Improvement suggestions:
 

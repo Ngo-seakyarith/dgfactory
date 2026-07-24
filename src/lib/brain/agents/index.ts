@@ -81,6 +81,7 @@ export type BrainAgentDefinition<TInput = unknown, TOutput = unknown> = {
   instructions: string;
   inputSchema: JsonSchema;
   outputSchema: JsonSchema;
+  strictOutput?: boolean;
 };
 
 export type TextAgentOutput = {
@@ -457,6 +458,7 @@ export const slideAgent: BrainAgentDefinition<
   ].join("\n\n"),
   inputSchema: genericInputSchema,
   outputSchema: slideDeckOutputSchema,
+  strictOutput: true,
 };
 
 export const workbookAgent: BrainAgentDefinition<
@@ -472,6 +474,7 @@ export const workbookAgent: BrainAgentDefinition<
   ].join("\n\n"),
   inputSchema: genericInputSchema,
   outputSchema: workbookOutputSchema,
+  strictOutput: true,
 };
 
 export const qaAgent: BrainAgentDefinition<QaReviewInput, QaReviewOutput> = {
@@ -559,6 +562,7 @@ export const facilitatorGuideAgent: BrainAgentDefinition<
   ].join("\n\n"),
   inputSchema: genericInputSchema,
   outputSchema: facilitatorGuideOutputSchema,
+  strictOutput: true,
 };
 
 export const promptLibraryAgent: BrainAgentDefinition<
@@ -574,6 +578,7 @@ export const promptLibraryAgent: BrainAgentDefinition<
   ].join("\n\n"),
   inputSchema: genericInputSchema,
   outputSchema: promptLibraryOutputSchema,
+  strictOutput: true,
 };
 
 export const improvementAgent: BrainAgentDefinition = {

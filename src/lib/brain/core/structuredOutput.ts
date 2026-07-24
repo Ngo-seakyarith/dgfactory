@@ -33,11 +33,32 @@ export function getBrainModel() {
   return brainModel;
 }
 
-function normalizeJsonSchema(schema: JsonSchema) {
+function strictJsonSchema(schema: JsonSchema): JsonSchema {
+  const normalized: JsonSchema = {
+    ...schema,
+    properties: schema.properties
+      ? Object.fromEntries(
+          Object.entries(schema.properties).map(([key, child]) => [
+            key,
+            strictJsonSchema(child),
+          ]),
+        )
+      : undefined,
+    items: schema.items ? strictJsonSchema(schema.items) : undefined,
+  };
+
+  if (schema.type === "object") {
+    normalized.additionalProperties = false;
+  }
+
+  return normalized;
+}
+
+function normalizeJsonSchema(schema: JsonSchema, strict: boolean) {
   return {
     name: "dg_brain_output",
-    strict: false,
-    schema,
+    strict,
+    schema: strict ? strictJsonSchema(schema) : schema,
   };
 }
 
@@ -55,12 +76,17 @@ async function callOpenRouter<TInput>({
   schema: JsonSchema;
 }) {
   const prompt = await resolveAgentPrompt({ agent, input });
-  const completion = await client.chat.completions.create({
+  const request = {
     model,
-    reasoning_effort: brainReasoningEffort,
+    reasoning: {
+      effort: brainReasoningEffort,
+    },
+    provider: {
+      require_parameters: true,
+    },
     response_format: {
       type: "json_schema",
-      json_schema: normalizeJsonSchema(schema),
+      json_schema: normalizeJsonSchema(schema, agent.strictOutput === true),
     } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming["response_format"],
     messages: [
       {
@@ -72,7 +98,11 @@ async function callOpenRouter<TInput>({
         content: prompt.userPrompt,
       },
     ],
-  });
+  } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
+    provider: { require_parameters: true };
+    reasoning: { effort: typeof brainReasoningEffort };
+  };
+  const completion = await client.chat.completions.create(request);
 
   const raw = completion.choices[0]?.message.content;
 
@@ -80,7 +110,11 @@ async function callOpenRouter<TInput>({
     throw new Error("OpenRouter returned an empty Brain Layer response.");
   }
 
-  return JSON.parse(raw) as unknown;
+  return {
+    output: JSON.parse(raw) as unknown,
+    promptSource: prompt.source,
+    templateVersion: prompt.templateVersion,
+  };
 }
 
 export async function generateStructuredOutput<TInput, TOutput>({
@@ -105,17 +139,25 @@ export async function generateStructuredOutput<TInput, TOutput>({
     attempts += 1;
 
     try {
-      const output = await callOpenRouter({
+      const generated = await callOpenRouter({
         client,
         agent: agent as BrainAgentDefinition<TInput, unknown>,
         input,
         model: requestedModel,
         schema,
       });
+      const output = generated.output;
       const validation = validateAgainstSchema(output, schema);
 
       if (!validation.valid) {
-        throw new Error(`Schema validation failed: ${validation.errors.join("; ")}`);
+        const promptSource = generated.promptSource === "template"
+          ? `active template v${generated.templateVersion}`
+          : generated.promptSource === "code_schema_mismatch"
+            ? `code prompt because active template v${generated.templateVersion} has a stale schema`
+            : "code prompt";
+        throw new Error(
+          `Schema validation failed using ${promptSource}: ${validation.errors.join("; ")}`,
+        );
       }
 
       recordBrainModelSuccess();
