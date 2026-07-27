@@ -1,5 +1,6 @@
 import type { BrainAgentDefinition } from "@/lib/brain/agents";
 import { promptSchemaMatches } from "@/lib/brain/core/schemaCompatibility";
+import { brainSchemaToJsonSchema } from "@/lib/brain/schemas";
 import { getActivePromptTemplate } from "@/lib/prompt-template-storage";
 import { renderUserPromptTemplate } from "@/lib/prompt-templates";
 
@@ -41,7 +42,10 @@ export async function resolveAgentPrompt<TInput>({
 
   if (
     activeTemplate &&
-    promptSchemaMatches(activeTemplate.outputSchema, agent.outputSchema)
+    promptSchemaMatches(
+      activeTemplate.outputSchema,
+      brainSchemaToJsonSchema(agent.outputSchema),
+    )
   ) {
     return {
       systemPrompt: activeTemplate.systemPrompt,

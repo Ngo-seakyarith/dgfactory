@@ -1,6 +1,7 @@
 import {
   calculatePricing,
   defaultPricingInputs,
+  formatMoney,
   normalizePricingInputs,
   type PricingInputs,
   type PricingOutputs,
@@ -14,10 +15,12 @@ import {
 } from "./proposal-brief";
 import {
   normalizeProposalContent,
+  proposalContentFromNarrative,
   proposalContentToMarkdown,
   proposalContentToSyllabusMarkdown,
   type ProposalContent,
 } from "./proposal-content";
+import type { ProposalNarrative } from "./proposal-narrative";
 
 export type TrainingPackageInput = {
   courseTitle: string;
@@ -241,22 +244,46 @@ export function createTrainingOutputTemplate(
 }
 
 export function normalizeTrainingOutputs(
-  outputs: Partial<TrainingPackageOutputs>,
+  outputs: Partial<TrainingPackageOutputs> & {
+    proposalNarrative?: ProposalNarrative;
+  },
   input: TrainingPackageInput,
+  pricingInputs?: Partial<PricingInputs> | null,
 ): TrainingPackageOutputs {
   const fallbackProposal = String(outputs.proposal ?? "").trim();
-  const proposalContent = normalizeProposalContent(
-    outputs.proposalContent,
-    fallbackProposal,
-    {
-      title: input.courseTitle,
-      client: input.client,
-      audience: input.audience,
-      duration: input.duration,
-      promise: input.promise,
-      proposalBrief: input.proposalBrief,
-    },
-  );
+  const meta = {
+    title: input.courseTitle,
+    client: input.client,
+    audience: input.audience,
+    duration: input.duration,
+    promise: input.promise,
+    proposalBrief: input.proposalBrief,
+  };
+  const generatedContent = outputs.proposalNarrative
+    ? proposalContentFromNarrative(outputs.proposalNarrative, meta)
+    : normalizeProposalContent(outputs.proposalContent, fallbackProposal, meta);
+  const normalizedPricingInputs = pricingInputs
+    ? normalizePricingInputs(pricingInputs)
+    : null;
+  const pricingOutputs = normalizedPricingInputs
+    ? calculatePricing(normalizedPricingInputs)
+    : null;
+  const proposalContent = normalizedPricingInputs && pricingOutputs
+    ? {
+        ...generatedContent,
+        professionalFee: {
+          ...generatedContent.professionalFee,
+          totalFee:
+            pricingOutputs.finalPrice > 0
+              ? formatMoney(
+                  pricingOutputs.finalPrice,
+                  normalizedPricingInputs.currency,
+                )
+              : "Professional fee to be confirmed.",
+          vatStatus: normalizedPricingInputs.vatStatus,
+        },
+      }
+    : generatedContent;
 
   return {
     syllabus: proposalContentToSyllabusMarkdown(proposalContent),
@@ -326,7 +353,11 @@ export function buildPackageFromParts({
   const pricingOutputs = calculatePricing(normalizedPricingInputs);
   const proposalBrief = normalizeProposalBrief(input.proposalBrief);
   const normalizedInput: TrainingPackageInput = { ...input, proposalBrief };
-  const normalizedOutputs = normalizeTrainingOutputs(outputs, normalizedInput);
+  const normalizedOutputs = normalizeTrainingOutputs(
+    outputs,
+    normalizedInput,
+    normalizedPricingInputs,
+  );
 
   return {
     clientId,

@@ -3,10 +3,10 @@ import type {
   ProposalAgentOutput,
 } from "@/lib/brain/agents";
 import { routeBrainTask } from "@/lib/brain/routing/router";
-import { buildDeterministicPricingFacts } from "@/lib/brain/tools";
 import type { PricingInputs } from "@/features/training-packages";
 import {
   normalizeTrainingOutputs,
+  proposalNarrativeBriefFrom,
   type TrainingPackageInput,
 } from "@/features/training-packages";
 
@@ -23,7 +23,6 @@ export async function regeneratePackageSection({
   section: RegeneratablePackageSection;
   packageInput: RegeneratePackageInput;
 }) {
-  const pricingFacts = buildDeterministicPricingFacts(packageInput.pricingInputs);
   const result = await routeBrainTask<CoursePackageBrainInput, ProposalAgentOutput>({
     taskType: "course_package",
     input: {
@@ -34,11 +33,14 @@ export async function regeneratePackageSection({
       promise: packageInput.promise,
       context: packageInput.context,
       tone: packageInput.tone,
-      proposalBrief: packageInput.proposalBrief,
-      pricingSummary: pricingFacts.summary,
+      proposalBrief: proposalNarrativeBriefFrom(packageInput.proposalBrief),
     },
   });
-  const outputs = normalizeTrainingOutputs(result.output, packageInput);
+  const outputs = normalizeTrainingOutputs(
+    result.output,
+    packageInput,
+    packageInput.pricingInputs,
+  );
 
   return {
     section,

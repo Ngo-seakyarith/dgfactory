@@ -1,8 +1,9 @@
 import OpenAI from "openai";
 
 import {
-  validateAgainstSchema,
-  type JsonSchema,
+  brainSchemaToJsonSchema,
+  formatBrainSchemaErrors,
+  type BrainOutputSchema,
 } from "@/lib/brain/schemas";
 import type { BrainAgentDefinition, BrainMode } from "@/lib/brain/agents";
 import {
@@ -18,7 +19,7 @@ import { resolveAgentPrompt } from "@/lib/brain/core/promptResolver";
 type GenerateStructuredOutputOptions<TInput, TOutput> = {
   agent: BrainAgentDefinition<TInput, TOutput>;
   input: TInput;
-  schema?: JsonSchema;
+  schema?: BrainOutputSchema<TOutput>;
   retries?: number;
 };
 
@@ -33,32 +34,11 @@ export function getBrainModel() {
   return brainModel;
 }
 
-function strictJsonSchema(schema: JsonSchema): JsonSchema {
-  const normalized: JsonSchema = {
-    ...schema,
-    properties: schema.properties
-      ? Object.fromEntries(
-          Object.entries(schema.properties).map(([key, child]) => [
-            key,
-            strictJsonSchema(child),
-          ]),
-        )
-      : undefined,
-    items: schema.items ? strictJsonSchema(schema.items) : undefined,
-  };
-
-  if (schema.type === "object") {
-    normalized.additionalProperties = false;
-  }
-
-  return normalized;
-}
-
-function normalizeJsonSchema(schema: JsonSchema, strict: boolean) {
+function normalizeJsonSchema(schema: BrainOutputSchema) {
   return {
     name: "dg_brain_output",
-    strict,
-    schema: strict ? strictJsonSchema(schema) : schema,
+    strict: true,
+    schema: brainSchemaToJsonSchema(schema),
   };
 }
 
@@ -73,7 +53,7 @@ async function callOpenRouter<TInput>({
   agent: BrainAgentDefinition<TInput, unknown>;
   input: TInput;
   model: string;
-  schema: JsonSchema;
+  schema: BrainOutputSchema;
 }) {
   const prompt = await resolveAgentPrompt({ agent, input });
   const request = {
@@ -86,7 +66,7 @@ async function callOpenRouter<TInput>({
     },
     response_format: {
       type: "json_schema",
-      json_schema: normalizeJsonSchema(schema, agent.strictOutput === true),
+      json_schema: normalizeJsonSchema(schema),
     } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming["response_format"],
     messages: [
       {
@@ -146,24 +126,23 @@ export async function generateStructuredOutput<TInput, TOutput>({
         model: requestedModel,
         schema,
       });
-      const output = generated.output;
-      const validation = validateAgainstSchema(output, schema);
+      const validation = schema.safeParse(generated.output);
 
-      if (!validation.valid) {
+      if (!validation.success) {
         const promptSource = generated.promptSource === "template"
           ? `active template v${generated.templateVersion}`
           : generated.promptSource === "code_schema_mismatch"
             ? `code prompt because active template v${generated.templateVersion} has a stale schema`
             : "code prompt";
         throw new Error(
-          `Schema validation failed using ${promptSource}: ${validation.errors.join("; ")}`,
+          `Schema validation failed using ${promptSource}: ${formatBrainSchemaErrors(validation.error).join("; ")}`,
         );
       }
 
       recordBrainModelSuccess();
 
       return {
-        output: output as TOutput,
+        output: validation.data,
         mode: "openai",
         model: requestedModel,
       };

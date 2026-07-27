@@ -16,10 +16,9 @@ import { requireApproved } from "@/lib/route-guards";
 import { resolvePackageClient } from "@/lib/crm-storage";
 import type { ClientProfileInput } from "@/lib/crm";
 import {
-  calculatePricing,
-  clientPricingSummaryToMarkdown,
   getTrainerById,
   normalizePricingInputs,
+  proposalNarrativeBriefFrom,
   normalizeTrainingInput,
   normalizeTrainingOutputs,
   type ExportFormat,
@@ -255,7 +254,6 @@ export async function generateTrainingPackageRequest(request: Request) {
       input.proposalBrief.vatStatus = pricingInputs.vatStatus;
     }
 
-    const pricingOutputs = calculatePricing(pricingInputs);
     const knowledgeBriefValues = Object.entries(input.proposalBrief ?? {})
       .filter(
         ([key]) =>
@@ -288,7 +286,7 @@ export async function generateTrainingPackageRequest(request: Request) {
     const brainInput: CoursePackageBrainInput = {
       ...input,
       context: [input.context, knowledgeContext].filter(Boolean).join("\n\n"),
-      pricingSummary: clientPricingSummaryToMarkdown(pricingInputs, pricingOutputs),
+      proposalBrief: proposalNarrativeBriefFrom(input.proposalBrief),
     };
     const result = await routeBrainTask<CoursePackageBrainInput, ProposalAgentOutput>({
       taskType: "course_package",
@@ -297,7 +295,7 @@ export async function generateTrainingPackageRequest(request: Request) {
     });
 
     return NextResponse.json({
-      outputs: normalizeTrainingOutputs(result.output, input),
+      outputs: normalizeTrainingOutputs(result.output, input, pricingInputs),
       mode: result.mode,
       model: result.model,
       notice: result.notice,

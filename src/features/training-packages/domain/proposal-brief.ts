@@ -42,8 +42,6 @@ export type ProposalBrief = {
   vatStatus: string;
   acceptanceDeadline: string;
   proposalDate: string;
-  signatoryName: string;
-  signatoryTitle: string;
 };
 
 export const defaultBillingArrangement =
@@ -83,8 +81,6 @@ export const emptyProposalBrief: ProposalBrief = {
   vatStatus: "Excluding VAT",
   acceptanceDeadline: "",
   proposalDate: "",
-  signatoryName: "",
-  signatoryTitle: "",
 };
 
 export function normalizeProposalBrief(value?: Partial<ProposalBrief> | null): ProposalBrief {

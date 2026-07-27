@@ -1,4 +1,5 @@
 import { brainAgents } from "@/lib/brain/agents";
+import { brainSchemaToJsonSchema } from "@/lib/brain/schemas";
 import type { PromptTemplateSeed } from "@/lib/prompt-templates";
 
 export function getSeedPromptTemplates(): PromptTemplateSeed[] {
@@ -29,6 +30,6 @@ export function getSeedPromptTemplates(): PromptTemplateSeed[] {
         "Do not invent deterministic pricing numbers, taxes, discounts, margins, or internal profitability.",
       ].join("\n\n"),
       userPromptTemplate: "{{input_json}}",
-      outputSchema: agent.outputSchema,
+      outputSchema: brainSchemaToJsonSchema(agent.outputSchema),
     }));
 }

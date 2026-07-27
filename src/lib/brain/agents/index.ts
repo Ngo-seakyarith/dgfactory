@@ -1,4 +1,5 @@
 import type { TrainingPackageInput } from "@/features/training-packages";
+import type { ProposalNarrativeBrief } from "@/features/training-packages";
 import {
   adaptiveGrowthRecommendationsOutputSchema,
   dataDiscoveryOutputSchema,
@@ -17,11 +18,20 @@ import {
   textOutputSchema,
   trainingPackageOutputSchema,
   workbookOutputSchema,
+  type AdaptiveGrowthRecommendationsOutput,
+  type BrainOutputSchema,
+  type CoursePackageBrainOutput,
+  type EvaluationQuestionsBrainOutput,
+  type ImprovementOpportunityOutput,
   type JsonSchema,
+  type OfferMutationOutput,
+  type OfferMutationVariant,
+  type OfferReplicationOutput,
+  type QaReviewOutput,
+  type TextAgentOutput,
 } from "@/lib/brain/schemas";
 import { masterAgent } from "@/lib/brain/agents/masterAgent";
 import { dgProposalTemplateGuide } from "@/lib/brain/prompts/proposalTemplateGuide";
-import type { ProposalContent } from "@/features/training-packages";
 import {
   slideDeckGenerationRules,
   type SlideDeckBrainOutput,
@@ -80,20 +90,27 @@ export type BrainAgentDefinition<TInput = unknown, TOutput = unknown> = {
   role: string;
   instructions: string;
   inputSchema: JsonSchema;
-  outputSchema: JsonSchema;
-  strictOutput?: boolean;
+  outputSchema: BrainOutputSchema<TOutput>;
 };
 
-export type TextAgentOutput = {
-  content: string;
+export type CoursePackageBrainInput = Omit<
+  TrainingPackageInput,
+  "proposalBrief"
+> & {
+  proposalBrief: ProposalNarrativeBrief;
 };
 
-export type CoursePackageBrainInput = TrainingPackageInput & {
-  pricingSummary?: string;
-};
+export type ProposalAgentOutput = CoursePackageBrainOutput;
 
-export type ProposalAgentOutput = {
-  proposalContent: ProposalContent;
+export type {
+  AdaptiveGrowthRecommendationsOutput,
+  EvaluationQuestionsBrainOutput,
+  ImprovementOpportunityOutput,
+  OfferMutationOutput,
+  OfferMutationVariant,
+  OfferReplicationOutput,
+  QaReviewOutput,
+  TextAgentOutput,
 };
 
 export type {
@@ -108,16 +125,6 @@ export type QaReviewInput = {
   client: string;
   audience: string;
   context: string;
-};
-
-export type QaReviewOutput = {
-  score: number;
-  strengths: string[];
-  weaknesses: string[];
-  missingSections: string[];
-  risks: string[];
-  recommendedImprovements: string[];
-  clientReadiness: "low" | "medium" | "high";
 };
 
 export const mutationStrategies = [
@@ -147,28 +154,6 @@ export type OfferMutationInput = {
   knowledgeContext?: string;
 };
 
-export type OfferMutationVariant = {
-  title: string;
-  target_audience: string;
-  sector: string;
-  format: string;
-  duration: string;
-  promise: string;
-  pain_point: string;
-  why_now: string;
-  test_method: string;
-  suggested_price_range: string;
-  expected_buying_trigger: string;
-  risk: string;
-  confidence_score: number;
-};
-
-export type OfferMutationOutput = {
-  variants: OfferMutationVariant[];
-  recommended_top_3: string[];
-  rationale: string;
-};
-
 export type OfferReplicationInput = {
   offer: Record<string, unknown>;
   selectionDecision: Record<string, unknown>;
@@ -181,24 +166,6 @@ export type OfferReplicationInput = {
   includeDeliveryAssets?: boolean;
 };
 
-export type ReplicationGenomeItemDraft = {
-  title: string;
-  type: string;
-  content: string;
-  confidence_score: number;
-};
-
-export type OfferReplicationOutput = {
-  replication_summary: string;
-  reusable_training_template: string;
-  proposal_template: string;
-  pricing_note: string;
-  sales_message: string;
-  delivery_checklist: string[];
-  learning_genome_items: ReplicationGenomeItemDraft[];
-  recommended_expansion_paths: string[];
-};
-
 export type ImprovementOpportunityInput = {
   sourceType: string;
   sourceId?: string | null;
@@ -207,30 +174,9 @@ export type ImprovementOpportunityInput = {
   currentAppState?: string;
 };
 
-export type ImprovementOpportunityOutput = {
-  title: string;
-  description: string;
-  category: string;
-  priority: number;
-  rationale: string;
-  suggested_files_modules: string[];
-  acceptance_criteria: string[];
-  codex_prompt: string;
-};
-
 export type AdaptiveGrowthRecommendationsInput = {
   reportSummary: string;
   availableData: Record<string, unknown>;
-};
-
-export type AdaptiveGrowthRecommendationsOutput = {
-  what_to_test_next: string[];
-  what_to_kill: string[];
-  what_to_scale: string[];
-  what_to_replicate: string[];
-  what_to_learn: string[];
-  what_codex_should_improve_next: string[];
-  uncertainty_notes: string[];
 };
 
 const genericInputSchema: JsonSchema = {
@@ -252,9 +198,6 @@ const coursePackageInputSchema: JsonSchema = {
     proposalBrief: {
       type: "object",
       properties: {
-        coverHeading: { type: "string" },
-        coverSubtitle: { type: "string" },
-        certificationLabel: { type: "string" },
         clientBackground: { type: "string" },
         trainingNeed: { type: "string" },
         objectives: { type: "string" },
@@ -264,32 +207,6 @@ const coursePackageInputSchema: JsonSchema = {
         methodology: { type: "string" },
         trainingTools: { type: "string" },
         evaluationApproach: { type: "string" },
-        scheduleDate: { type: "string" },
-        scheduleTime: { type: "string" },
-        scheduleVenue: { type: "string" },
-        trainerId: { type: "string" },
-        trainerImageUrl: { type: "string" },
-        trainerName: { type: "string" },
-        trainerTitle: { type: "string" },
-        trainerBio: { type: "string" },
-        trainerExperience: { type: "string" },
-        trainerQualifications: { type: "string" },
-        secondTrainerId: { type: "string" },
-        secondTrainerImageUrl: { type: "string" },
-        secondTrainerName: { type: "string" },
-        secondTrainerTitle: { type: "string" },
-        secondTrainerBio: { type: "string" },
-        secondTrainerExperience: { type: "string" },
-        secondTrainerQualifications: { type: "string" },
-        includedItems: { type: "string" },
-        clientResponsibilities: { type: "string" },
-        billingArrangement: { type: "string" },
-        paymentInstructions: { type: "string" },
-        vatStatus: { type: "string" },
-        acceptanceDeadline: { type: "string" },
-        proposalDate: { type: "string" },
-        signatoryName: { type: "string" },
-        signatoryTitle: { type: "string" },
       },
     },
   },
@@ -378,10 +295,10 @@ export const courseArchitectAgent: BrainAgentDefinition<
   name: "courseArchitectAgent",
   role: "Senior training product architect",
   instructions: [
-    "Create one structured DG Academy training document as proposalContent.",
-    "Use deterministic pricing facts only when they are supplied; never invent pricing, discounts, taxes, costs, or margins.",
+    "Create the structured narrative sections for a DG Academy training proposal.",
+    "Never generate trainer profiles, pricing, commercial terms, schedule facts, or signatory data.",
     "Make the training content complete, timed, and client-ready using the DG Academy proposal template.",
-    "The proposal and syllabus previews are generated by code from proposalContent. The syllabus omits commercial sections.",
+    "Application code combines proposalNarrative with deterministic proposal data and derives the proposal and syllabus previews.",
     dgProposalTemplateGuide,
   ].join("\n\n"),
   inputSchema: coursePackageInputSchema,
@@ -395,8 +312,8 @@ export const proposalAgent: BrainAgentDefinition = {
   instructions: [
     "Write client-ready proposal language for practical DG Academy business training.",
     "Avoid unsupported guarantees and keep the language executive-friendly, practical, and commercially careful.",
-    "Use the supplied syllabus for content alignment and the supplied deterministic pricing summary for the Professional Fee section.",
-    "Return only proposalContent. Do not return markdown prose as the source of truth.",
+    "Use the supplied syllabus for content alignment. Do not generate commercial, trainer, schedule, or signatory fields.",
+    "Return only proposalNarrative. Do not return markdown prose as the source of truth.",
     dgProposalTemplateGuide,
   ].join("\n\n"),
   inputSchema: genericInputSchema,
@@ -465,7 +382,6 @@ export const slideAgent: BrainAgentDefinition<
   ].join("\n\n"),
   inputSchema: genericInputSchema,
   outputSchema: slideDeckOutputSchema,
-  strictOutput: true,
 };
 
 export const workbookAgent: BrainAgentDefinition<
@@ -481,7 +397,6 @@ export const workbookAgent: BrainAgentDefinition<
   ].join("\n\n"),
   inputSchema: genericInputSchema,
   outputSchema: workbookOutputSchema,
-  strictOutput: true,
 };
 
 export const qaAgent: BrainAgentDefinition<QaReviewInput, QaReviewOutput> = {
@@ -534,15 +449,6 @@ export type EvaluationQuestionsBrainInput = {
   evaluationApproach: string;
 };
 
-export type EvaluationQuestionsBrainOutput = {
-  questions: Array<{
-    type: "rating" | "choice" | "text";
-    label: string;
-    options?: string[];
-    required?: boolean;
-  }>;
-};
-
 export const evaluationQuestionsAgent: BrainAgentDefinition<
   EvaluationQuestionsBrainInput,
   EvaluationQuestionsBrainOutput
@@ -551,7 +457,7 @@ export const evaluationQuestionsAgent: BrainAgentDefinition<
   name: "evaluationQuestionsAgent",
   role: "Training survey form designer",
   instructions:
-    "Design a short participant survey for the supplied DG Academy training, following the purpose field. When purpose is post_training_evaluation: generate 8 to 12 questions measuring the completed session - rating questions on a 1-5 scale covering content relevance, trainer effectiveness, pace, materials, and practical applicability; 1 or 2 single-choice questions; and open-text questions about the most valuable parts, suggested improvements, and how participants plan to apply what they learned. When purpose is pre_training_assessment: generate 8 to 12 questions that measure the participant's starting point before the session - current skill and confidence level with the course topic, familiarity with the specific tools and workflows the course covers, how their daily work relates to the topic, single-choice questions about role context and experience level, and open-text questions about their biggest challenges and what they most want to get from the training, so the trainer can tailor the session. In both cases: ground every question in the supplied course context and objectives; rating and choice questions must be specific to the training topic, not generic. For every question set the required boolean yourself and produce a deliberate mix: mark required=true only for the questions genuinely essential to the survey purpose, and required=false for everything a busy participant may reasonably skip. Never mark all questions of a type required - judge each question on its own importance so the form stays quick to finish. Provide the options array only for single-choice questions. Never ask for confidential business information or personal data.",
+    "Design a short participant survey for the supplied DG Academy training, following the purpose field. When purpose is post_training_evaluation: generate 8 to 12 questions measuring the completed session - rating questions on a 1-5 scale covering content relevance, trainer effectiveness, pace, materials, and practical applicability; 1 or 2 single-choice questions; and open-text questions about the most valuable parts, suggested improvements, and how participants plan to apply what they learned. When purpose is pre_training_assessment: generate 8 to 12 questions that measure the participant's starting point before the session - current skill and confidence level with the course topic, familiarity with the specific tools and workflows the course covers, how their daily work relates to the topic, single-choice questions about role context and experience level, and open-text questions about their biggest challenges and what they most want to get from the training, so the trainer can tailor the session. In both cases: ground every question in the supplied course context and objectives; rating and choice questions must be specific to the training topic, not generic. For every question set the required boolean yourself and produce a deliberate mix: mark required=true only for the questions genuinely essential to the survey purpose, and required=false for everything a busy participant may reasonably skip. Never mark all questions of a type required - judge each question on its own importance so the form stays quick to finish. Fill options for single-choice questions and return an empty options array for rating or text questions. Never ask for confidential business information or personal data.",
   inputSchema: genericInputSchema,
   outputSchema: evaluationQuestionsOutputSchema,
 };
@@ -569,7 +475,6 @@ export const facilitatorGuideAgent: BrainAgentDefinition<
   ].join("\n\n"),
   inputSchema: genericInputSchema,
   outputSchema: facilitatorGuideOutputSchema,
-  strictOutput: true,
 };
 
 export const promptLibraryAgent: BrainAgentDefinition<
@@ -585,7 +490,6 @@ export const promptLibraryAgent: BrainAgentDefinition<
   ].join("\n\n"),
   inputSchema: genericInputSchema,
   outputSchema: promptLibraryOutputSchema,
-  strictOutput: true,
 };
 
 export const improvementAgent: BrainAgentDefinition = {
@@ -756,21 +660,3 @@ export const brainAgents = [
   learningGenomeAgent,
   extinctionAgent,
 ];
-
-export function buildCoursePackagePrompt(input: CoursePackageBrainInput) {
-  return {
-    task: "Create a complete sellable training package.",
-    input,
-    deterministicPricing: {
-      summary: input.pricingSummary,
-    },
-    requirements: [
-      "Use markdown for each output.",
-      "Make the syllabus complete and timed.",
-      "Make the proposal client-ready and executive using the DG Academy proposal template.",
-      "Include the Professional Fee section inside proposal using only deterministic pricing numbers supplied.",
-      "Do not include internal profit, target margin, or direct cost details in proposal.",
-    ],
-    proposalTemplate: dgProposalTemplateGuide,
-  };
-}

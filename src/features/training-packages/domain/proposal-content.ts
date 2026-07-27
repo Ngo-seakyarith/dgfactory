@@ -3,6 +3,7 @@ import {
   defaultPaymentInstructions,
   type ProposalBrief,
 } from "./proposal-brief";
+import type { ProposalNarrative } from "./proposal-narrative";
 
 export type ProposalSchedule = {
   duration: string;
@@ -339,6 +340,43 @@ export function proposalContentFromMarkdown(
       title: "Executive Director",
       date: brief?.proposalDate ?? "",
     },
+  };
+}
+
+export function proposalContentFromNarrative(
+  narrative: ProposalNarrative,
+  meta: ProposalFallbackMeta,
+): ProposalContent {
+  const fallback = proposalContentFromMarkdown("", meta);
+
+  return {
+    ...fallback,
+    courseOverview: cleanItems(narrative.courseOverview, fallback.courseOverview),
+    courseObjectives: cleanItems(
+      narrative.courseObjectives,
+      fallback.courseObjectives,
+    ),
+    expectedLearningOutcomes: cleanItems(
+      narrative.expectedLearningOutcomes,
+      fallback.expectedLearningOutcomes,
+    ),
+    contentOutlines: cleanItems(
+      narrative.contentOutlines,
+      fallback.contentOutlines,
+    ),
+    whoShouldAttend: cleanItems(
+      narrative.whoShouldAttend,
+      fallback.whoShouldAttend,
+    ),
+    trainingMethodology: cleanItems(
+      narrative.trainingMethodology,
+      fallback.trainingMethodology,
+    ),
+    trainingTools: cleanItems(narrative.trainingTools, fallback.trainingTools),
+    trainingEvaluation: cleanItems(
+      narrative.trainingEvaluation,
+      fallback.trainingEvaluation,
+    ),
   };
 }
 
