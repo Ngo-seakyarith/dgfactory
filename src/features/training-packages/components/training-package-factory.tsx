@@ -238,6 +238,7 @@ export function PackageForm({
   const saveMutation = useSaveTrainingPackageMutation();
   const generateMutation = useGenerateTrainingPackageMutation();
   const initialClientResolved = useRef(false);
+  const outputRef = useRef<HTMLDivElement>(null);
   const [clientProfile, setClientProfile] = useState<ClientProfileInput>(() => ({
     ...emptyClientProfile,
     id: initialPackage?.clientId ?? undefined,
@@ -449,8 +450,9 @@ export function PackageForm({
       const savedPackage = await persistPackage(pkg);
       setCurrentPackage(savedPackage);
       onPackageSaved?.(savedPackage);
-      setNotice(payload.notice ?? "Generated with OpenRouter and saved in Supabase.");
-      router.replace(`/packages/${savedPackage.id}`);
+      requestAnimationFrame(() => {
+        outputRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
     } catch (generationError) {
       setError(
         generationError instanceof Error
@@ -811,37 +813,39 @@ export function PackageForm({
         </div>
       </div>
 
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
-          <div>
-            <CardTitle>
-              {currentPackage?.status === "Draft"
-                ? "Package Draft"
-                : "Generated Package"}
-            </CardTitle>
-            <CardDescription>
-              {currentPackage?.status === "Draft"
-                ? "Your inputs are saved. Generate when you are ready."
-                : "Outputs are organized into tabs with copy controls for fast client packaging."}
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent>
-          {currentPackage?.status === "Generated" ? (
-            <OutputTabs pkg={currentPackage} onPackageUpdate={setCurrentPackage} />
-          ) : currentPackage ? (
-            <EmptyState
-              title="Draft saved."
-              detail="Your form, trainer selection, client information, and commercial setup are stored. Generate the package when you are ready."
-            />
-          ) : (
-            <EmptyState
-              title="Your production package will appear here."
-              detail="Generate once, review the tabs, then save the package locally or into Supabase when configured."
-            />
-          )}
-        </CardContent>
-      </Card>
+      <div ref={outputRef} className="scroll-mt-6">
+        <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+          <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
+            <div>
+              <CardTitle>
+                {currentPackage?.status === "Draft"
+                  ? "Package Draft"
+                  : "Generated Package"}
+              </CardTitle>
+              <CardDescription>
+                {currentPackage?.status === "Draft"
+                  ? "Your inputs are saved. Generate when you are ready."
+                  : "Outputs are organized into tabs with copy controls for fast client packaging."}
+              </CardDescription>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {currentPackage?.status === "Generated" ? (
+              <OutputTabs pkg={currentPackage} onPackageUpdate={setCurrentPackage} />
+            ) : currentPackage ? (
+              <EmptyState
+                title="Draft saved."
+                detail="Your form, trainer selection, client information, and commercial setup are stored. Generate the package when you are ready."
+              />
+            ) : (
+              <EmptyState
+                title="Your production package will appear here."
+                detail="Generate once, review the tabs, then save the package locally or into Supabase when configured."
+              />
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
