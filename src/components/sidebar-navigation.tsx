@@ -161,10 +161,6 @@ export function SidebarNavigation({ items, isAuthenticated }: SidebarNavigationP
       </nav>
 
       <div className="border-t border-white/10 p-3">
-        <div className="mb-2 flex items-center gap-2 px-3 py-1 text-xs text-stone-500">
-          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-          Internal workspace
-        </div>
         <AccountButton isAuthenticated={isAuthenticated} className="w-full justify-start" />
       </div>
     </>

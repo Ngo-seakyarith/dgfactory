@@ -19,7 +19,7 @@ export default function AppError({
   reset: () => void;
 }) {
   return (
-    <Card className="border-red-300/25 bg-red-400/10 shadow-executive">
+    <Card className="border-destructive/25 bg-destructive/10 shadow-executive">
       <CardHeader>
         <CardTitle>Something needs attention</CardTitle>
         <CardDescription>
@@ -27,7 +27,7 @@ export default function AppError({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm leading-6 text-red-100/85">
+        <p className="text-sm leading-6 text-destructive/85">
           {error.message || "Please retry the page. If it repeats, check server logs."}
         </p>
         <Button type="button" variant="outline" onClick={reset}>

@@ -112,7 +112,7 @@ export default async function ClientPortalPage({
 
 function BlockedPortal({ status }: { status: string }) {
   return (
-    <Card className="mx-auto mt-12 max-w-xl border-red-300/25 bg-red-400/10 shadow-executive">
+    <Card className="mx-auto mt-12 max-w-xl border-destructive/25 bg-destructive/10 shadow-executive">
       <CardHeader>
         <CardTitle>Portal Access Unavailable</CardTitle>
         <CardDescription>

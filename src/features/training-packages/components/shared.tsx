@@ -118,10 +118,10 @@ export function ErrorState({
   detail: string;
 }) {
   return (
-    <Card className="border-red-300/25 bg-red-400/10 shadow-executive">
+    <Card className="border-destructive/25 bg-destructive/10 shadow-executive">
       <CardContent className="p-6">
-        <div className="text-base font-semibold text-red-100">{title}</div>
-        <p className="mt-2 text-sm leading-6 text-red-100/80">{detail}</p>
+        <div className="text-base font-semibold text-destructive">{title}</div>
+        <p className="mt-2 text-sm leading-6 text-destructive/80">{detail}</p>
       </CardContent>
     </Card>
   );

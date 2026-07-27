@@ -112,17 +112,22 @@ textarea {
 
 .app-workspace .text-white,
 .app-workspace .text-slate-50,
-.app-workspace .text-slate-100 {
+.app-workspace .text-slate-100,
+.app-workspace .text-stone-50 {
   color: #1d2521;
 }
 
-.app-workspace .text-slate-200 {
+.app-workspace .text-slate-200,
+.app-workspace .text-slate-500,
+.app-workspace .text-stone-400,
+.app-workspace .text-stone-500 {
   color: #36423c;
 }
 
 .app-workspace .text-teal-50,
 .app-workspace .text-teal-100,
 .app-workspace .text-teal-200,
+.app-workspace .text-teal-300,
 .app-workspace [class~="text-teal-50/75"],
 .app-workspace [class~="text-teal-50/80"],
 .app-workspace [class~="text-teal-50/85"],
@@ -131,6 +136,14 @@ textarea {
 }
 
 .app-workspace [class*="text-amber-"] {
+  color: #8a4b12;
+}
+
+.app-workspace [class*="text-red-"] {
+  color: hsl(var(--destructive));
+}
+
+.app-workspace [class*="text-[#f7d889]"] {
   color: #8a4b12;
 }
 
@@ -147,6 +160,11 @@ textarea {
 
 .app-workspace [class*="bg-[#07111f]"] {
   background-color: #f7f8f6;
+}
+
+.app-workspace [class*="bg-[#0b1829]"],
+.app-workspace [class*="bg-[#0d1b2d]"] {
+  background-color: #ffffff;
 }
 
 .app-workspace [class*="border-teal-300"] {

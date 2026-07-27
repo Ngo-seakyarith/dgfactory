@@ -79,7 +79,7 @@ export function CommercialSetup({
         </div>
 
         {pricingOutputs.warnings.length > 0 ? (
-          <div className="rounded-lg border border-red-300/25 bg-red-400/10 p-3 text-sm leading-6 text-red-100">
+          <div className="rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm font-medium leading-6 text-destructive">
             {pricingOutputs.warnings.join(" ")}
           </div>
         ) : null}

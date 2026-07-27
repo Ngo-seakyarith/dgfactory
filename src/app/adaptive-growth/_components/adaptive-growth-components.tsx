@@ -1161,7 +1161,7 @@ function SelectionRankingPanel({
                     item.fitness.recommendation === "Scale"
                       ? "border-b border-teal-300/20 bg-teal-300/10 align-top last:border-b-0"
                       : item.fitness.recommendation === "Kill"
-                        ? "border-b border-red-300/20 bg-red-400/10 align-top last:border-b-0"
+                        ? "border-b border-destructive/25 bg-destructive/10 align-top last:border-b-0"
                         : "border-b border-white/10 align-top last:border-b-0"
                   }
                 >

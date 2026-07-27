@@ -216,7 +216,7 @@ export function KnowledgeDocumentForm({
           />
         </Field>
         {notice ? (
-          <p className="rounded-lg border border-red-300/20 bg-red-400/10 p-3 text-sm text-red-100">
+          <p className="rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm font-medium text-destructive">
             {notice}
           </p>
         ) : null}
@@ -393,9 +393,9 @@ export function KnowledgeDocumentDetail({ id }: { id: string }) {
 
   if (!document) {
     return (
-      <Card className="border-red-300/25 bg-red-400/10 shadow-executive">
+      <Card className="border-destructive/25 bg-destructive/10 shadow-executive">
         <CardContent className="p-6">
-          <div className="font-semibold text-red-100">Knowledge document not found</div>
+          <div className="font-semibold text-destructive">Knowledge document not found</div>
           <Button asChild variant="outline" className="mt-4">
             <Link href="/knowledge">Go Back</Link>
           </Button>

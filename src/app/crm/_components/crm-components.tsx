@@ -193,7 +193,7 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
           />
         </Field>
         {notice ? (
-          <p className="rounded-lg border border-red-300/20 bg-red-400/10 p-3 text-sm text-red-100">
+          <p className="rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm font-medium text-destructive">
             {notice}
           </p>
         ) : null}
@@ -831,7 +831,7 @@ export function OpportunityForm({
           />
         </Field>
         {notice ? (
-          <p className="rounded-lg border border-red-300/20 bg-red-400/10 p-3 text-sm text-red-100">
+          <p className="rounded-lg border border-destructive/25 bg-destructive/10 p-3 text-sm font-medium text-destructive">
             {notice}
           </p>
         ) : null}
@@ -1438,9 +1438,9 @@ function LoadingCard({ label }: { label: string }) {
 
 function MissingCard({ label, href }: { label: string; href: string }) {
   return (
-    <Card className="border-red-300/25 bg-red-400/10 shadow-executive">
+    <Card className="border-destructive/25 bg-destructive/10 shadow-executive">
       <CardContent className="p-6">
-        <div className="font-semibold text-red-100">{label}</div>
+        <div className="font-semibold text-destructive">{label}</div>
         <Button asChild variant="outline" className="mt-4">
           <Link href={href}>Go Back</Link>
         </Button>
