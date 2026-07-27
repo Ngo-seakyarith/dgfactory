@@ -1,4 +1,9 @@
-import { getTrainerById, trainerSnapshotFields } from "./trainers";
+import {
+  emptySecondTrainerSnapshotFields,
+  getTrainerById,
+  secondTrainerSnapshotFields,
+  trainerSnapshotFields,
+} from "./trainers";
 
 export type ProposalBrief = {
   coverHeading: string;
@@ -23,6 +28,13 @@ export type ProposalBrief = {
   trainerBio: string;
   trainerExperience: string;
   trainerQualifications: string;
+  secondTrainerId: string;
+  secondTrainerImageUrl: string;
+  secondTrainerName: string;
+  secondTrainerTitle: string;
+  secondTrainerBio: string;
+  secondTrainerExperience: string;
+  secondTrainerQualifications: string;
   includedItems: string;
   clientResponsibilities: string;
   billingArrangement: string;
@@ -63,6 +75,7 @@ export const emptyProposalBrief: ProposalBrief = {
   trainerBio: "",
   trainerExperience: "",
   trainerQualifications: "",
+  ...emptySecondTrainerSnapshotFields,
   includedItems: "",
   clientResponsibilities: "",
   billingArrangement: defaultBillingArrangement,
@@ -82,11 +95,20 @@ export function normalizeProposalBrief(value?: Partial<ProposalBrief> | null): P
     ]),
   ) as ProposalBrief;
   const trainer = getTrainerById(normalized.trainerId);
+  const secondTrainer = getTrainerById(normalized.secondTrainerId);
   normalized.billingArrangement =
     normalized.billingArrangement || defaultBillingArrangement;
   normalized.paymentInstructions =
     normalized.paymentInstructions || defaultPaymentInstructions;
   normalized.vatStatus = normalized.vatStatus || emptyProposalBrief.vatStatus;
 
-  return trainer ? { ...normalized, ...trainerSnapshotFields(trainer) } : normalized;
+  const withPrimary = trainer
+    ? { ...normalized, ...trainerSnapshotFields(trainer) }
+    : normalized;
+
+  if (!secondTrainer || secondTrainer.id === trainer?.id) {
+    return { ...withPrimary, ...emptySecondTrainerSnapshotFields };
+  }
+
+  return { ...withPrimary, ...secondTrainerSnapshotFields(secondTrainer) };
 }

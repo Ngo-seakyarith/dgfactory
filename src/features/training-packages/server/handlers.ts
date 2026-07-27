@@ -236,6 +236,18 @@ export async function generateTrainingPackageRequest(request: Request) {
       );
     }
 
+    const secondTrainerId = input.proposalBrief?.secondTrainerId ?? "";
+    if (
+      secondTrainerId &&
+      (!getTrainerById(secondTrainerId) ||
+        secondTrainerId === input.proposalBrief?.trainerId)
+    ) {
+      return NextResponse.json(
+        { error: "Select a different approved profile for the second trainer." },
+        { status: 400 },
+      );
+    }
+
     const pricingInputs = normalizePricingInputs(
       (body as { pricingInputs?: Partial<PricingInputs> }).pricingInputs,
     );
@@ -252,6 +264,10 @@ export async function generateTrainingPackageRequest(request: Request) {
             "trainerBio",
             "trainerExperience",
             "trainerQualifications",
+            "secondTrainerImageUrl",
+            "secondTrainerBio",
+            "secondTrainerExperience",
+            "secondTrainerQualifications",
           ].includes(key),
       )
       .map(([, value]) => value);
@@ -337,6 +353,20 @@ export async function exportTrainingPackageRequest(request: Request) {
           error:
             "Select a DG Academy trainer before exporting the proposal or syllabus.",
         },
+        { status: 400 },
+      );
+    }
+
+    const secondTrainerId = body.package.proposalBrief?.secondTrainerId ?? "";
+    if (
+      body.format === "docx" &&
+      (target === "proposal" || target === "syllabus") &&
+      secondTrainerId &&
+      (!getTrainerById(secondTrainerId) ||
+        secondTrainerId === body.package.proposalBrief?.trainerId)
+    ) {
+      return NextResponse.json(
+        { error: "Select a different approved profile for the second trainer." },
         { status: 400 },
       );
     }

@@ -35,7 +35,9 @@ export async function resolveAgentPrompt<TInput>({
   agent: BrainAgentDefinition<TInput, unknown>;
   input: TInput;
 }) {
-  const activeTemplate = await getActivePromptTemplate(agent.name);
+  const activeTemplate = await getActivePromptTemplate(agent.name).catch(
+    () => null,
+  );
 
   if (
     activeTemplate &&

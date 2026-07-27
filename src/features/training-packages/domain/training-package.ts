@@ -189,6 +189,26 @@ export function createTrainingOutputTemplate(
         ? input.proposalBrief.trainerQualifications.split(/\r?\n/).filter(Boolean)
         : [],
     },
+    secondTrainer: input.proposalBrief?.secondTrainerId
+      ? {
+          name: input.proposalBrief.secondTrainerName,
+          title: input.proposalBrief.secondTrainerTitle || "Trainer & Speaker",
+          imageUrl: input.proposalBrief.secondTrainerImageUrl,
+          bio: input.proposalBrief.secondTrainerBio
+            ? [input.proposalBrief.secondTrainerBio]
+            : [],
+          experience: input.proposalBrief.secondTrainerExperience
+            ? input.proposalBrief.secondTrainerExperience
+                .split(/\r?\n/)
+                .filter(Boolean)
+            : [],
+          qualifications: input.proposalBrief.secondTrainerQualifications
+            ? input.proposalBrief.secondTrainerQualifications
+                .split(/\r?\n/)
+                .filter(Boolean)
+            : [],
+        }
+      : undefined,
     professionalFee: {
       included: [
         "Professional trainer with pre-training consultation",

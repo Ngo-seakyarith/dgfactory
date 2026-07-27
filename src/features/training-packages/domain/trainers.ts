@@ -19,6 +19,36 @@ export type TrainerSnapshotFields = {
   trainerQualifications: string;
 };
 
+export type SecondTrainerSnapshotFields = {
+  secondTrainerId: string;
+  secondTrainerImageUrl: string;
+  secondTrainerName: string;
+  secondTrainerTitle: string;
+  secondTrainerBio: string;
+  secondTrainerExperience: string;
+  secondTrainerQualifications: string;
+};
+
+export const emptyTrainerSnapshotFields: TrainerSnapshotFields = {
+  trainerId: "",
+  trainerImageUrl: "",
+  trainerName: "",
+  trainerTitle: "",
+  trainerBio: "",
+  trainerExperience: "",
+  trainerQualifications: "",
+};
+
+export const emptySecondTrainerSnapshotFields: SecondTrainerSnapshotFields = {
+  secondTrainerId: "",
+  secondTrainerImageUrl: "",
+  secondTrainerName: "",
+  secondTrainerTitle: "",
+  secondTrainerBio: "",
+  secondTrainerExperience: "",
+  secondTrainerQualifications: "",
+};
+
 type RawTrainerEntry = {
   name: string;
   image: string;
@@ -65,6 +95,20 @@ export function trainerSnapshotFields(
     trainerBio: trainer.bio,
     trainerExperience: trainer.experience.join("\n"),
     trainerQualifications: trainer.qualifications.join("\n"),
+  };
+}
+
+export function secondTrainerSnapshotFields(
+  trainer: TrainerCatalogEntry,
+): SecondTrainerSnapshotFields {
+  return {
+    secondTrainerId: trainer.id,
+    secondTrainerImageUrl: trainer.imageUrl,
+    secondTrainerName: trainer.name,
+    secondTrainerTitle: "Trainer & Speaker",
+    secondTrainerBio: trainer.bio,
+    secondTrainerExperience: trainer.experience.join("\n"),
+    secondTrainerQualifications: trainer.qualifications.join("\n"),
   };
 }
 

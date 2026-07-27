@@ -28,6 +28,7 @@ import type { TrainingPackage } from "@/features/training-packages/domain/traini
 import {
   normalizeProposalContent,
   type ProposalContent,
+  type ProposalTrainer,
 } from "@/features/training-packages/domain/proposal-content";
 import { isTrustedTrainerImageUrl } from "@/features/training-packages/domain/trainers";
 import { contentForTarget, docTitle, markdownToLines, wrapText } from "./content";
@@ -445,12 +446,84 @@ function markdownToDocxChildren(markdown: string) {
   return children;
 }
 
+function proposalTrainerChildren(
+  trainer: ProposalTrainer,
+  trainerImageData: TrainerImageData | null,
+  { pageBreakBefore = false, heading = "" } = {},
+) {
+  const trainerImageSize = trainerImageData
+    ? fitImage(trainerImageData, 150, 180)
+    : null;
+
+  return [
+    ...(pageBreakBefore ? [pageBreakParagraph()] : []),
+    ...(heading ? [proposalHeading(heading, 0, 120)] : []),
+    ...(trainerImageData
+      ? [
+          new Paragraph({
+            children: [
+              new ImageRun({
+                type: trainerImageData.type,
+                data: trainerImageData.data,
+                transformation: trainerImageSize ?? { width: 128, height: 139 },
+                altText: {
+                  title: trainer.name,
+                  description: `${trainer.name}, DG Academy trainer`,
+                  name: `${trainer.name} portrait`,
+                },
+              }),
+            ],
+            indent: { left: 300 },
+            spacing: { before: 72, after: 180 },
+          }),
+        ]
+      : []),
+    proposalParagraph(trainer.name, {
+      bold: true,
+      font: "Arial",
+      size: 24,
+      after: 160,
+    }),
+    proposalParagraph(trainer.title, {
+      bold: true,
+      italics: true,
+      font: "Arial",
+      size: 24,
+      after: 220,
+    }),
+    ...trainer.bio.map((item, index) =>
+      proposalParagraph(item, {
+        font: "Arial",
+        size: 24,
+        alignment: AlignmentType.JUSTIFIED,
+        after: index === trainer.bio.length - 1 ? 0 : 180,
+      }),
+    ),
+    ...(trainer.experience.length > 0
+      ? [
+          proposalHeading("Experience", 260, 120),
+          ...trainer.experience.map((item) =>
+            proposalBullet(item, "Arial", 22, 70),
+          ),
+        ]
+      : []),
+    ...(trainer.qualifications.length > 0
+      ? [
+          proposalHeading("Qualifications", 260, 120),
+          ...trainer.qualifications.map((item) =>
+            proposalBullet(item, "Arial", 22, 70),
+          ),
+        ]
+      : []),
+  ];
+}
+
 function proposalDocxChildren(
   content: ProposalContent,
   totalFee: string,
   participantCount: number,
   logoData: Buffer | null,
-  trainerImageData: TrainerImageData | null,
+  trainerImageData: Array<TrainerImageData | null>,
   signatureImageData: Buffer | null,
   includeCommercial: boolean,
 ) {
@@ -468,9 +541,9 @@ function proposalDocxChildren(
   const contentOutlineChildren = proposalContentOutlineChildren(
     content.contentOutlines,
   );
-  const trainerImageSize = trainerImageData
-    ? fitImage(trainerImageData, 150, 180)
-    : null;
+  const trainers = [content.trainer, content.secondTrainer].filter(
+    (trainer): trainer is ProposalTrainer => Boolean(trainer),
+  );
   const signatureTabs = [{ type: TabStopType.LEFT, position: 5760 }];
   const participantLabel =
     participantCount > 0 ? `${participantCount} Pax` : content.schedule.participants;
@@ -599,63 +672,16 @@ function proposalDocxChildren(
       proposalScheduleBullet("Participants", participantLabel),
     ]),
     pageBreakParagraph(),
-    proposalHeading(`${toRoman(sectionNumber++)}. Trainer`, 0),
-    ...(trainerImageData
-      ? [
-          new Paragraph({
-            children: [
-              new ImageRun({
-                type: trainerImageData.type,
-                data: trainerImageData.data,
-                transformation: trainerImageSize ?? { width: 128, height: 139 },
-                altText: {
-                  title: content.trainer.name,
-                  description: `${content.trainer.name}, DG Academy trainer`,
-                  name: `${content.trainer.name} portrait`,
-                },
-              }),
-            ],
-            indent: { left: 300 },
-            spacing: { before: 72, after: 180 },
-          }),
-        ]
-      : []),
-    proposalParagraph(content.trainer.name, {
-        bold: true,
-        font: "Arial",
-        size: 24,
-        after: 160,
-    }),
-    proposalParagraph(content.trainer.title, {
-        bold: true,
-        italics: true,
-        font: "Arial",
-        size: 24,
-        after: 220,
-    }),
-    ...content.trainer.bio.map((item, index) =>
-      proposalParagraph(item, {
-        font: "Arial",
-        size: 24,
-        alignment: AlignmentType.JUSTIFIED,
-        after: index === content.trainer.bio.length - 1 ? 0 : 180,
-      }),
+    proposalHeading(
+      `${toRoman(sectionNumber++)}. ${trainers.length > 1 ? "Trainers" : "Trainer"}`,
+      0,
     ),
-    ...(content.trainer.experience.length > 0
-      ? [
-          proposalHeading("Experience", 260, 120),
-          ...content.trainer.experience.map((item) =>
-            proposalBullet(item, "Arial", 22, 70),
-          ),
-        ]
-      : []),
-    ...(content.trainer.qualifications.length > 0
-      ? [
-          proposalHeading("Qualifications", 260, 120),
-          ...content.trainer.qualifications.map((item) =>
-            proposalBullet(item, "Arial", 22, 70),
-          ),
-        ]
+    ...proposalTrainerChildren(trainers[0], trainerImageData[0] ?? null),
+    ...(trainers[1]
+      ? proposalTrainerChildren(trainers[1], trainerImageData[1] ?? null, {
+          pageBreakBefore: true,
+          heading: "Co-Trainer",
+        })
       : []),
     ...(includeCommercial
       ? [
@@ -822,12 +848,21 @@ export async function createDocx(
     promise: pkg.promise,
     proposalBrief: pkg.proposalBrief,
   });
+  const trainerProfiles = [
+    proposalContent.trainer,
+    proposalContent.secondTrainer,
+  ].filter((trainer): trainer is ProposalTrainer => Boolean(trainer));
   const [logoData, trainerImageData, signatureImageData] = await Promise.all([
     loadLogoData(),
-    (target === "proposal" || target === "syllabus") &&
-    proposalContent.trainer.imageUrl
-      ? loadTrainerImageData(proposalContent.trainer.imageUrl)
-      : Promise.resolve(null),
+    target === "proposal" || target === "syllabus"
+      ? Promise.all(
+          trainerProfiles.map((trainer) =>
+            trainer.imageUrl
+              ? loadTrainerImageData(trainer.imageUrl)
+              : Promise.resolve(null),
+          ),
+        )
+      : Promise.resolve([]),
     target === "proposal" ? loadSignatureImageData() : Promise.resolve(null),
   ]);
   const pricingInputs = normalizePricingInputs(pkg.pricingInputs);

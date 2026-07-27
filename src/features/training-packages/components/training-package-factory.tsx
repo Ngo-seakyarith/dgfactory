@@ -49,9 +49,13 @@ import {
   type ProposalBrief,
 } from "@/features/training-packages";
 import {
+  emptySecondTrainerSnapshotFields,
+  emptyTrainerSnapshotFields,
   getTrainerById,
+  secondTrainerSnapshotFields,
   trainerCatalog,
   trainerSnapshotFields,
+  type TrainerCatalogEntry,
 } from "@/features/training-packages";
 import {
   outputEvaluationTypes,
@@ -122,6 +126,70 @@ function profileFromClient(client: Client): ClientProfileInput {
   };
 }
 
+function TrainerProfilePreview({
+  trainer,
+  label,
+}: {
+  trainer: TrainerCatalogEntry;
+  label: string;
+}) {
+  return (
+    <div className="grid gap-6 border-t border-white/10 pt-5 lg:grid-cols-[180px_minmax(0,1fr)]">
+      <div>
+        <Badge variant="outline" className="mb-3">
+          {label}
+        </Badge>
+        <div className="relative aspect-[4/5] w-full max-w-[180px] overflow-hidden rounded-md bg-white">
+          <Image
+            src={trainer.imageUrl}
+            alt={trainer.name}
+            fill
+            sizes="180px"
+            className="object-contain"
+          />
+        </div>
+      </div>
+      <div className="min-w-0 space-y-5">
+        <div>
+          <h3 className="text-lg font-semibold text-foreground">
+            {trainer.name}
+          </h3>
+          <p className="text-sm text-muted-foreground">Trainer &amp; Speaker</p>
+        </div>
+        <p className="text-sm leading-6 text-muted-foreground">{trainer.bio}</p>
+        {trainer.experience.length > 0 ? (
+          <div>
+            <h4 className="mb-2 text-sm font-semibold text-foreground">
+              Experience
+            </h4>
+            <ul className="space-y-1.5 pl-5 text-sm leading-6 text-muted-foreground">
+              {trainer.experience.map((item) => (
+                <li key={item} className="list-disc">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {trainer.qualifications.length > 0 ? (
+          <div>
+            <h4 className="mb-2 text-sm font-semibold text-foreground">
+              Qualifications
+            </h4>
+            <ul className="space-y-1.5 pl-5 text-sm leading-6 text-muted-foreground">
+              {trainer.qualifications.map((item) => (
+                <li key={item} className="list-disc">
+                  {item}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 const blankPackagePricingInputs: PricingInputs = {
   ...defaultPricingInputs,
   numberOfParticipants: 0,
@@ -177,6 +245,10 @@ export function PackageForm({
   const selectedTrainer = useMemo(
     () => getTrainerById(proposalBrief.trainerId),
     [proposalBrief.trainerId],
+  );
+  const selectedSecondTrainer = useMemo(
+    () => getTrainerById(proposalBrief.secondTrainerId),
+    [proposalBrief.secondTrainerId],
   );
   const [pricingInputs, setPricingInputs] =
     useState<PricingInputs>(
@@ -283,15 +355,21 @@ export function PackageForm({
 
     setProposalBrief((current) => ({
       ...current,
-      ...(trainer ? trainerSnapshotFields(trainer) : {
-        trainerId: "",
-        trainerImageUrl: "",
-        trainerName: "",
-        trainerTitle: "",
-        trainerBio: "",
-        trainerExperience: "",
-        trainerQualifications: "",
-      }),
+      ...(trainer ? trainerSnapshotFields(trainer) : emptyTrainerSnapshotFields),
+      ...(trainer?.id === current.secondTrainerId
+        ? emptySecondTrainerSnapshotFields
+        : {}),
+    }));
+  }
+
+  function selectSecondTrainer(trainerId: string) {
+    const trainer = getTrainerById(trainerId);
+
+    setProposalBrief((current) => ({
+      ...current,
+      ...(trainer && trainer.id !== current.trainerId
+        ? secondTrainerSnapshotFields(trainer)
+        : emptySecondTrainerSnapshotFields),
     }));
   }
 
@@ -525,7 +603,7 @@ export function PackageForm({
             <CardDescription>Objectives, methodology, tools, and evaluation reflected in the proposal.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-2">
-            <Field label="Objectives and outcomes">
+            <Field label="Objectives">
               <Textarea rows={7} value={proposalBrief.objectives} onChange={(event) => updateProposalBrief("objectives", event.target.value)} placeholder="Enter one objective per line" />
             </Field>
             <Field label="Expected learning outcomes">
@@ -569,77 +647,61 @@ export function PackageForm({
                 <Input value={proposalBrief.scheduleVenue} onChange={(event) => updateProposalBrief("scheduleVenue", event.target.value)} placeholder="Client office or TBC" />
               </Field>
             </div>
-            <Field
-              label="Trainer"
-              description="Required. The selected DG Academy profile is used exactly as approved."
-            >
-              <Select
-                value={proposalBrief.trainerId}
-                onChange={(event) => selectTrainer(event.target.value)}
-                required
+            <div className="grid gap-4 lg:grid-cols-2">
+              <Field
+                label="Primary trainer"
+                description="Required. The approved profile is used exactly as stored."
               >
-                <option value="">Select a trainer</option>
-                {trainerCatalog.map((trainer) => (
-                  <option key={trainer.id} value={trainer.id}>
-                    {trainer.name}
-                  </option>
-                ))}
-              </Select>
-            </Field>
+                <Select
+                  value={proposalBrief.trainerId}
+                  onChange={(event) => selectTrainer(event.target.value)}
+                  required
+                >
+                  <option value="">Select a trainer</option>
+                  {trainerCatalog.map((trainer) => (
+                    <option
+                      key={trainer.id}
+                      value={trainer.id}
+                      disabled={trainer.id === proposalBrief.secondTrainerId}
+                    >
+                      {trainer.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+              <Field
+                label="Second trainer"
+                description="Optional. Add a co-trainer when the program needs two facilitators."
+              >
+                <Select
+                  value={proposalBrief.secondTrainerId}
+                  onChange={(event) => selectSecondTrainer(event.target.value)}
+                >
+                  <option value="">No second trainer</option>
+                  {trainerCatalog.map((trainer) => (
+                    <option
+                      key={trainer.id}
+                      value={trainer.id}
+                      disabled={trainer.id === proposalBrief.trainerId}
+                    >
+                      {trainer.name}
+                    </option>
+                  ))}
+                </Select>
+              </Field>
+            </div>
 
             {selectedTrainer ? (
-              <div className="grid gap-6 border-t border-white/10 pt-5 lg:grid-cols-[180px_minmax(0,1fr)]">
-                <div className="relative aspect-[4/5] w-full max-w-[180px] overflow-hidden rounded-md bg-white">
-                  <Image
-                    src={selectedTrainer.imageUrl}
-                    alt={selectedTrainer.name}
-                    fill
-                    sizes="180px"
-                    className="object-contain"
-                  />
-                </div>
-                <div className="min-w-0 space-y-5">
-                  <div>
-                    <h3 className="text-lg font-semibold text-foreground">
-                      {selectedTrainer.name}
-                    </h3>
-                    <p className="text-sm text-muted-foreground">
-                      Trainer &amp; Speaker
-                    </p>
-                  </div>
-                  <p className="text-sm leading-6 text-muted-foreground">
-                    {selectedTrainer.bio}
-                  </p>
-                  {selectedTrainer.experience.length > 0 ? (
-                    <div>
-                      <h4 className="mb-2 text-sm font-semibold text-foreground">
-                        Experience
-                      </h4>
-                      <ul className="space-y-1.5 pl-5 text-sm leading-6 text-muted-foreground">
-                        {selectedTrainer.experience.map((item) => (
-                          <li key={item} className="list-disc">
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                  {selectedTrainer.qualifications.length > 0 ? (
-                    <div>
-                      <h4 className="mb-2 text-sm font-semibold text-foreground">
-                        Qualifications
-                      </h4>
-                      <ul className="space-y-1.5 pl-5 text-sm leading-6 text-muted-foreground">
-                        {selectedTrainer.qualifications.map((item) => (
-                          <li key={item} className="list-disc">
-                            {item}
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ) : null}
-                </div>
-              </div>
+              <TrainerProfilePreview
+                trainer={selectedTrainer}
+                label="Primary trainer"
+              />
+            ) : null}
+            {selectedSecondTrainer ? (
+              <TrainerProfilePreview
+                trainer={selectedSecondTrainer}
+                label="Second trainer"
+              />
             ) : null}
           </CardContent>
         </Card>

@@ -53,6 +53,7 @@ export type ProposalContent = {
   trainingEvaluation: string[];
   schedule: ProposalSchedule;
   trainer: ProposalTrainer;
+  secondTrainer?: ProposalTrainer;
   professionalFee: ProposalProfessionalFee;
   signatory: ProposalSignatory;
 };
@@ -98,6 +99,25 @@ function optionalSection(title: string, body: string[]) {
   return body.length > 0 ? section(title, body) : "";
 }
 
+function trainerMarkdown(trainer: ProposalTrainer) {
+  return [
+    `### ${trainer.name}`,
+    "",
+    trainer.title,
+    "",
+    trainer.bio.join("\n\n"),
+    ...(trainer.experience.length > 0
+      ? ["", "#### Experience", "", markdownBullets(trainer.experience)]
+      : []),
+    ...(trainer.qualifications.length > 0
+      ? ["", "#### Qualifications", "", markdownBullets(trainer.qualifications)]
+      : []),
+  ]
+    .join("\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 function section(title: string, body: string | string[]) {
   const content = Array.isArray(body) ? markdownBullets(body) : body;
   return [`## ${title}`, "", content.trim()].filter(Boolean).join("\n");
@@ -141,6 +161,9 @@ function documentContentToMarkdown(
   content: ProposalContent,
   { includeCommercial }: { includeCommercial: boolean },
 ) {
+  const trainers = [content.trainer, content.secondTrainer].filter(
+    (trainer): trainer is ProposalTrainer => Boolean(trainer),
+  );
   const schedule = [
     `Course Duration: ${content.schedule.duration}`,
     `Date: ${content.schedule.date}`,
@@ -189,14 +212,8 @@ function documentContentToMarkdown(
     optionalSection("Training Evaluation", content.trainingEvaluation),
     section("Schedule", schedule),
     section(
-      "Trainer",
-      [
-        [content.trainer.name, content.trainer.title].filter(Boolean).join(" - "),
-        "",
-        ...content.trainer.bio,
-      ]
-        .filter(Boolean)
-        .join("\n\n"),
+      trainers.length > 1 ? "Trainers" : "Trainer",
+      trainers.map(trainerMarkdown).join("\n\n"),
     ),
     ...(includeCommercial
       ? [
@@ -289,6 +306,16 @@ export function proposalContentFromMarkdown(
       experience: briefLines(brief?.trainerExperience),
       qualifications: briefLines(brief?.trainerQualifications),
     },
+    secondTrainer: brief?.secondTrainerId
+      ? {
+          name: brief.secondTrainerName,
+          title: brief.secondTrainerTitle || "Trainer & Speaker",
+          imageUrl: brief.secondTrainerImageUrl,
+          bio: briefLines(brief.secondTrainerBio),
+          experience: briefLines(brief.secondTrainerExperience),
+          qualifications: briefLines(brief.secondTrainerQualifications),
+        }
+      : undefined,
     professionalFee: {
       included:
         briefLines(brief?.includedItems).length > 0
@@ -385,6 +412,7 @@ export function normalizeProposalContent(
             fallback.trainer.qualifications,
           ),
         },
+    secondTrainer: fallback.secondTrainer,
     professionalFee: {
       included: cleanItems(fee.included, fallback.professionalFee.included),
       totalFee: cleanString(fee.totalFee, fallback.professionalFee.totalFee),

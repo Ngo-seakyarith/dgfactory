@@ -1,11 +1,28 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
+import {
+  BookOpenCheck,
+  BriefcaseBusiness,
+  ChartNoAxesColumnIncreasing,
+  CircleCheck,
+  Clock3,
+  Lightbulb,
+  MessageSquareText,
+  Settings2,
+  ShieldCheck,
+  Star,
+  Target,
+  Users,
+  type LucideIcon,
+} from "lucide-react";
 import PptxGenJS from "pptxgenjs";
 
 import {
   parseSlideDeckPlan,
+  type SlideDeckIconKey,
   type SlideDeckSlide,
+  type SlideDeckVisualItem,
 } from "./slide-deck-plan";
 
 export type PptxTrainingPackage = {
@@ -48,6 +65,83 @@ const HEAD_FONT = "Aptos Display";
 const BODY_FONT = "Aptos";
 const SLIDE_W = 13.333;
 const SLIDE_H = 7.5;
+
+const VISUAL_ICONS: Record<SlideDeckIconKey, LucideIcon> = {
+  target: Target,
+  idea: Lightbulb,
+  people: Users,
+  chart: ChartNoAxesColumnIncreasing,
+  shield: ShieldCheck,
+  check: CircleCheck,
+  clock: Clock3,
+  message: MessageSquareText,
+  business: BriefcaseBusiness,
+  settings: Settings2,
+  star: Star,
+  learning: BookOpenCheck,
+};
+
+type LucideNode = [
+  tag: string,
+  attributes: Record<string, string | number>,
+];
+
+type LucideComponentWithNodes = {
+  render: (
+    props: Record<string, unknown>,
+    ref: null,
+  ) => { props: { iconNode: LucideNode[] } };
+};
+
+function svgAttributeName(name: string) {
+  return name.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+}
+
+function escapeSvgAttribute(value: string | number) {
+  return String(value)
+    .replace(/&/g, "&amp;")
+    .replace(/"/g, "&quot;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
+function serializeLucideNode([tag, attributes]: LucideNode) {
+  const serialized = Object.entries(attributes)
+    .filter(([name]) => name !== "key")
+    .map(([name, value]) =>
+      `${svgAttributeName(name)}="${escapeSvgAttribute(value)}"`
+    )
+    .join(" ");
+  return `<${tag}${serialized ? ` ${serialized}` : ""} />`;
+}
+
+function iconData(icon: SlideDeckIconKey, color: string) {
+  const Icon = VISUAL_ICONS[icon];
+  const rendered = (Icon as unknown as LucideComponentWithNodes).render({}, null);
+  const paths = rendered.props.iconNode.map(serializeLucideNode).join("");
+  const svg = [
+    '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24"',
+    ` fill="none" stroke="#${color}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">`,
+    paths,
+    "</svg>",
+  ].join("");
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString("base64")}`;
+}
+
+function addVisualIcon(
+  slide: PptxGenJS.Slide,
+  icon: SlideDeckIconKey,
+  options: { x: number; y: number; size: number; color: string },
+) {
+  slide.addImage({
+    data: iconData(icon, options.color),
+    x: options.x,
+    y: options.y,
+    w: options.size,
+    h: options.size,
+    altText: `${icon} icon`,
+  });
+}
 
 function cleanMarkdown(value: string) {
   return value
@@ -875,6 +969,751 @@ function addTwoColumnSlide(
   );
 }
 
+function addIconCardsSlide(
+  pptx: PptxGenJS,
+  planned: SlideDeckSlide,
+  sectionNumber: number,
+  pkg: PptxTrainingPackage,
+  slideNumber: number,
+) {
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.paper };
+  addSlideTitle(slide, planned.title, sectionNumber);
+
+  const items = planned.visualItems.slice(0, 4);
+  const gap = 0.28;
+  const x = 0.9;
+  const y = 2.22;
+  const totalWidth = 11.52;
+  const columnWidth = (totalWidth - gap * Math.max(0, items.length - 1)) /
+    Math.max(1, items.length);
+
+  items.forEach((item, index) => {
+    const itemX = x + index * (columnWidth + gap);
+    if (index > 0) {
+      slide.addShape("line", {
+        x: itemX - gap / 2,
+        y: y,
+        w: 0,
+        h: 4.12,
+        line: { color: COLORS.line, width: 0.8 },
+      });
+    }
+    slide.addShape("ellipse", {
+      x: itemX + 0.04,
+      y,
+      w: 0.82,
+      h: 0.82,
+      fill: { color: index % 2 === 0 ? COLORS.mint : "FFF0E7" },
+      line: { color: index % 2 === 0 ? COLORS.teal : COLORS.orange, width: 1 },
+    });
+    addVisualIcon(slide, item.icon, {
+      x: itemX + 0.24,
+      y: y + 0.2,
+      size: 0.42,
+      color: index % 2 === 0 ? COLORS.tealDark : COLORS.orangeDark,
+    });
+    slide.addText(item.label, {
+      x: itemX + 0.04,
+      y: y + 1.12,
+      w: columnWidth - 0.08,
+      h: 0.72,
+      margin: 0,
+      fontFace: HEAD_FONT,
+      fontSize: 22,
+      bold: true,
+      color: COLORS.ink,
+      fit: "shrink",
+      valign: "top",
+    });
+    slide.addText(item.description, {
+      x: itemX + 0.04,
+      y: y + 2,
+      w: columnWidth - 0.08,
+      h: 2.1,
+      margin: 0,
+      fontFace: BODY_FONT,
+      fontSize: 15.5,
+      color: COLORS.muted,
+      fit: "shrink",
+      valign: "top",
+      breakLine: false,
+    });
+  });
+
+  addFooter(slide, slideNumber, pkg.client);
+  slide.addNotes(planned.speakerNotes || `Explain how the concepts on ${planned.title} work together.`);
+}
+
+function addProcessSlide(
+  pptx: PptxGenJS,
+  planned: SlideDeckSlide,
+  sectionNumber: number,
+  pkg: PptxTrainingPackage,
+  slideNumber: number,
+) {
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.workspace };
+  addSlideTitle(slide, planned.title, sectionNumber);
+
+  const items = planned.visualItems.slice(0, 5);
+  const gap = 0.42;
+  const startX = 0.86;
+  const totalWidth = 11.62;
+  const nodeWidth = (totalWidth - gap * Math.max(0, items.length - 1)) /
+    Math.max(1, items.length);
+  const nodeY = 2.68;
+  const nodeH = 2.74;
+
+  for (let index = 0; index < items.length - 1; index += 1) {
+    const connectorX = startX + nodeWidth + index * (nodeWidth + gap);
+    slide.addShape("line", {
+      x: connectorX + 0.06,
+      y: nodeY + nodeH / 2,
+      w: gap - 0.12,
+      h: 0,
+      line: {
+        color: COLORS.orange,
+        width: 1.8,
+        endArrowType: "triangle",
+      },
+    });
+  }
+
+  items.forEach((item, index) => {
+    const itemX = startX + index * (nodeWidth + gap);
+    slide.addShape("roundRect", {
+      x: itemX,
+      y: nodeY,
+      w: nodeWidth,
+      h: nodeH,
+      rectRadius: 0.08,
+      fill: { color: COLORS.paper },
+      line: { color: index % 2 === 0 ? COLORS.teal : COLORS.orange, width: 1.2 },
+    });
+    slide.addText(String(index + 1).padStart(2, "0"), {
+      x: itemX + 0.18,
+      y: nodeY + 0.2,
+      w: 0.42,
+      h: 0.26,
+      margin: 0,
+      fontFace: BODY_FONT,
+      fontSize: 10,
+      bold: true,
+      color: COLORS.orangeDark,
+    });
+    addVisualIcon(slide, item.icon, {
+      x: itemX + nodeWidth - 0.66,
+      y: nodeY + 0.18,
+      size: 0.4,
+      color: COLORS.tealDark,
+    });
+    slide.addText(item.label, {
+      x: itemX + 0.18,
+      y: nodeY + 0.76,
+      w: nodeWidth - 0.36,
+      h: 0.68,
+      margin: 0,
+      fontFace: HEAD_FONT,
+      fontSize: 20,
+      bold: true,
+      color: COLORS.ink,
+      fit: "shrink",
+      valign: "middle",
+    });
+    slide.addText(item.description, {
+      x: itemX + 0.18,
+      y: nodeY + 1.58,
+      w: nodeWidth - 0.36,
+      h: 0.9,
+      margin: 0,
+      fontFace: BODY_FONT,
+      fontSize: 13.5,
+      color: COLORS.muted,
+      fit: "shrink",
+      valign: "top",
+    });
+  });
+
+  addFooter(slide, slideNumber, pkg.client);
+  slide.addNotes(planned.speakerNotes || `Walk through each stage of ${planned.title} in order.`);
+}
+
+function cyclePositions(count: number) {
+  const centerX = 6.66;
+  const centerY = 4.28;
+  const radiusX = count <= 3 ? 3.25 : 3.95;
+  const radiusY = 1.84;
+  return Array.from({ length: count }, (_, index) => {
+    const angle = -Math.PI / 2 + (index * Math.PI * 2) / count;
+    return {
+      x: centerX + Math.cos(angle) * radiusX,
+      y: centerY + Math.sin(angle) * radiusY,
+    };
+  });
+}
+
+function addDirectionalConnector(
+  slide: PptxGenJS.Slide,
+  start: { x: number; y: number },
+  end: { x: number; y: number },
+  color: string,
+) {
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const forward = dx >= 0;
+  slide.addShape(dx * dy < 0 ? "lineInv" : "line", {
+    x: Math.min(start.x, end.x),
+    y: Math.min(start.y, end.y),
+    w: Math.abs(dx),
+    h: Math.abs(dy),
+    line: {
+      color,
+      width: 1.5,
+      transparency: 14,
+      beginArrowType: forward ? "none" : "triangle",
+      endArrowType: forward ? "triangle" : "none",
+    },
+  });
+}
+
+function rectangleEdgePoint(
+  center: { x: number; y: number },
+  toward: { x: number; y: number },
+  width: number,
+  height: number,
+) {
+  const dx = toward.x - center.x;
+  const dy = toward.y - center.y;
+  const scale = 1 / Math.max(
+    Math.abs(dx) / (width / 2),
+    Math.abs(dy) / (height / 2),
+  );
+  return {
+    x: center.x + dx * scale,
+    y: center.y + dy * scale,
+  };
+}
+
+function addCycleSlide(
+  pptx: PptxGenJS,
+  planned: SlideDeckSlide,
+  sectionNumber: number,
+  pkg: PptxTrainingPackage,
+  slideNumber: number,
+) {
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.paper };
+  addSlideTitle(slide, planned.title, sectionNumber);
+
+  const items = planned.visualItems.slice(0, 5);
+  const positions = cyclePositions(items.length);
+  const nodeW = items.length >= 5 ? 2.16 : 2.45;
+  const nodeH = 1.04;
+
+  positions.forEach((position, index) => {
+    const next = positions[(index + 1) % positions.length];
+    const start = rectangleEdgePoint(position, next, nodeW, nodeH);
+    const end = rectangleEdgePoint(next, position, nodeW, nodeH);
+    addDirectionalConnector(
+      slide,
+      start,
+      end,
+      index % 2 === 0 ? COLORS.teal : COLORS.orange,
+    );
+  });
+
+  slide.addShape("ellipse", {
+    x: 5.64,
+    y: 3.34,
+    w: 2.04,
+    h: 1.88,
+    fill: { color: COLORS.graphite },
+    line: { color: COLORS.graphite, transparency: 100 },
+  });
+  slide.addText(planned.visualCenter || planned.title, {
+    x: 5.86,
+    y: 3.78,
+    w: 1.6,
+    h: 1,
+    margin: 0,
+    align: "center",
+    fontFace: HEAD_FONT,
+    fontSize: 17,
+    bold: true,
+    color: COLORS.paper,
+    fit: "shrink",
+    valign: "middle",
+  });
+
+  items.forEach((item, index) => {
+    const position = positions[index];
+    const nodeX = position.x - nodeW / 2;
+    const nodeY = position.y - nodeH / 2;
+    slide.addShape("roundRect", {
+      x: nodeX,
+      y: nodeY,
+      w: nodeW,
+      h: nodeH,
+      rectRadius: 0.06,
+      fill: { color: index % 2 === 0 ? COLORS.mint : "FFF0E7" },
+      line: { color: index % 2 === 0 ? COLORS.teal : COLORS.orange, width: 1 },
+    });
+    slide.addText(item.label, {
+      x: nodeX + 0.12,
+      y: nodeY + 0.1,
+      w: nodeW - 0.24,
+      h: 0.34,
+      margin: 0,
+      align: "center",
+      fontFace: HEAD_FONT,
+      fontSize: 16,
+      bold: true,
+      color: COLORS.ink,
+      fit: "shrink",
+    });
+    slide.addText(item.description, {
+      x: nodeX + 0.14,
+      y: nodeY + 0.48,
+      w: nodeW - 0.28,
+      h: 0.42,
+      margin: 0,
+      align: "center",
+      fontFace: BODY_FONT,
+      fontSize: 10.5,
+      color: COLORS.muted,
+      fit: "shrink",
+    });
+  });
+
+  addFooter(slide, slideNumber, pkg.client);
+  slide.addNotes(planned.speakerNotes || `Explain why ${planned.title} repeats rather than ending after one pass.`);
+}
+
+function addComparisonSlide(
+  pptx: PptxGenJS,
+  planned: SlideDeckSlide,
+  sectionNumber: number,
+  pkg: PptxTrainingPackage,
+  slideNumber: number,
+) {
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.paper };
+  addSlideTitle(slide, planned.title, sectionNumber);
+
+  const panels = [
+    {
+      x: 0.86,
+      title: planned.leftTitle || "Current approach",
+      items: planned.leftItems,
+      accent: COLORS.orange,
+      fill: "FFF5EE",
+    },
+    {
+      x: 6.86,
+      title: planned.rightTitle || "Better approach",
+      items: planned.rightItems,
+      accent: COLORS.teal,
+      fill: "EDF6F3",
+    },
+  ];
+
+  panels.forEach((panel) => {
+    slide.addShape("roundRect", {
+      x: panel.x,
+      y: 2.14,
+      w: 5.6,
+      h: 4.34,
+      rectRadius: 0.06,
+      fill: { color: panel.fill },
+      line: { color: panel.accent, width: 1.1 },
+    });
+    slide.addShape("rect", {
+      x: panel.x,
+      y: 2.14,
+      w: 0.14,
+      h: 4.34,
+      fill: { color: panel.accent },
+      line: { color: panel.accent, transparency: 100 },
+    });
+    slide.addText(panel.title, {
+      x: panel.x + 0.34,
+      y: 2.42,
+      w: 4.9,
+      h: 0.48,
+      margin: 0,
+      fontFace: HEAD_FONT,
+      fontSize: 24,
+      bold: true,
+      color: COLORS.ink,
+      fit: "shrink",
+    });
+    addBulletList(
+      slide,
+      panel.items.map((text) => ({ kind: "bullet" as const, text })),
+      {
+        x: panel.x + 0.36,
+        y: 3.18,
+        w: 4.86,
+        h: 2.84,
+        accent: panel.accent,
+      },
+    );
+  });
+
+  addFooter(slide, slideNumber, pkg.client);
+  slide.addNotes(planned.speakerNotes || `Compare both sides of ${planned.title} and make the practical distinction explicit.`);
+}
+
+function addMatrixSlide(
+  pptx: PptxGenJS,
+  planned: SlideDeckSlide,
+  sectionNumber: number,
+  pkg: PptxTrainingPackage,
+  slideNumber: number,
+) {
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.workspace };
+  addSlideTitle(slide, planned.title, sectionNumber);
+
+  const items = planned.visualItems.slice(0, 4);
+  const x = 1.62;
+  const y = 2.14;
+  const w = 10.22;
+  const h = 3.92;
+  const quadrantW = w / 2;
+  const quadrantH = h / 2;
+  const fills = ["EDF6F3", "FFF5EE", "F6F7F5", "EAF1EE"];
+
+  slide.addShape("line", {
+    x: x + quadrantW,
+    y,
+    w: 0,
+    h,
+    line: { color: COLORS.graphiteSoft, width: 1.5 },
+  });
+  slide.addShape("line", {
+    x,
+    y: y + quadrantH,
+    w,
+    h: 0,
+    line: { color: COLORS.graphiteSoft, width: 1.5 },
+  });
+
+  items.forEach((item, index) => {
+    const column = index % 2;
+    const row = Math.floor(index / 2);
+    const itemX = x + column * quadrantW;
+    const itemY = y + row * quadrantH;
+    slide.addShape("rect", {
+      x: itemX,
+      y: itemY,
+      w: quadrantW,
+      h: quadrantH,
+      fill: { color: fills[index] },
+      line: { color: COLORS.line, width: 0.5 },
+    });
+    slide.addText(item.label, {
+      x: itemX + 0.3,
+      y: itemY + 0.28,
+      w: quadrantW - 0.6,
+      h: 0.46,
+      margin: 0,
+      fontFace: HEAD_FONT,
+      fontSize: 20,
+      bold: true,
+      color: index === 0 || index === 3 ? COLORS.tealDark : COLORS.orangeDark,
+      fit: "shrink",
+    });
+    slide.addText(item.description, {
+      x: itemX + 0.3,
+      y: itemY + 0.88,
+      w: quadrantW - 0.6,
+      h: 0.74,
+      margin: 0,
+      fontFace: BODY_FONT,
+      fontSize: 14,
+      color: COLORS.muted,
+      fit: "shrink",
+      valign: "top",
+    });
+  });
+
+  slide.addText(`↑ ${planned.visualYAxis || "Higher"}`, {
+    x: 0.64,
+    y: 3.64,
+    w: 0.76,
+    h: 0.9,
+    margin: 0,
+    fontFace: BODY_FONT,
+    fontSize: 11,
+    bold: true,
+    color: COLORS.muted,
+    fit: "shrink",
+    align: "center",
+  });
+  slide.addText(`${planned.visualXAxis || "Higher"} →`, {
+    x: 4.62,
+    y: 6.28,
+    w: 4.2,
+    h: 0.26,
+    margin: 0,
+    fontFace: BODY_FONT,
+    fontSize: 11,
+    bold: true,
+    color: COLORS.muted,
+    align: "center",
+  });
+
+  addFooter(slide, slideNumber, pkg.client);
+  slide.addNotes(planned.speakerNotes || `Use both axes to explain the four choices in ${planned.title}.`);
+}
+
+function addTimelineSlide(
+  pptx: PptxGenJS,
+  planned: SlideDeckSlide,
+  sectionNumber: number,
+  pkg: PptxTrainingPackage,
+  slideNumber: number,
+) {
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.paper };
+  addSlideTitle(slide, planned.title, sectionNumber);
+
+  const items = planned.visualItems.slice(0, 6);
+  const startX = 1.02;
+  const endX = 12.26;
+  const lineY = 3.92;
+  const step = items.length > 1 ? (endX - startX) / (items.length - 1) : 0;
+
+  slide.addShape("line", {
+    x: startX,
+    y: lineY,
+    w: endX - startX,
+    h: 0,
+    line: { color: COLORS.graphiteSoft, width: 2 },
+  });
+
+  items.forEach((item, index) => {
+    const pointX = startX + index * step;
+    const above = index % 2 === 0;
+    slide.addShape("line", {
+      x: pointX,
+      y: above ? lineY - 0.74 : lineY,
+      w: 0,
+      h: 0.74,
+      line: { color: index % 2 === 0 ? COLORS.orange : COLORS.teal, width: 1.2 },
+    });
+    slide.addShape("ellipse", {
+      x: pointX - 0.18,
+      y: lineY - 0.18,
+      w: 0.36,
+      h: 0.36,
+      fill: { color: index % 2 === 0 ? COLORS.orange : COLORS.teal },
+      line: { color: COLORS.paper, width: 1.4 },
+    });
+    slide.addText(String(index + 1).padStart(2, "0"), {
+      x: pointX - 0.28,
+      y: above ? 2.1 : 5.78,
+      w: 0.56,
+      h: 0.24,
+      margin: 0,
+      align: "center",
+      fontFace: BODY_FONT,
+      fontSize: 9,
+      bold: true,
+      color: index % 2 === 0 ? COLORS.orangeDark : COLORS.tealDark,
+    });
+    slide.addText(item.label, {
+      x: pointX - 0.9,
+      y: above ? 2.4 : 4.48,
+      w: 1.8,
+      h: 0.46,
+      margin: 0,
+      align: "center",
+      fontFace: HEAD_FONT,
+      fontSize: 16,
+      bold: true,
+      color: COLORS.ink,
+      fit: "shrink",
+    });
+    slide.addText(item.description, {
+      x: pointX - 0.94,
+      y: above ? 2.88 : 4.96,
+      w: 1.88,
+      h: 0.66,
+      margin: 0,
+      align: "center",
+      fontFace: BODY_FONT,
+      fontSize: 10.5,
+      color: COLORS.muted,
+      fit: "shrink",
+      valign: "top",
+    });
+  });
+
+  addFooter(slide, slideNumber, pkg.client);
+  slide.addNotes(planned.speakerNotes || `Move through the milestones in ${planned.title} from left to right.`);
+}
+
+function addFunnelSlide(
+  pptx: PptxGenJS,
+  planned: SlideDeckSlide,
+  sectionNumber: number,
+  pkg: PptxTrainingPackage,
+  slideNumber: number,
+) {
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.workspace };
+  addSlideTitle(slide, planned.title, sectionNumber);
+
+  const items = planned.visualItems.slice(0, 5);
+  const topY = 2.02;
+  const availableH = 4.52;
+  const gap = 0.08;
+  const stageH = (availableH - gap * Math.max(0, items.length - 1)) /
+    Math.max(1, items.length);
+  const widths = items.map((_, index) => 10.6 - index * (5.1 / Math.max(1, items.length - 1)));
+
+  items.forEach((item, index) => {
+    const width = widths[index];
+    const x = (SLIDE_W - width) / 2;
+    const y = topY + index * (stageH + gap);
+    const fill = index % 2 === 0 ? COLORS.tealDark : COLORS.orangeDark;
+    slide.addShape("trapezoid", {
+      x,
+      y,
+      w: width,
+      h: stageH,
+      fill: { color: fill },
+      line: { color: COLORS.paper, width: 0.8, transparency: 24 },
+    });
+    slide.addText(`${item.label}${item.description ? `  —  ${item.description}` : ""}`, {
+      x: x + 0.44,
+      y: y + 0.14,
+      w: width - 0.88,
+      h: stageH - 0.24,
+      margin: 0,
+      align: "center",
+      fontFace: BODY_FONT,
+      fontSize: 14.5,
+      bold: true,
+      color: COLORS.paper,
+      fit: "shrink",
+      valign: "middle",
+    });
+  });
+
+  addFooter(slide, slideNumber, pkg.client);
+  slide.addNotes(planned.speakerNotes || `Explain what narrows or becomes more focused through ${planned.title}.`);
+}
+
+function formatChartValue(value: number, unit: string) {
+  const formatted = Number.isInteger(value)
+    ? value.toLocaleString("en-US")
+    : value.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  return unit === "%" ? `${formatted}%` : unit ? `${formatted} ${unit}` : formatted;
+}
+
+function addChartSlide(
+  pptx: PptxGenJS,
+  planned: SlideDeckSlide,
+  sectionNumber: number,
+  pkg: PptxTrainingPackage,
+  slideNumber: number,
+) {
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.paper };
+  addSlideTitle(slide, planned.title, sectionNumber);
+
+  const items = planned.visualItems.slice(0, 7);
+  const values = items.map((item) => item.value);
+  const minimum = Math.min(0, ...values);
+  const maximum = Math.max(0, ...values);
+  const range = maximum - minimum || 1;
+  const chartX = 3.34;
+  const chartW = 8.38;
+  const zeroX = chartX + ((0 - minimum) / range) * chartW;
+  const topY = 2.14;
+  const chartH = 4.24;
+  const rowH = chartH / Math.max(1, items.length);
+
+  slide.addShape("line", {
+    x: zeroX,
+    y: topY - 0.06,
+    w: 0,
+    h: chartH + 0.12,
+    line: { color: COLORS.graphiteSoft, width: 1.1 },
+  });
+
+  items.forEach((item, index) => {
+    const valueX = chartX + ((item.value - minimum) / range) * chartW;
+    const barX = Math.min(zeroX, valueX);
+    const barW = Math.max(0.06, Math.abs(valueX - zeroX));
+    const barY = topY + index * rowH + rowH * 0.2;
+    const barH = rowH * 0.56;
+    const color = index % 2 === 0 ? COLORS.teal : COLORS.orange;
+
+    slide.addText(item.label, {
+      x: 0.9,
+      y: barY - 0.02,
+      w: 2.12,
+      h: barH + 0.04,
+      margin: 0,
+      align: "right",
+      fontFace: BODY_FONT,
+      fontSize: 13.5,
+      bold: true,
+      color: COLORS.ink,
+      fit: "shrink",
+      valign: "middle",
+    });
+    slide.addShape("rect", {
+      x: barX,
+      y: barY,
+      w: barW,
+      h: barH,
+      fill: { color },
+      line: { color, transparency: 100 },
+    });
+    const valueLabelX = item.value >= 0
+      ? Math.min(valueX + 0.12, 11.76)
+      : Math.max(valueX - 1.14, chartX - 0.04);
+    slide.addText(formatChartValue(item.value, planned.visualUnit), {
+      x: valueLabelX,
+      y: barY,
+      w: 1.02,
+      h: barH,
+      margin: 0,
+      align: item.value >= 0 ? "left" : "right",
+      fontFace: BODY_FONT,
+      fontSize: 11,
+      bold: true,
+      color: COLORS.muted,
+      fit: "shrink",
+      valign: "middle",
+    });
+  });
+
+  if (planned.visualSource) {
+    slide.addText(`Source: ${planned.visualSource}`, {
+      x: 0.9,
+      y: 6.58,
+      w: 11.2,
+      h: 0.18,
+      margin: 0,
+      fontFace: BODY_FONT,
+      fontSize: 8.5,
+      color: COLORS.muted,
+      italic: true,
+      fit: "shrink",
+    });
+  }
+
+  addFooter(slide, slideNumber, pkg.client);
+  slide.addNotes(planned.speakerNotes || `Explain what the supplied values show and why they matter for ${planned.title}.`);
+}
+
 function agendaSectionsFromPlan(slides: SlideDeckSlide[]): DeckSection[] {
   const sectionSlides = slides.filter((slide) => slide.layout === "section");
   const source = sectionSlides.length >= 2
@@ -939,6 +1778,46 @@ function addPlannedSlide(
 
   if (planned.layout === "two-column") {
     addTwoColumnSlide(pptx, planned, sectionNumber, pkg, slideNumber);
+    return;
+  }
+
+  if (planned.layout === "icon-cards") {
+    addIconCardsSlide(pptx, planned, sectionNumber, pkg, slideNumber);
+    return;
+  }
+
+  if (planned.layout === "process") {
+    addProcessSlide(pptx, planned, sectionNumber, pkg, slideNumber);
+    return;
+  }
+
+  if (planned.layout === "cycle") {
+    addCycleSlide(pptx, planned, sectionNumber, pkg, slideNumber);
+    return;
+  }
+
+  if (planned.layout === "comparison") {
+    addComparisonSlide(pptx, planned, sectionNumber, pkg, slideNumber);
+    return;
+  }
+
+  if (planned.layout === "matrix") {
+    addMatrixSlide(pptx, planned, sectionNumber, pkg, slideNumber);
+    return;
+  }
+
+  if (planned.layout === "timeline") {
+    addTimelineSlide(pptx, planned, sectionNumber, pkg, slideNumber);
+    return;
+  }
+
+  if (planned.layout === "funnel") {
+    addFunnelSlide(pptx, planned, sectionNumber, pkg, slideNumber);
+    return;
+  }
+
+  if (planned.layout === "chart") {
+    addChartSlide(pptx, planned, sectionNumber, pkg, slideNumber);
     return;
   }
 

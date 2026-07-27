@@ -137,7 +137,7 @@ export function dgAcademyFooter() {
           new TableRow({
             children: [
               contactCell(
-                [footerSymbol("\u260E", "E4C36A"), footerText("095 666 788")],
+                [footerSymbol("\u260E", "E4C36A"), footerText("099 200 805")],
                 AlignmentType.LEFT,
               ),
               contactCell(
