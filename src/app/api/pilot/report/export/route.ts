@@ -36,6 +36,7 @@ export async function POST(request: Request) {
   const now = new Date().toISOString();
   const packageForExport: TrainingPackage = {
     id: "pilot-report",
+    status: "Generated",
     clientId: null,
     title: "Internal Pilot Report",
     audience: "DG Academy internal team",

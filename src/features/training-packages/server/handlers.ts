@@ -159,25 +159,27 @@ export async function saveTrainingPackageRequest(request: Request) {
     }
 
     let deliveryNotice: string | undefined;
-    try {
-      const delivery = await ensureDeliveryProjectForPackage(result.package);
-      if (delivery.created) {
-        await saveAuditLog({
-          actor: auth.user.actor,
-          action: "delivery_created_from_package",
-          entityType: "delivery_project",
-          entityId: delivery.project.id,
-          metadata: {
-            title: delivery.project.title,
-            packageId: result.package.id,
-          },
-        });
+    if (result.package.status === "Generated") {
+      try {
+        const delivery = await ensureDeliveryProjectForPackage(result.package);
+        if (delivery.created) {
+          await saveAuditLog({
+            actor: auth.user.actor,
+            action: "delivery_created_from_package",
+            entityType: "delivery_project",
+            entityId: delivery.project.id,
+            metadata: {
+              title: delivery.project.title,
+              packageId: result.package.id,
+            },
+          });
+        }
+      } catch (error) {
+        deliveryNotice =
+          error instanceof Error
+            ? `Package saved, but the delivery record could not be created: ${error.message}`
+            : "Package saved, but the delivery record could not be created.";
       }
-    } catch (error) {
-      deliveryNotice =
-        error instanceof Error
-          ? `Package saved, but the delivery record could not be created: ${error.message}`
-          : "Package saved, but the delivery record could not be created.";
     }
 
     return NextResponse.json({

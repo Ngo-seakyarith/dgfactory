@@ -38,7 +38,10 @@ export type ProposalSignatory = {
   date: string;
 };
 
+export type ProposalGenerationStatus = "Draft" | "Generated";
+
 export type ProposalContent = {
+  generationStatus: ProposalGenerationStatus;
   coverTitle: string;
   coverSubtitle: string;
   certificationLabel: string;
@@ -247,6 +250,7 @@ export function proposalContentFromMarkdown(
   const brief = meta.proposalBrief;
 
   return {
+    generationStatus: "Generated",
     coverTitle: meta.proposalBrief?.coverHeading || "Customized Training Proposal",
     coverSubtitle: meta.proposalBrief?.coverSubtitle ?? "",
     certificationLabel: meta.proposalBrief?.certificationLabel ?? "",
@@ -397,6 +401,8 @@ export function normalizeProposalContent(
   const signatory = (record.signatory ?? {}) as Partial<ProposalSignatory>;
 
   return {
+    generationStatus:
+      record.generationStatus === "Draft" ? "Draft" : "Generated",
     // The cover heading is user-authored. Do not let AI combine it with the
     // course title and client, which are rendered separately on the cover.
     coverTitle: fallback.coverTitle,

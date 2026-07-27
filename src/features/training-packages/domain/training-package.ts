@@ -50,6 +50,7 @@ export type PackageOutputKey = "syllabus" | "proposal";
 export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle" | "proposalBrief"> &
   {
     id: string;
+    status: "Draft" | "Generated";
     clientId: string | null;
     title: string;
     syllabus: string;
@@ -130,6 +131,7 @@ export function createTrainingOutputTemplate(
   input: TrainingPackageInput,
 ): TrainingPackageOutputs {
   const proposalContent: ProposalContent = {
+    generationStatus: "Draft",
     coverTitle: input.proposalBrief?.coverHeading || "Customized Training Proposal",
     coverSubtitle: input.proposalBrief?.coverSubtitle ?? "",
     certificationLabel: input.proposalBrief?.certificationLabel ?? "",
@@ -360,6 +362,7 @@ export function buildPackageFromParts({
   );
 
   return {
+    status: normalizedOutputs.proposalContent?.generationStatus ?? "Generated",
     clientId,
     title: input.courseTitle,
     audience: input.audience,

@@ -124,6 +124,7 @@ function exportPackageForDelivery(
 
   return {
     id: project.id,
+    status: "Generated",
     clientId: project.clientId,
     title: project.title,
     audience: "Training participants",

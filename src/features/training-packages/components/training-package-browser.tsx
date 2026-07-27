@@ -316,6 +316,9 @@ function SavedPackageGrid({
                   <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-[#a94b18]" />
                 </div>
                 <div className="mt-4 flex flex-wrap gap-2">
+                  {pkg.status === "Draft" ? (
+                    <Badge variant="gold">Draft</Badge>
+                  ) : null}
                   <Badge variant="outline">{pkg.client}</Badge>
                   <Badge variant="outline">{pkg.duration}</Badge>
                 </div>

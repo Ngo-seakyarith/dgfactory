@@ -83,6 +83,7 @@ function fromRow(row: PackageRow): TrainingPackage {
 
   return {
     id: row.id,
+    status: proposalContent.generationStatus,
     title: row.course_title,
     audience: row.target_learners,
     duration: row.duration,

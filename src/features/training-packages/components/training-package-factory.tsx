@@ -30,6 +30,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import {
   buildPackageFromParts,
+  createTrainingOutputTemplate,
   fullPackageToMarkdown,
   outputToText,
   packageOutputSections,
@@ -460,25 +461,49 @@ export function PackageForm({
   }
 
   async function savePackage() {
-    if (!currentPackage) {
-      return;
-    }
-
     setError("");
     setNotice("");
 
-    const packageToSave: TrainingPackage = {
-      ...currentPackage,
-      clientId: clientProfile.id ?? currentPackage.clientId,
-      client: form.client,
-      updatedAt: new Date().toISOString(),
-    };
-
     try {
+      const isDraft = !currentPackage || currentPackage.status === "Draft";
+      let packageToSave: TrainingPackage;
+
+      if (isDraft) {
+        if (!form.courseTitle.trim() || !form.client.trim()) {
+          throw new Error("Enter the course title and client before saving.");
+        }
+
+        const draftInput: TrainingPackageInput = { ...form, proposalBrief };
+        packageToSave = buildPackageFromParts({
+          input: draftInput,
+          outputs: createTrainingOutputTemplate(draftInput),
+          id: initialPackage?.id ?? currentPackage?.id,
+          createdAt: initialPackage?.createdAt ?? currentPackage?.createdAt,
+          clientId:
+            clientProfile.id ??
+            currentPackage?.clientId ??
+            initialPackage?.clientId,
+          pricingInputs,
+          knowledgeUsed:
+            currentPackage?.knowledgeUsed ?? initialPackage?.knowledgeUsed ?? [],
+        });
+      } else {
+        packageToSave = {
+          ...currentPackage,
+          clientId: clientProfile.id ?? currentPackage.clientId,
+          client: form.client,
+          updatedAt: new Date().toISOString(),
+        };
+      }
+
       const savedPackage = await persistPackage(packageToSave);
       setCurrentPackage(savedPackage);
       onPackageSaved?.(savedPackage);
-      setNotice("Saved in Supabase.");
+      setNotice(
+        savedPackage.status === "Draft"
+          ? "Draft saved in Supabase. You can generate it later."
+          : "Saved in Supabase.",
+      );
       router.push(`/packages/${savedPackage.id}`);
     } catch (saveError) {
       setError(saveError instanceof Error ? saveError.message : "Database save failed.");
@@ -777,7 +802,7 @@ export function PackageForm({
               size="lg"
               className="w-full sm:w-auto"
               onClick={savePackage}
-              disabled={!currentPackage || saveMutation.isPending || generateMutation.isPending}
+              disabled={saveMutation.isPending || generateMutation.isPending}
             >
               {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Package
@@ -789,16 +814,26 @@ export function PackageForm({
       <Card className="border-white/10 bg-white/[0.04] shadow-executive">
         <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
           <div>
-            <CardTitle>Generated Package</CardTitle>
+            <CardTitle>
+              {currentPackage?.status === "Draft"
+                ? "Package Draft"
+                : "Generated Package"}
+            </CardTitle>
             <CardDescription>
-              Outputs are organized into tabs with copy controls for fast client
-              packaging.
+              {currentPackage?.status === "Draft"
+                ? "Your inputs are saved. Generate when you are ready."
+                : "Outputs are organized into tabs with copy controls for fast client packaging."}
             </CardDescription>
           </div>
         </CardHeader>
         <CardContent>
-          {currentPackage ? (
+          {currentPackage?.status === "Generated" ? (
             <OutputTabs pkg={currentPackage} onPackageUpdate={setCurrentPackage} />
+          ) : currentPackage ? (
+            <EmptyState
+              title="Draft saved."
+              detail="Your form, trainer selection, client information, and commercial setup are stored. Generate the package when you are ready."
+            />
           ) : (
             <EmptyState
               title="Your production package will appear here."
