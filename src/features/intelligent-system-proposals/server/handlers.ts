@@ -3,22 +3,17 @@ import { createHash } from "node:crypto";
 import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
-import { routeBrainTask } from "@/lib/brain/routing/router";
 import { resolvePackageClient } from "@/lib/crm-storage";
 import type { ClientProfileInput } from "@/lib/crm";
 import { requireApproved } from "@/lib/route-guards";
+import type { StartGenerationJob } from "@/features/generation-jobs/domain/types";
 
 import { combineDatasetProfiles } from "../domain/analysis";
 import {
   createSystemProposal,
-  formatSystemCommercialSummary,
-  normalizeAnalystReview,
-  safeAnalysisForBrain,
 } from "../domain/proposal";
 import type {
-  DataDiscoveryBrainOutput,
   IntelligentSystemProposal,
-  SystemProposalBrainOutput,
 } from "../domain/types";
 import { exportSystemProposalDocx } from "../export/docx";
 import {
@@ -281,6 +276,7 @@ export async function analyzeSystemFileRequest(
 export async function runSystemDiscoveryRequest(
   request: Request,
   context: { params: Promise<{ id: string }> },
+  startGenerationJob: StartGenerationJob,
 ) {
   const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
@@ -290,33 +286,16 @@ export async function runSystemDiscoveryRequest(
     if (!proposal?.combinedAnalysis || !proposal.files.some((file) => file.status === "Ready")) {
       return NextResponse.json({ error: "Analyze at least one source file first." }, { status: 400 });
     }
-    proposal.combinedAnalysis = combineDatasetProfiles(
-      proposal.files.flatMap((file) => (file.analysis ? [file.analysis] : [])),
-    );
     proposal.status = "Analyzing";
     await saveSystemProposal(proposal);
-    const result = await routeBrainTask<
-      { brief: IntelligentSystemProposal["brief"]; analysis: ReturnType<typeof safeAnalysisForBrain> },
-      DataDiscoveryBrainOutput
-    >({
-      taskType: "data_discovery",
-      input: {
-        brief: proposal.brief,
-        analysis: safeAnalysisForBrain(proposal.combinedAnalysis),
-      },
-      retries: 1,
+    const job = await startGenerationJob({
+      jobType: "system_discovery",
+      resourceType: "intelligent_system_proposal",
+      resourceId: id,
+      createdBy: auth.user.userId ?? null,
+      createdByActor: auth.user.actor,
     });
-    proposal.analystReview = normalizeAnalystReview(result.output.analystReview);
-    proposal.status = "Analysis Ready";
-    await saveSystemProposal(proposal);
-    await saveAuditLog({
-      actor: auth.user.actor,
-      action: "system_data_discovery_generated",
-      entityType: "intelligent_system_proposal",
-      entityId: id,
-      metadata: { model: result.model, files: proposal.files.length },
-    });
-    return NextResponse.json({ proposal: await getSystemProposal(id), model: result.model });
+    return NextResponse.json({ job }, { status: 202 });
   } catch (error) {
     return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }
@@ -325,6 +304,7 @@ export async function runSystemDiscoveryRequest(
 export async function generateSystemProposalRequest(
   request: Request,
   context: { params: Promise<{ id: string }> },
+  startGenerationJob: StartGenerationJob,
 ) {
   const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
@@ -340,46 +320,14 @@ export async function generateSystemProposalRequest(
       return NextResponse.json({ error: "Complete and review the data analysis first." }, { status: 400 });
     }
     proposal = await saveSystemProposal(proposal);
-    const combinedAnalysis = proposal.combinedAnalysis;
-    const analystReview = proposal.analystReview;
-    if (!combinedAnalysis || !analystReview) {
-      return NextResponse.json({ error: "The reviewed analysis could not be saved." }, { status: 500 });
-    }
-    const commercialSummary = formatSystemCommercialSummary(proposal.commercialInputs);
-    const result = await routeBrainTask<
-      {
-        brief: IntelligentSystemProposal["brief"];
-        analysis: ReturnType<typeof safeAnalysisForBrain>;
-        analystReview: NonNullable<IntelligentSystemProposal["analystReview"]>;
-        commercialSummary: string;
-      },
-      SystemProposalBrainOutput
-    >({
-      taskType: "intelligent_system_proposal",
-      input: {
-        brief: proposal.brief,
-        analysis: safeAnalysisForBrain(combinedAnalysis),
-        analystReview,
-        commercialSummary,
-      },
-      retries: 1,
+    const job = await startGenerationJob({
+      jobType: "system_proposal",
+      resourceType: "intelligent_system_proposal",
+      resourceId: id,
+      createdBy: auth.user.userId ?? null,
+      createdByActor: auth.user.actor,
     });
-    proposal.proposalContent = {
-      ...result.output.proposalContent,
-      coverHeading: "Intelligent System Proposal",
-      solutionTitle: proposal.brief.projectTitle,
-      client: proposal.brief.clientName,
-    };
-    proposal.status = "Generated";
-    await saveSystemProposal(proposal);
-    await saveAuditLog({
-      actor: auth.user.actor,
-      action: "system_proposal_generated",
-      entityType: "intelligent_system_proposal",
-      entityId: id,
-      metadata: { model: result.model, title: proposal.brief.projectTitle },
-    });
-    return NextResponse.json({ proposal: await getSystemProposal(id), model: result.model });
+    return NextResponse.json({ job }, { status: 202 });
   } catch (error) {
     return NextResponse.json({ error: errorMessage(error) }, { status: 500 });
   }

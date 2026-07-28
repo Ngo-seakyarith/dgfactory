@@ -1,29 +1,14 @@
 import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
-import { routeBrainTask } from "@/lib/brain/routing/router";
-import type {
-  CoursePackageBrainInput,
-  ProposalAgentOutput,
-} from "@/lib/brain/agents";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
-import { knowledgeSourceNotesFromResults } from "@/lib/knowledge";
-import {
-  formatKnowledgeForBrain,
-  retrieveKnowledge,
-} from "@/lib/knowledge/retrieve";
 import { requireApproved } from "@/lib/route-guards";
 import { resolvePackageClient } from "@/lib/crm-storage";
 import type { ClientProfileInput } from "@/lib/crm";
 import {
   getTrainerById,
-  normalizePricingInputs,
-  proposalNarrativeBriefFrom,
-  normalizeTrainingInput,
-  normalizeTrainingOutputs,
   type ExportFormat,
   type ExportTarget,
-  type PricingInputs,
   type TrainingPackage,
 } from "@/features/training-packages";
 import { exportTrainingPackage } from "@/features/training-packages/export/export-package";
@@ -34,6 +19,7 @@ import {
   saveTrainingPackage,
 } from "@/features/training-packages/storage/training-storage";
 import { ensureDeliveryProjectForPackage } from "@/features/delivery/storage/delivery-storage";
+import type { StartGenerationJob } from "@/features/generation-jobs/domain/types";
 
 const exportFormats: ExportFormat[] = ["docx", "pptx", "md"];
 const exportTargets: ExportTarget[] = [
@@ -225,84 +211,37 @@ export async function deleteTrainingPackageRequest(
   return NextResponse.json(result);
 }
 
-export async function generateTrainingPackageRequest(request: Request) {
-  try {
-    const body = await request.json();
-    const input = normalizeTrainingInput(body);
+export async function generateTrainingPackageRequest(
+  request: Request,
+  startGenerationJob: StartGenerationJob,
+) {
+  const auth = await requireApproved(request);
+  if (!auth.ok) return auth.response;
 
-    if (!getTrainerById(input.proposalBrief?.trainerId ?? "")) {
+  try {
+    const body = (await request.json()) as { packageId?: string };
+    const packageId = body.packageId?.trim();
+    if (!packageId) {
+      return NextResponse.json(
+        { error: "Save the package before starting generation." },
+        { status: 400 },
+      );
+    }
+    const pkg = await getTrainingPackage(packageId);
+    if (!getTrainerById(pkg.proposalBrief?.trainerId ?? "")) {
       return NextResponse.json(
         { error: "Select a DG Academy trainer before generating the package." },
         { status: 400 },
       );
     }
-
-    const secondTrainerId = input.proposalBrief?.secondTrainerId ?? "";
-    if (
-      secondTrainerId &&
-      (!getTrainerById(secondTrainerId) ||
-        secondTrainerId === input.proposalBrief?.trainerId)
-    ) {
-      return NextResponse.json(
-        { error: "Select a different approved profile for the second trainer." },
-        { status: 400 },
-      );
-    }
-
-    const pricingInputs = normalizePricingInputs(
-      (body as { pricingInputs?: Partial<PricingInputs> }).pricingInputs,
-    );
-    if (input.proposalBrief) {
-      input.proposalBrief.vatStatus = pricingInputs.vatStatus;
-    }
-
-    const knowledgeBriefValues = Object.entries(input.proposalBrief ?? {})
-      .filter(
-        ([key]) =>
-          ![
-            "trainerImageUrl",
-            "trainerBio",
-            "trainerExperience",
-            "trainerQualifications",
-            "secondTrainerImageUrl",
-            "secondTrainerBio",
-            "secondTrainerExperience",
-            "secondTrainerQualifications",
-          ].includes(key),
-      )
-      .map(([, value]) => value);
-    const knowledgeResults = await retrieveKnowledge({
-      query: [
-        input.courseTitle,
-        input.audience,
-        input.client,
-        input.promise,
-        input.context,
-        ...knowledgeBriefValues,
-      ].join(" "),
-      filters: { visibility: "Any" },
-      limit: 6,
+    const job = await startGenerationJob({
+      jobType: "training_package",
+      resourceType: "training_package",
+      resourceId: packageId,
+      createdBy: auth.user.userId ?? null,
+      createdByActor: auth.user.actor,
     });
-    const knowledgeContext = formatKnowledgeForBrain(knowledgeResults);
-    const knowledgeUsed = knowledgeSourceNotesFromResults(knowledgeResults);
-    const brainInput: CoursePackageBrainInput = {
-      ...input,
-      context: [input.context, knowledgeContext].filter(Boolean).join("\n\n"),
-      proposalBrief: proposalNarrativeBriefFrom(input.proposalBrief),
-    };
-    const result = await routeBrainTask<CoursePackageBrainInput, ProposalAgentOutput>({
-      taskType: "course_package",
-      input: brainInput,
-      retries: 1,
-    });
-
-    return NextResponse.json({
-      outputs: normalizeTrainingOutputs(result.output, input, pricingInputs),
-      mode: result.mode,
-      model: result.model,
-      notice: result.notice,
-      knowledgeUsed,
-    });
+    return NextResponse.json({ job }, { status: 202 });
   } catch (error) {
     return NextResponse.json({ error: generationError(error) }, { status: 500 });
   }

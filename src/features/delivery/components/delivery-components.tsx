@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import type { ReactNode } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CalendarCheck,
@@ -40,7 +41,6 @@ import {
   deliveryTaskCategories,
   deliveryTaskStatuses,
   normalizeDeliveryTask,
-  type DeliveryDraft,
   type DeliveryProject,
   type DeliveryStatus,
   type DeliveryTask,
@@ -59,6 +59,14 @@ import { MaterialsPanel } from "@/features/delivery/components/materials-panel";
 import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
 import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
 import { errorMessage, requestJson } from "@/lib/api-client";
+import {
+  isActiveGenerationJob,
+  type GenerationJob,
+} from "@/features/generation-jobs/domain/types";
+import {
+  setGenerationJobQueryData,
+  useLatestGenerationJobQuery,
+} from "@/features/generation-jobs/queries";
 
 type DeliveryStage = "before" | "day" | "after";
 
@@ -336,10 +344,51 @@ function TrainingDay({ project, onSave }: { project: DeliveryProject; onSave: (p
 }
 
 function EvaluationAndReport({ project, clientName, packageTitle, onSave }: { project: DeliveryProject; clientName: string; packageTitle: string; onSave: (project: DeliveryProject) => Promise<void> }) {
+  const queryClient = useQueryClient();
   const [draft, setDraft] = useState(project);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("");
+  const [generationJobId, setGenerationJobId] = useState("");
+  const reportJob = useLatestGenerationJobQuery({
+    jobType: "delivery_report",
+    resourceId: project.id,
+    enabled: true,
+  });
   useEffect(() => setDraft(project), [project]);
+  useEffect(() => {
+    const job = reportJob.data;
+    if (
+      !generationJobId &&
+      job &&
+      isActiveGenerationJob(job)
+    ) {
+      setGenerationJobId(job.id);
+      setBusy(true);
+      setNotice("Report generation is running in the background. You can leave this page.");
+      return;
+    }
+    if (!job || job.id !== generationJobId) return;
+    if (job.status === "Failed") {
+      setNotice(job.errorMessage || "Could not generate the report.");
+      setBusy(false);
+      setGenerationJobId("");
+      return;
+    }
+    if (job.status !== "Completed") return;
+    setGenerationJobId("");
+    void requestJson<{ project: DeliveryProject }>(
+      `/api/delivery-projects/${project.id}`,
+    )
+      .then(({ project: updated }) => {
+        setDraft(updated);
+        setNotice("Post-training report generated and saved.");
+        setBusy(false);
+      })
+      .catch((error) => {
+        setNotice(errorMessage(error));
+        setBusy(false);
+      });
+  }, [generationJobId, project.id, reportJob.data]);
 
   function evaluation(key: keyof DeliveryProject["evaluation"], value: string | number) {
     setDraft((current) => ({ ...current, evaluation: { ...current.evaluation, [key]: value } }));
@@ -362,18 +411,17 @@ function EvaluationAndReport({ project, clientName, packageTitle, onSave }: { pr
     setBusy(true);
     setNotice("");
     try {
-      const payload = await requestJson<{ draft: DeliveryDraft }>("/api/delivery-projects/generate", {
+      await onSave(draft);
+      const payload = await requestJson<{ job: GenerationJob }>("/api/delivery-projects/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ project: draft }),
+        body: JSON.stringify({ projectId: draft.id }),
       });
-      const updated = { ...draft, postTrainingReport: payload.draft.body };
-      setDraft(updated);
-      await onSave(updated);
-      setNotice("Post-training report generated and saved.");
+      setGenerationJobQueryData(queryClient, payload.job);
+      setGenerationJobId(payload.job.id);
+      setNotice("Report generation is running in the background. You can leave this page.");
     } catch (error) {
       setNotice(errorMessage(error, "Could not generate the report."));
-    } finally {
       setBusy(false);
     }
   }

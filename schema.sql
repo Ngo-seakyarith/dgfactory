@@ -141,10 +141,51 @@ create unique index if not exists idx_intelligent_system_files_project_sha256
   on public.intelligent_system_files(proposal_id, sha256)
   where sha256 <> '';
 
+create table if not exists public.generation_jobs (
+  id uuid primary key default gen_random_uuid(),
+  job_type text not null check (
+    job_type in (
+      'training_package',
+      'system_discovery',
+      'system_proposal',
+      'delivery_material',
+      'evaluation_questions',
+      'delivery_report'
+    )
+  ),
+  resource_type text not null,
+  resource_id uuid not null,
+  target text not null default '',
+  status text not null default 'Queued' check (
+    status in ('Queued', 'Running', 'Completed', 'Failed')
+  ),
+  workflow_run_id text not null default '',
+  payload jsonb not null default '{}'::jsonb,
+  error_message text not null default '',
+  created_by uuid references public.profiles(id) on delete set null,
+  created_by_actor text not null,
+  started_at timestamptz,
+  completed_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.generation_jobs enable row level security;
+
+create index if not exists idx_generation_jobs_resource
+  on public.generation_jobs(resource_type, resource_id, created_at desc);
+create index if not exists idx_generation_jobs_status
+  on public.generation_jobs(status, created_at desc);
+create unique index if not exists idx_generation_jobs_active_unique
+  on public.generation_jobs(job_type, resource_id, target)
+  where status in ('Queued', 'Running');
+
 revoke all on table public.intelligent_system_proposals from anon, authenticated;
 revoke all on table public.intelligent_system_files from anon, authenticated;
+revoke all on table public.generation_jobs from anon, authenticated;
 grant all on table public.intelligent_system_proposals to service_role;
 grant all on table public.intelligent_system_files to service_role;
+grant all on table public.generation_jobs to service_role;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values (

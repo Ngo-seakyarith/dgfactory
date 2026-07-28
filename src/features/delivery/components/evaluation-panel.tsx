@@ -47,6 +47,8 @@ import {
   useSaveDeliveryProjectMutation,
   useSaveEvaluationFormMutation,
 } from "@/features/delivery/queries";
+import { useLatestGenerationJobQuery } from "@/features/generation-jobs/queries";
+import { isActiveGenerationJob } from "@/features/generation-jobs/domain/types";
 import { errorMessage } from "@/lib/api-client";
 
 const questionTypeLabels: Record<EvaluationQuestion["type"], string> = {
@@ -275,6 +277,13 @@ export function EvaluationFormPanel({
   const [draft, setDraft] = useState<EvaluationForm | null>(form);
   const [link, setLink] = useState("");
   const [notice, setNotice] = useState("");
+  const [generationJobId, setGenerationJobId] = useState("");
+  const generationJob = useLatestGenerationJobQuery({
+    jobType: "evaluation_questions",
+    resourceId: project.id,
+    target: formType,
+    enabled: true,
+  });
   const lastSavedRef = useRef("");
   const isOpen = form?.status === "Open";
 
@@ -297,9 +306,33 @@ export function EvaluationFormPanel({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [draft, isOpen]);
 
+  useEffect(() => {
+    const job = generationJob.data;
+    if (
+      !generationJobId &&
+      job &&
+      isActiveGenerationJob(job)
+    ) {
+      setGenerationJobId(job.id);
+      setNotice("Question generation is running in the background.");
+      return;
+    }
+    if (!job || job.id !== generationJobId) return;
+    if (job.status === "Failed") {
+      setNotice(job.errorMessage || "Evaluation question generation failed.");
+      setGenerationJobId("");
+      return;
+    }
+    if (job.status !== "Completed") return;
+    setGenerationJobId("");
+    setNotice("Questions generated and saved.");
+    void evaluationQuery.refetch();
+  }, [evaluationQuery, generationJob.data, generationJobId]);
+
   const busy =
     saveForm.isPending ||
     generateQuestions.isPending ||
+    Boolean(generationJobId) ||
     openForm.isPending ||
     closeForm.isPending;
 
@@ -370,8 +403,9 @@ export function EvaluationFormPanel({
                 variant="gold"
                 disabled={busy}
                 onClick={() =>
-                  void run(generateQuestions.mutateAsync({}), (payload) => {
-                    if (payload.notice) setNotice(payload.notice);
+                  void run(generateQuestions.mutateAsync(), (payload) => {
+                    setGenerationJobId(payload.job.id);
+                    setNotice("Question generation is running in the background.");
                   })
                 }
               >
@@ -480,8 +514,9 @@ export function EvaluationFormPanel({
                   variant="outline"
                   disabled={busy}
                   onClick={() =>
-                    void run(generateQuestions.mutateAsync({}), (payload) => {
-                      if (payload.notice) setNotice(payload.notice);
+                    void run(generateQuestions.mutateAsync(), (payload) => {
+                      setGenerationJobId(payload.job.id);
+                      setNotice("Question generation is running in the background.");
                     })
                   }
                 >

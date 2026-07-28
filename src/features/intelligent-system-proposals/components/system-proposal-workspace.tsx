@@ -20,6 +20,15 @@ import { requestJson } from "@/lib/api-client";
 import { useClientsQuery } from "@/features/clients/queries";
 import { QueryErrorState } from "@/components/query-error-state";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  isActiveGenerationJob,
+  type GenerationJob,
+  type GenerationJobType,
+} from "@/features/generation-jobs/domain/types";
+import {
+  setGenerationJobQueryData,
+  useLatestGenerationJobQuery,
+} from "@/features/generation-jobs/queries";
 
 import { createSystemProposal, systemProposalContentToMarkdown } from "../domain/proposal";
 import type { AnalystReview, IntelligentSystemProposal, SystemSourceFile } from "../domain/types";
@@ -47,7 +56,10 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
   const deleteMutation = useDeleteSystemProposalMutation();
   const commandMutation = useMutation({
     mutationFn: ({ url, init }: { url: string; init?: RequestInit }) =>
-      requestJson<{ proposal: IntelligentSystemProposal }>(url, init),
+      requestJson<{ proposal: IntelligentSystemProposal; job: GenerationJob }>(url, init),
+    onSuccess(payload) {
+      setGenerationJobQueryData(queryClient, payload.job);
+    },
   });
   const loadedProposal = useRef(false);
   const [proposal, setProposal] = useState<IntelligentSystemProposal>(() => createSystemProposal());
@@ -55,6 +67,20 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
   const [stage, setStage] = useState<Stage>("brief");
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState<{ text: string; error: boolean }>({ text: "", error: false });
+  const [activeJob, setActiveJob] = useState<{
+    id: string;
+    type: Extract<GenerationJobType, "system_discovery" | "system_proposal">;
+  } | null>(null);
+  const discoveryJob = useLatestGenerationJobQuery({
+    jobType: "system_discovery",
+    resourceId: id ?? "",
+    enabled: Boolean(id),
+  });
+  const proposalJob = useLatestGenerationJobQuery({
+    jobType: "system_proposal",
+    resourceId: id ?? "",
+    enabled: Boolean(id),
+  });
   const markdown = useMemo(() => proposal.proposalContent ? systemProposalContentToMarkdown(proposal.proposalContent, proposal.commercialInputs) : "", [proposal]);
 
   function fail(error: unknown) { setNotice({ text: error instanceof Error ? error.message : "Request failed.", error: true }); }
@@ -67,6 +93,58 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
     if (proposalQuery.data.proposalContent) setStage("proposal");
     else if (proposalQuery.data.combinedAnalysis) setStage("review");
   }, [proposalQuery.data]);
+
+  useEffect(() => {
+    if (activeJob) return;
+    const candidates = [discoveryJob.data, proposalJob.data]
+      .filter(
+        (job): job is GenerationJob =>
+          isActiveGenerationJob(job),
+      )
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+    const job = candidates[0];
+    if (!job) return;
+    setActiveJob({
+      id: job.id,
+      type: job.jobType as "system_discovery" | "system_proposal",
+    });
+    setBusy(
+      job.jobType === "system_discovery"
+        ? "Preparing analyst findings..."
+        : "Generating proposal...",
+    );
+  }, [activeJob, discoveryJob.data, proposalJob.data]);
+
+  useEffect(() => {
+    const job =
+      activeJob?.type === "system_discovery"
+        ? discoveryJob.data
+        : activeJob?.type === "system_proposal"
+          ? proposalJob.data
+          : null;
+    if (!activeJob || !job || job.id !== activeJob.id) return;
+    if (job.status === "Failed") {
+      fail(new Error(job.errorMessage || "Background generation failed."));
+      setBusy("");
+      setActiveJob(null);
+      return;
+    }
+    if (job.status !== "Completed") return;
+    const completedType = activeJob.type;
+    setActiveJob(null);
+    void proposalQuery.refetch().then(({ data }) => {
+      if (!data) return;
+      setProposal(data);
+      setSystemProposalQueryData(queryClient, data);
+      if (completedType === "system_proposal") setStage("proposal");
+      success(
+        completedType === "system_discovery"
+          ? "Analyst findings are ready for human review."
+          : "Proposal generated and saved.",
+      );
+      setBusy("");
+    });
+  }, [activeJob, discoveryJob.data, proposalJob.data, proposalQuery, queryClient]);
 
   function updateBrief(key: keyof IntelligentSystemProposal["brief"], value: string | null) {
     setProposal((current) => ({ ...current, brief: { ...current.brief, [key]: value } }));
@@ -123,8 +201,9 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
     setBusy("Preparing analyst findings...");
     try {
       const data = await commandMutation.mutateAsync({ url: `/api/system-proposals/${id}/analysis`, init: { method: "POST" } });
-      setProposal(data.proposal); setSystemProposalQueryData(queryClient, data.proposal); success("Analyst findings are ready for human review.");
-    } catch (error) { fail(error); } finally { setBusy(""); }
+      setActiveJob({ id: data.job.id, type: "system_discovery" });
+      success("Analyst discovery is running in the background. You can leave this page.");
+    } catch (error) { fail(error); setBusy(""); }
   }
 
   async function generate() {
@@ -133,8 +212,9 @@ export function SystemProposalWorkspace({ id }: { id?: string }) {
     setBusy("Generating proposal...");
     try {
       const data = await commandMutation.mutateAsync({ url: `/api/system-proposals/${id}/generate`, init: { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ proposal: saved }) } });
-      setProposal(data.proposal); setSystemProposalQueryData(queryClient, data.proposal); setStage("proposal"); success("Proposal generated and saved.");
-    } catch (error) { fail(error); } finally { setBusy(""); }
+      setActiveJob({ id: data.job.id, type: "system_proposal" });
+      success("Proposal generation is running in the background. You can leave this page.");
+    } catch (error) { fail(error); setBusy(""); }
   }
 
   async function exportDocx() {

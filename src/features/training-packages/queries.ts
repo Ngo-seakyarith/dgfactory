@@ -3,16 +3,14 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { clientKeys } from "@/features/clients/queries";
+import {
+  setGenerationJobQueryData,
+} from "@/features/generation-jobs/queries";
+import type { GenerationJob } from "@/features/generation-jobs/domain/types";
 import { requestJson } from "@/lib/api-client";
 import type { Client, ClientProfileInput } from "@/lib/crm";
 
 import type { TrainingPackage } from "./domain/training-package";
-import type {
-  TrainingPackageInput,
-  TrainingPackageOutputs,
-} from "./domain/training-package";
-import type { PricingInputs } from "./domain/pricing";
-import type { KnowledgeSourceNote } from "@/lib/knowledge";
 
 export const trainingPackageKeys = {
   all: ["training-packages"] as const,
@@ -80,20 +78,18 @@ export function useSaveTrainingPackageMutation() {
 }
 
 export function useGenerateTrainingPackageMutation() {
+  const queryClient = useQueryClient();
+
   return useMutation({
-    mutationFn: (input: TrainingPackageInput & { pricingInputs: PricingInputs }) =>
-      requestJson<{
-        outputs?: TrainingPackageOutputs;
-        syllabus?: string;
-        proposal?: string;
-        knowledgeUsed?: KnowledgeSourceNote[];
-        mode?: "openai";
-        notice?: string;
-      }>("/api/training-packages/generate", {
+    mutationFn: (packageId: string) =>
+      requestJson<{ job: GenerationJob }>("/api/training-packages/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(input),
+        body: JSON.stringify({ packageId }),
       }),
+    onSuccess(payload) {
+      setGenerationJobQueryData(queryClient, payload.job);
+    },
   });
 }
 

@@ -1,15 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
-import { routeBrainTask } from "@/lib/brain/routing/router";
-import type {
-  EvaluationQuestionsBrainInput,
-  EvaluationQuestionsBrainOutput,
-} from "@/lib/brain/agents";
 import { requireApproved } from "@/lib/route-guards";
-import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
-import { getDeliveryProject } from "@/features/delivery/storage/delivery-storage";
-import { packageGenerationContext } from "@/features/delivery/server/package-generation-context";
 import {
   closeEvaluationForm,
   getEvaluationFormByDelivery,
@@ -20,7 +12,6 @@ import {
   saveEvaluationResponse,
 } from "@/features/delivery/storage/evaluation-storage";
 import {
-  createDefaultEvaluationForm,
   isEvaluationFormType,
   normalizeEvaluationForm,
   summarizeEvaluationResponses,
@@ -29,6 +20,7 @@ import {
   type EvaluationFormInput,
   type EvaluationFormType,
 } from "@/features/delivery/domain/evaluation-form";
+import type { StartGenerationJob } from "@/features/generation-jobs/domain/types";
 
 type DeliveryRouteContext = {
   params: Promise<{ id: string }>;
@@ -125,6 +117,7 @@ export async function saveDeliveryEvaluationFormHandler(
 export async function generateDeliveryEvaluationQuestionsHandler(
   request: Request,
   context: DeliveryRouteContext,
+  startGenerationJob: StartGenerationJob,
 ) {
   const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
@@ -132,62 +125,15 @@ export async function generateDeliveryEvaluationQuestionsHandler(
   try {
     const { id } = await context.params;
     const formType = formTypeFromRequest(request);
-    const project = await getDeliveryProject(id);
-    if (!project.packageId) {
-      throw new Error(
-        "A linked saved package is required before generating assessment or evaluation questions.",
-      );
-    }
-    const trainingPackage = await getTrainingPackage(project.packageId);
-    const packageContext = packageGenerationContext(trainingPackage);
-
-    const input: EvaluationQuestionsBrainInput = {
-      purpose:
-        formType === "pre_training"
-          ? "pre_training_assessment"
-          : "post_training_evaluation",
-      ...packageContext,
-    };
-
-    const result = await routeBrainTask<
-      EvaluationQuestionsBrainInput,
-      EvaluationQuestionsBrainOutput
-    >({
-      taskType: "evaluation_questions",
-      input,
-      retries: 2,
+    const job = await startGenerationJob({
+      jobType: "evaluation_questions",
+      resourceType: "delivery_project",
+      resourceId: id,
+      target: formType,
+      createdBy: auth.user.userId ?? null,
+      createdByActor: auth.user.actor,
     });
-
-    const existing = await getEvaluationFormByDelivery(id, formType);
-    const base =
-      existing ?? createDefaultEvaluationForm(id, input.courseTitle, formType);
-    const form = await saveEvaluationForm({
-      ...base,
-      questions: result.output.questions.map((question) => ({
-        ...question,
-        required: question.required ?? question.type !== "text",
-      })),
-    });
-
-    await saveAuditLog({
-      actor: auth.user.actor,
-      action: "evaluation_questions_generated",
-      entityType: "evaluation_form",
-      entityId: form.id,
-      metadata: {
-        deliveryProjectId: id,
-        formType,
-        questionCount: form.questions.length,
-        model: result.model,
-      },
-    });
-
-    return NextResponse.json({
-      form,
-      mode: result.mode,
-      model: result.model,
-      notice: result.notice,
-    });
+    return NextResponse.json({ job }, { status: 202 });
   } catch (error) {
     return NextResponse.json(
       { error: friendlyError(error, "Evaluation question generation failed.") },

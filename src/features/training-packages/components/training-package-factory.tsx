@@ -3,6 +3,7 @@
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Check,
@@ -38,6 +39,10 @@ import {
   type TrainingPackage,
   type TrainingPackageInput,
 } from "@/features/training-packages";
+import { useLatestGenerationJobQuery } from "@/features/generation-jobs/queries";
+import { isActiveGenerationJob } from "@/features/generation-jobs/domain/types";
+import { requestJson } from "@/lib/api-client";
+import { trainingPackageKeys } from "../queries";
 import type { ExportFormat, ExportTarget } from "@/features/training-packages";
 import type { Client, ClientProfileInput } from "@/lib/crm";
 import { useClientsQuery } from "@/features/clients/queries";
@@ -213,6 +218,7 @@ export function PackageForm({
   onPackageSaved?: (pkg: TrainingPackage) => void;
 }) {
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const [form, setForm] = useState<TrainingPackageInput>(() =>
     initialPackage
@@ -256,6 +262,48 @@ export function PackageForm({
     useState<TrainingPackage | null>(initialPackage ?? null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
+  const [activeJobId, setActiveJobId] = useState("");
+  const jobResourceId =
+    currentPackage?.id ?? initialPackage?.id ?? "";
+  const generationJob = useLatestGenerationJobQuery({
+    jobType: "training_package",
+    resourceId: jobResourceId,
+    enabled: Boolean(jobResourceId),
+  });
+
+  useEffect(() => {
+    const job = generationJob.data;
+    if (!job) return;
+    if (!activeJobId && isActiveGenerationJob(job)) {
+      setActiveJobId(job.id);
+      setNotice("Generation is running in the background. You can leave this page.");
+      return;
+    }
+    if (job.id !== activeJobId) return;
+    if (job.status === "Failed") {
+      setError(job.errorMessage || "Training package generation failed.");
+      setNotice("");
+      setActiveJobId("");
+      return;
+    }
+    if (job.status !== "Completed") return;
+
+    setActiveJobId("");
+    void requestJson<{ package: TrainingPackage }>(
+      `/api/training-packages/${job.resourceId}`,
+    ).then(({ package: generated }) => {
+      setCurrentPackage(generated);
+      queryClient.setQueryData(trainingPackageKeys.detail(generated.id), generated);
+      void queryClient.invalidateQueries({ queryKey: trainingPackageKeys.list() });
+      onPackageSaved?.(generated);
+      setNotice("");
+      requestAnimationFrame(() => {
+        outputRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }).catch((error) => {
+      setError(error instanceof Error ? error.message : "Could not load the generated package.");
+    });
+  }, [activeJobId, generationJob.data, onPackageSaved, queryClient]);
 
   useEffect(() => {
     if (initialClientResolved.current || !clientsQuery.data || clientsQuery.isFetching) return;
@@ -411,44 +459,28 @@ export function PackageForm({
       }
 
       const generationInput: TrainingPackageInput = { ...form, proposalBrief };
-      const payload = await generateMutation.mutateAsync({
-        ...generationInput,
-        pricingInputs,
-      });
-      const outputs =
-        payload.outputs ??
-        (payload.syllabus && payload.proposal
-          ? {
-              syllabus: payload.syllabus,
-              proposal: payload.proposal,
-            }
-          : undefined);
-
-      if (!outputs) {
-        throw new Error("Generation returned no package outputs.");
-      }
-
       const pkg = buildPackageFromParts({
         input: generationInput,
-        outputs,
+        outputs:
+          currentPackage?.status === "Generated"
+            ? {
+                syllabus: currentPackage.syllabus,
+                proposal: currentPackage.proposal,
+                proposalContent: currentPackage.proposalContent ?? undefined,
+              }
+            : createTrainingOutputTemplate(generationInput),
         id: initialPackage?.id ?? currentPackage?.id,
         createdAt: initialPackage?.createdAt ?? currentPackage?.createdAt,
         clientId: clientProfile.id ?? currentPackage?.clientId ?? initialPackage?.clientId,
         pricingInputs,
-        knowledgeUsed:
-          payload.knowledgeUsed ??
-          currentPackage?.knowledgeUsed ??
-          initialPackage?.knowledgeUsed ??
-          [],
+        knowledgeUsed: currentPackage?.knowledgeUsed ?? initialPackage?.knowledgeUsed ?? [],
       });
 
-      setCurrentPackage(pkg);
       const savedPackage = await persistPackage(pkg);
       setCurrentPackage(savedPackage);
-      onPackageSaved?.(savedPackage);
-      requestAnimationFrame(() => {
-        outputRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      });
+      const { job } = await generateMutation.mutateAsync(savedPackage.id);
+      setActiveJobId(job.id);
+      setNotice("Generation is running in the background. You can leave this page.");
     } catch (generationError) {
       setError(
         generationError instanceof Error
@@ -785,9 +817,9 @@ export function PackageForm({
               size="lg"
               className="w-full sm:w-auto"
               onClick={generatePackage}
-              disabled={generateMutation.isPending || saveMutation.isPending || !selectedTrainer}
+              disabled={generateMutation.isPending || saveMutation.isPending || Boolean(activeJobId) || !selectedTrainer}
             >
-              {generateMutation.isPending ? (
+              {generateMutation.isPending || Boolean(activeJobId) ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Sparkles className="h-4 w-4" />
@@ -800,7 +832,7 @@ export function PackageForm({
               size="lg"
               className="w-full sm:w-auto"
               onClick={savePackage}
-              disabled={saveMutation.isPending || generateMutation.isPending}
+              disabled={saveMutation.isPending || generateMutation.isPending || Boolean(activeJobId)}
             >
               {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save Package

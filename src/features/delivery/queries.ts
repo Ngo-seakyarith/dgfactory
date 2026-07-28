@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { requestJson } from "@/lib/api-client";
+import type { GenerationJob } from "@/features/generation-jobs/domain/types";
+import { setGenerationJobQueryData } from "@/features/generation-jobs/queries";
 
 import type {
   DeliveryMaterialKey,
@@ -168,11 +170,22 @@ export function useGenerateEvaluationQuestionsMutation(
   projectId: string,
   formType: EvaluationFormType,
 ) {
-  return useEvaluationMutation<{ form: EvaluationForm; notice?: string }>(
-    projectId,
-    formType,
-    "/generate",
-  );
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () =>
+      requestJson<{ job: GenerationJob }>(
+        `/api/delivery-projects/${projectId}/evaluation/generate?type=${formType}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: "{}",
+        },
+      ),
+    onSuccess(payload) {
+      setGenerationJobQueryData(queryClient, payload.job);
+    },
+  });
 }
 
 export function useOpenEvaluationFormMutation(
@@ -202,7 +215,7 @@ export function useGenerateDeliveryMaterialMutation(projectId: string) {
 
   return useMutation({
     mutationFn: (target: DeliveryMaterialKey) =>
-      requestJson<{ project: DeliveryProject; notice?: string }>(
+      requestJson<{ job: GenerationJob }>(
         `/api/delivery-projects/${projectId}/materials/generate`,
         {
           method: "POST",
@@ -211,11 +224,7 @@ export function useGenerateDeliveryMaterialMutation(projectId: string) {
         },
       ),
     onSuccess(payload) {
-      queryClient.setQueryData(
-        deliveryKeys.project(payload.project.id),
-        payload.project,
-      );
-      void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
+      setGenerationJobQueryData(queryClient, payload.job);
     },
   });
 }

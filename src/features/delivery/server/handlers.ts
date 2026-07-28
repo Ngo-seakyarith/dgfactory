@@ -1,9 +1,7 @@
 import { NextResponse } from "next/server";
 
-import { routeBrainTask } from "@/lib/brain/routing/router";
 import { requireApproved } from "@/lib/route-guards";
 import type { ExportFormat } from "@/features/training-packages/export/export-package";
-import type { TrainingPackage } from "@/features/training-packages";
 import {
   deleteDeliveryProject,
   deleteDeliveryTask,
@@ -15,18 +13,12 @@ import {
 } from "@/features/delivery/storage/delivery-storage";
 import {
   normalizeDeliveryProject,
-  summarizeEvaluationResponses,
-  type DeliveryDraft,
   type DeliveryProject,
   type DeliveryTask,
 } from "@/features/delivery";
-import {
-  getEvaluationFormByDelivery,
-  listEvaluationResponses,
-} from "@/features/delivery/storage/evaluation-storage";
 import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
-import { packageGenerationContext } from "@/features/delivery/server/package-generation-context";
 import { createPostTrainingReportDocx } from "@/features/delivery/export/post-training-report-docx";
+import type { StartGenerationJob } from "@/features/generation-jobs/domain/types";
 
 type RouteContext = {
   params: Promise<{ id: string }>;
@@ -154,132 +146,37 @@ export async function deleteDeliveryProjectHandler(
   }
 }
 
-export async function generateDeliveryDraftHandler(request: Request) {
+export async function generateDeliveryDraftHandler(
+  request: Request,
+  startGenerationJob: StartGenerationJob,
+) {
   const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
-  const body = (await request.json()) as {
-    project?: Partial<DeliveryProject>;
-  };
-  const project = normalizeDeliveryProject(body.project ?? {});
-
-  if (!project.packageId) {
-    return NextResponse.json(
-      { error: "A linked saved package is required before generating a post-training report." },
-      { status: 400 },
-    );
-  }
-
-  let trainingPackage: TrainingPackage;
   try {
-    trainingPackage = await getTrainingPackage(project.packageId);
-  } catch (error) {
-    return NextResponse.json(
-      { error: friendlyError(error, "The linked saved package could not be loaded.") },
-      { status: 500 },
-    );
-  }
-
-  let participantEvaluation: Record<string, unknown> | null = null;
-  try {
-    const form = project.id ? await getEvaluationFormByDelivery(project.id) : null;
-    const responses = form ? await listEvaluationResponses(form.id) : [];
-    const summary = form ? summarizeEvaluationResponses(form, responses) : null;
-
-    if (summary && summary.responseCount > 0) {
-      participantEvaluation = {
-        responseCount: summary.responseCount,
-        averageSatisfactionScore: summary.ratingQuestionCount
-          ? Math.round(summary.overallAverage * 10) / 10
-          : null,
-        ratingResults: summary.questions
-          .filter((question) => question.type === "rating")
-          .map((question) => ({
-            question: question.label,
-            answered: question.answered,
-            average:
-              question.type === "rating"
-                ? Math.round(question.average * 10) / 10
-                : 0,
-          })),
-        choiceResults: summary.questions
-          .filter((question) => question.type === "choice")
-          .map((question) => ({
-            question: question.label,
-            counts: question.type === "choice" ? question.options : [],
-          })),
-        participantComments: summary.questions
-          .filter((question) => question.type === "text")
-          .flatMap((question) =>
-            question.type === "text"
-              ? question.answers.map((answer) => ({
-                  question: question.label,
-                  answer,
-                }))
-              : [],
-          ),
-      };
+    const body = (await request.json()) as { projectId?: string };
+    const projectId = body.projectId?.trim();
+    if (!projectId) {
+      return NextResponse.json(
+        { error: "Save the delivery record before generating its report." },
+        { status: 400 },
+      );
     }
-  } catch {
-    participantEvaluation = null;
-  }
-
-  const input = {
-    packageContext: packageGenerationContext(trainingPackage),
-    scheduledDelivery: {
-      date: trainingPackage.proposalBrief.scheduleDate,
-      time: trainingPackage.proposalBrief.scheduleTime,
-      venue: trainingPackage.proposalBrief.scheduleVenue,
-      trainer: trainingPackage.proposalBrief.trainerName,
-    },
-    deliveryEvidence: {
-      status: project.deliveryStatus,
-      actualParticipantCount: project.participantCount,
-      trainingDayNotes: project.notes,
-      recordedSatisfactionScore: project.evaluation.averageSatisfactionScore,
-      recordedKeyComments: project.evaluation.keyComments,
-      clientFeedback: project.evaluation.clientFeedback,
-      trainerReflection: project.evaluation.trainerReflection,
-      learnerFeedback: project.evaluation.learnerFeedback,
-      improvementSuggestions: project.evaluation.improvementSuggestions,
-    },
-    participantEvaluation,
-  };
-
-  if (!process.env.OPENROUTER_API_KEY) {
-    return NextResponse.json(
-      { error: "OPENROUTER_API_KEY is required for delivery draft generation." },
-      { status: 503 },
-    );
-  }
-
-  try {
-    const result = await routeBrainTask<Record<string, unknown>, DeliveryDraft>({
-      taskType: "delivery_report",
-      input: {
-        task:
-          "Generate a client-ready post-training report for a completed DG Academy training delivery.",
-        input,
-        rules: [
-          "Suitable for corporate training delivery in Cambodia.",
-          "Use a professional, concise, client-ready tone where relevant.",
-          "Treat packageContext as the original planned course context and deliveryEvidence plus participantEvaluation as evidence of what happened.",
-          "Do not claim that planned content was delivered unless the recorded evidence supports it.",
-          "The generated syllabus, generated materials, and any previous report draft are intentionally excluded.",
-          "Do not invent attendance or evaluation facts beyond provided inputs.",
-          "Do not send messages or imply messages were sent.",
-          "participantEvaluation contains aggregated results from the digital participant evaluation form: use its averageSatisfactionScore, rating results, choice counts, and participant comments as the evaluation evidence when it is present.",
-          "When participantEvaluation is null, state that participant evaluation results are not recorded yet instead of inventing them.",
-          "For post-training reports, include overview, participant count, objectives, delivery summary, evaluation result, feedback, recommendations, and next opportunities.",
-        ],
-      },
+    const project = await getDeliveryProject(projectId);
+    if (!project.packageId) {
+      return NextResponse.json(
+        { error: "A linked saved package is required before generating a post-training report." },
+        { status: 400 },
+      );
+    }
+    const job = await startGenerationJob({
+      jobType: "delivery_report",
+      resourceType: "delivery_project",
+      resourceId: projectId,
+      createdBy: auth.user.userId ?? null,
+      createdByActor: auth.user.actor,
     });
-
-    return NextResponse.json({
-      draft: result.output,
-      mode: result.mode,
-      model: result.model,
-    });
+    return NextResponse.json({ job }, { status: 202 });
   } catch (error) {
     return NextResponse.json(
       { error: safeGenerationError(error) },

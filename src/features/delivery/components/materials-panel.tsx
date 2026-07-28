@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Download, FileText, Loader2, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -14,10 +15,16 @@ import {
 } from "@/components/ui/card";
 import {
   deliveryMaterialKeys,
+  isDeliveryMaterialKey,
   type DeliveryMaterialKey,
   type DeliveryProject,
 } from "@/features/delivery";
-import { useGenerateDeliveryMaterialMutation } from "@/features/delivery/queries";
+import {
+  deliveryKeys,
+  useGenerateDeliveryMaterialMutation,
+} from "@/features/delivery/queries";
+import { useLatestGenerationJobQuery } from "@/features/generation-jobs/queries";
+import type { GenerationJob } from "@/features/generation-jobs/domain/types";
 import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
 import { errorMessage } from "@/lib/api-client";
 
@@ -49,27 +56,81 @@ const materialMeta: Record<
 };
 
 export function MaterialsPanel({ project }: { project: DeliveryProject }) {
+  const queryClient = useQueryClient();
   const generateMaterial = useGenerateDeliveryMaterialMutation(project.id);
   const [active, setActive] = useState<DeliveryMaterialKey>("slides");
-  const [notice, setNotice] = useState("");
+  const [notices, setNotices] = useState<
+    Partial<Record<DeliveryMaterialKey, string>>
+  >({});
   const [exporting, setExporting] = useState(false);
+  const [activeJobIds, setActiveJobIds] = useState<
+    Partial<Record<DeliveryMaterialKey, string>>
+  >({});
 
   const meta = materialMeta[active];
   const content = project.materials[active];
+  const activeJobId = activeJobIds[active];
+  const notice = notices[active] ?? "";
+
+  const handleActiveJob = useCallback(
+    (target: DeliveryMaterialKey, jobId: string) => {
+      setActiveJobIds((current) =>
+        current[target] === jobId ? current : { ...current, [target]: jobId },
+      );
+      setNotices((current) => ({
+        ...current,
+        [target]:
+          "Generation is running in the background. You can leave this page.",
+      }));
+    },
+    [],
+  );
+
+  const handleTerminalJob = useCallback(
+    (target: DeliveryMaterialKey, job: GenerationJob) => {
+      setActiveJobIds((current) => {
+        if (current[target] !== job.id) return current;
+        const next = { ...current };
+        delete next[target];
+        return next;
+      });
+      if (job.status === "Failed") {
+        setNotices((current) => ({
+          ...current,
+          [target]: job.errorMessage || "Material generation failed.",
+        }));
+        return;
+      }
+      if (job.status !== "Completed") return;
+      setNotices((current) => ({
+        ...current,
+        [target]: `${materialMeta[target].label} generated and saved.`,
+      }));
+      void queryClient.invalidateQueries({
+        queryKey: deliveryKeys.project(project.id),
+      });
+      void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
+    },
+    [project.id, queryClient],
+  );
 
   async function generate() {
-    setNotice("");
+    const target = active;
+    setNotices((current) => ({ ...current, [target]: "" }));
     try {
-      const payload = await generateMaterial.mutateAsync(active);
-      if (payload.notice) setNotice(payload.notice);
+      const payload = await generateMaterial.mutateAsync(target);
+      handleActiveJob(target, payload.job.id);
     } catch (error) {
-      setNotice(errorMessage(error, "Material generation failed."));
+      setNotices((current) => ({
+        ...current,
+        [target]: errorMessage(error, "Material generation failed."),
+      }));
     }
   }
 
   async function exportMaterial() {
     setExporting(true);
-    setNotice("");
+    setNotices((current) => ({ ...current, [active]: "" }));
     try {
       const response = await fetch(
         `/api/delivery-projects/${project.id}/materials/export`,
@@ -93,26 +154,41 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
       anchor.click();
       URL.revokeObjectURL(url);
     } catch (error) {
-      setNotice(errorMessage(error, "Material export failed."));
+      setNotices((current) => ({
+        ...current,
+        [active]: errorMessage(error, "Material export failed."),
+      }));
     } finally {
       setExporting(false);
     }
   }
 
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Training Materials</CardTitle>
-        <CardDescription className="mt-2">
-          AI drafts each material from the proposal and the confirmed delivery
-          details. Review and regenerate until it is ready, then export.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+    <>
+      {deliveryMaterialKeys.map((target) => (
+        <MaterialJobObserver
+          key={target}
+          projectId={project.id}
+          target={target}
+          trackedJobId={activeJobIds[target]}
+          onActive={handleActiveJob}
+          onTerminal={handleTerminalJob}
+        />
+      ))}
+      <Card>
+        <CardHeader>
+          <CardTitle>Training Materials</CardTitle>
+          <CardDescription className="mt-2">
+            AI drafts each material from the proposal and the confirmed delivery
+            details. Review and regenerate until it is ready, then export.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
         <div className="flex flex-wrap gap-2" role="tablist" aria-label="Training materials">
           {deliveryMaterialKeys.map((key) => {
             const item = materialMeta[key];
             const ready = Boolean(project.materials[key]?.trim());
+            const generating = Boolean(activeJobIds[key]);
             const activeTab = active === key;
             return (
               <button
@@ -128,7 +204,11 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
                 }`}
               >
                 {item.label}
-                {ready ? <Badge variant="teal">Ready</Badge> : null}
+                {generating ? (
+                  <Badge variant="gold">Generating</Badge>
+                ) : ready ? (
+                  <Badge variant="teal">Ready</Badge>
+                ) : null}
               </button>
             );
           })}
@@ -140,10 +220,10 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
           <Button
             type="button"
             variant="gold"
-            disabled={generateMaterial.isPending}
+            disabled={generateMaterial.isPending || Boolean(activeJobId)}
             onClick={() => void generate()}
           >
-            {generateMaterial.isPending ? (
+            {generateMaterial.isPending || Boolean(activeJobId) ? (
               <Loader2 className="animate-spin" />
             ) : (
               <Sparkles />
@@ -180,7 +260,41 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
             </p>
           </div>
         )}
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </>
   );
+}
+
+function MaterialJobObserver({
+  projectId,
+  target,
+  trackedJobId,
+  onActive,
+  onTerminal,
+}: {
+  projectId: string;
+  target: DeliveryMaterialKey;
+  trackedJobId?: string;
+  onActive: (target: DeliveryMaterialKey, jobId: string) => void;
+  onTerminal: (target: DeliveryMaterialKey, job: GenerationJob) => void;
+}) {
+  const jobQuery = useLatestGenerationJobQuery({
+    jobType: "delivery_material",
+    resourceId: projectId,
+    target,
+    enabled: true,
+  });
+
+  useEffect(() => {
+    const job = jobQuery.data;
+    if (!job || !isDeliveryMaterialKey(job.target) || job.target !== target) return;
+    if (job.status === "Queued" || job.status === "Running") {
+      onActive(target, job.id);
+      return;
+    }
+    if (trackedJobId === job.id) onTerminal(target, job);
+  }, [jobQuery.data, onActive, onTerminal, target, trackedJobId]);
+
+  return null;
 }
