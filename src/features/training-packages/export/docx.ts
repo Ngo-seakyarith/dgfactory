@@ -248,6 +248,22 @@ function wrapCoverText(text: string, maxCharacters: number) {
   return lines.length > 0 ? lines : [text];
 }
 
+function coverTextKey(text: string) {
+  return text.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+function courseTitleFormat(lineCount: number) {
+  if (lineCount >= 5) {
+    return { size: 52, line: 700, after: 260 };
+  }
+
+  if (lineCount === 4) {
+    return { size: 60, line: 780, after: 300 };
+  }
+
+  return { size: 68, line: 900, after: 340 };
+}
+
 function coverTextRuns(
   lines: string[],
   options: { bold?: boolean; color?: string; size: number },
@@ -531,7 +547,13 @@ function proposalDocxChildren(
   const title = includeCommercial
     ? proposalTitle
     : proposalTitle.replace(/proposal/gi, "Syllabus");
-  const courseTitleLines = wrapCoverText(content.courseTitle, 18);
+  const courseTitleLines = wrapCoverText(content.courseTitle, 26);
+  const courseTitleStyle = courseTitleFormat(courseTitleLines.length);
+  const coverSubtitle =
+    content.coverSubtitle &&
+    coverTextKey(content.coverSubtitle) !== coverTextKey(content.courseTitle)
+      ? content.coverSubtitle
+      : "";
   courseTitleLines[0] = `\u201C${courseTitleLines[0]}`;
   courseTitleLines[courseTitleLines.length - 1] = `${courseTitleLines.at(-1)}\u201D`;
   const shouldShow = (items: string[]) => items.length > 0;
@@ -549,11 +571,11 @@ function proposalDocxChildren(
     participantCount > 0 ? `${participantCount} Pax` : content.schedule.participants;
 
   return [
-    logoParagraph(logoData, 120, { before: 0, after: 480 }),
+    logoParagraph(logoData, 120, { before: 0, after: 300 }),
     new Paragraph({
       children: [docxText(title, { size: 28 })],
       alignment: AlignmentType.CENTER,
-      spacing: { after: 320 },
+      spacing: { after: 220 },
     }),
     new Paragraph({
       children: [docxText("On", { size: 28 })],
@@ -564,27 +586,27 @@ function proposalDocxChildren(
       children: coverTextRuns(courseTitleLines, {
         bold: true,
         color: "0070C0",
-        size: 72,
+        size: courseTitleStyle.size,
       }),
       alignment: AlignmentType.CENTER,
       spacing: {
-        after: 528,
-        line: 1244,
+        after: courseTitleStyle.after,
+        line: courseTitleStyle.line,
         lineRule: LineRuleType.EXACT,
       },
     }),
-    ...(content.coverSubtitle
+    ...(coverSubtitle
       ? [
           new Paragraph({
-            children: coverTextRuns(wrapCoverText(content.coverSubtitle, 40), {
+            children: coverTextRuns(wrapCoverText(coverSubtitle, 46), {
               bold: true,
               color: "0070C0",
-              size: 48,
+              size: 40,
             }),
             alignment: AlignmentType.CENTER,
             spacing: {
-              after: 944,
-              line: 596,
+              after: 420,
+              line: 500,
               lineRule: LineRuleType.EXACT,
             },
           }),
@@ -598,13 +620,13 @@ function proposalDocxChildren(
               {
                 bold: true,
                 color: "0070C0",
-                size: 48,
+                size: 40,
               },
             ),
             alignment: AlignmentType.CENTER,
             spacing: {
-              after: 374,
-              line: 826,
+              after: 220,
+              line: 520,
               lineRule: LineRuleType.EXACT,
             },
           }),
@@ -613,7 +635,7 @@ function proposalDocxChildren(
     new Paragraph({
       children: [docxText("for", { bold: true, color: "0070C0", size: 52 })],
       alignment: AlignmentType.CENTER,
-      spacing: { after: 460 },
+      spacing: { after: 220 },
     }),
     new Paragraph({
       children: [
@@ -716,7 +738,7 @@ function proposalDocxChildren(
               proposalRun("Billing arrangements: ", { bold: true, size: 22 }),
               proposalRun(content.professionalFee.billingArrangement, { size: 22 }),
             ],
-            spacing: { before: 620, after: 20, line: 320 },
+            spacing: { before: 240, after: 20, line: 320 },
           }),
           ...(content.professionalFee.paymentInstructions
             ? [
@@ -754,7 +776,8 @@ function proposalDocxChildren(
               }),
             ],
             tabStops: signatureTabs,
-            spacing: { before: 1400, after: 100 },
+            spacing: { before: 320, after: 80 },
+            keepNext: true,
           }),
           ...(signatureImageData
             ? [
@@ -763,7 +786,7 @@ function proposalDocxChildren(
                     new ImageRun({
                       type: "png",
                       data: signatureImageData,
-                      transformation: { width: 136, height: 102 },
+                      transformation: { width: 112, height: 84 },
                       altText: {
                         title: "Hin Sopheap signature",
                         description: "Signature of Hin Sopheap",
@@ -773,6 +796,7 @@ function proposalDocxChildren(
                   ],
                   indent: { left: 360 },
                   spacing: { after: 20 },
+                  keepNext: true,
                 }),
               ]
             : []),
@@ -792,6 +816,7 @@ function proposalDocxChildren(
             ],
             tabStops: signatureTabs,
             spacing: { after: 80 },
+            keepNext: true,
           }),
           new Paragraph({
             children: [
@@ -809,6 +834,7 @@ function proposalDocxChildren(
             ],
             tabStops: signatureTabs,
             spacing: { after: 80 },
+            keepNext: true,
           }),
           new Paragraph({
             children: [
