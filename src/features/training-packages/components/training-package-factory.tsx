@@ -92,10 +92,6 @@ type QaReviewOutput = {
 };
 
 type OutputTabKey = PackageOutputKey | "qaReview" | "feedback";
-type RegeneratablePackageSection =
-  | "syllabus"
-  | "proposal";
-
 const defaultInput: TrainingPackageInput = {
   courseTitle: "",
   audience: "",
@@ -831,7 +827,7 @@ export function PackageForm({
           </CardHeader>
           <CardContent>
             {currentPackage?.status === "Generated" ? (
-              <OutputTabs pkg={currentPackage} onPackageUpdate={setCurrentPackage} />
+              <OutputTabs pkg={currentPackage} />
             ) : currentPackage ? (
               <EmptyState
                 title="Draft saved."

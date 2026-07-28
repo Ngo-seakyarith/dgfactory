@@ -262,7 +262,7 @@ export function ClientCard({
             {client.sector ? ` - ${client.sector}` : ""}
           </p>
         </div>
-        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-teal-100" />
+        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-[#176a63]" />
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <Badge variant="teal">
@@ -360,7 +360,7 @@ function ClientsTable({
                   <Link
                     href={`/clients/${client.id}`}
                     aria-label={`Open ${client.name}`}
-                    className="inline-flex rounded-md p-1 text-muted-foreground transition hover:bg-teal-300/10 hover:text-teal-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                    className="inline-flex rounded-md p-1 text-muted-foreground transition hover:bg-teal-300/10 hover:text-[#176a63] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   >
                     <ArrowRight className="h-4 w-4" />
                   </Link>
@@ -872,7 +872,7 @@ export function OpportunityCard({
             {client?.name ?? "Unassigned client"} - {opportunity.trainingNeed}
           </p>
         </div>
-        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-teal-100" />
+        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-[#176a63]" />
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <OpportunityStatusBadge status={opportunity.status} />

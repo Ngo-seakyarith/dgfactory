@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { FileText, Loader2, Sparkles } from "lucide-react";
+import { FileText } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,6 @@ import {
 } from "./qa-review-panel";
 
 type OutputTabKey = PackageOutputKey | "qaReview" | "feedback";
-type RegeneratablePackageSection = "syllabus" | "proposal";
 function KnowledgeUsedPanel({
   knowledgeUsed,
 }: {
@@ -64,23 +63,7 @@ function KnowledgeUsedPanel({
   );
 }
 
-function regeneratableSectionForKey(
-  key: OutputTabKey,
-): RegeneratablePackageSection | null {
-  if (key === "syllabus" || key === "proposal") {
-    return key;
-  }
-
-  return null;
-}
-
-export function OutputTabs({
-  pkg,
-  onPackageUpdate,
-}: {
-  pkg: TrainingPackage;
-  onPackageUpdate?: (pkg: TrainingPackage) => void | Promise<void>;
-}) {
+export function OutputTabs({ pkg }: { pkg: TrainingPackage }) {
   const sections = useMemo(
     () => packageOutputSections,
     [],
@@ -92,9 +75,6 @@ export function OutputTabs({
   const [qaReview, setQaReview] = useState<QaReviewOutput | null>(null);
   const [qaNotice, setQaNotice] = useState("");
   const [isRunningQa, setIsRunningQa] = useState(false);
-  const [isRegenerating, setIsRegenerating] =
-    useState<RegeneratablePackageSection | "">("");
-  const [regenerateNotice, setRegenerateNotice] = useState("");
 
   const activeSection = useMemo(
     () => sections.find((section) => section.key === activeKey)!,
@@ -103,7 +83,6 @@ export function OutputTabs({
   const fullPackage = fullPackageToMarkdown(pkg);
   const qaReviewText = qaReview ? qaReviewToMarkdown(qaReview) : "";
   const activeText = outputToText(pkg, activeSection.key as PackageOutputKey);
-  const activeRegeneratableSection = regeneratableSectionForKey(activeSection.key);
 
   async function exportPackage(format: ExportFormat, target: ExportTarget = "full") {
     setExportNotice(`Preparing ${format.toUpperCase()} export...`);
@@ -200,65 +179,6 @@ export function OutputTabs({
     }
   }
 
-  async function regenerateSection(section: RegeneratablePackageSection) {
-    setIsRegenerating(section);
-    setRegenerateNotice("");
-
-    try {
-      const response = await fetch("/api/workflows/regenerate-section", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          section,
-          packageInput: {
-            courseTitle: pkg.title,
-            audience: pkg.audience,
-            duration: pkg.duration,
-            client: pkg.client,
-            promise: pkg.promise,
-            context: pkg.context,
-            tone: pkg.tone,
-            proposalBrief: pkg.proposalBrief,
-            pricingInputs: pkg.pricingInputs,
-          },
-        }),
-      });
-      const payload = (await response.json()) as {
-        section?: RegeneratablePackageSection;
-        content?: string;
-        outputs?: {
-          syllabus: string;
-          proposal: string;
-          proposalContent?: TrainingPackage["proposalContent"];
-        };
-        mode?: "openai";
-        error?: string;
-      };
-
-      if (!response.ok || !payload.section || !payload.outputs) {
-        throw new Error(payload.error ?? "Package regeneration failed.");
-      }
-
-      const updatedPackage = {
-        ...pkg,
-        ...payload.outputs,
-        proposalContent:
-          payload.outputs.proposalContent ?? pkg.proposalContent,
-        updatedAt: new Date().toISOString(),
-      };
-      await onPackageUpdate?.(updatedPackage);
-      setRegenerateNotice(
-        `Proposal and syllabus regenerated together with ${payload.mode ?? "openai"} mode.`,
-      );
-    } catch (error) {
-      setRegenerateNotice(
-        error instanceof Error ? error.message : "Section regeneration failed.",
-      );
-    } finally {
-      setIsRegenerating("");
-    }
-  }
-
   return (
     <div className="space-y-4">
       <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
@@ -269,8 +189,8 @@ export function OutputTabs({
             onClick={() => setActiveKey(section.key)}
             className={`rounded-lg border px-3 py-3 text-left text-sm transition ${
               activeKey === section.key
-                ? "border-teal-300/45 bg-teal-300/12 text-white"
-                : "border-white/10 bg-[#07111f]/45 text-muted-foreground hover:border-white/20 hover:text-white"
+                ? "border-teal-300/45 bg-teal-300/12 text-foreground"
+                : "border-white/10 bg-[#07111f]/45 text-muted-foreground hover:border-input hover:text-foreground"
             }`}
           >
             <span className="font-semibold">{section.label}</span>
@@ -294,37 +214,10 @@ export function OutputTabs({
               value={activeText}
               label={`Copy ${activeSection.label} MD`}
             />
-            {activeRegeneratableSection ? (
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => regenerateSection(activeRegeneratableSection)}
-                disabled={Boolean(isRegenerating) || !onPackageUpdate}
-                title={
-                  onPackageUpdate
-                    ? "Regenerate proposal and syllabus together"
-                    : "Open a package detail page to regenerate saved sections."
-                }
-              >
-                {isRegenerating === activeRegeneratableSection ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Sparkles className="h-4 w-4" />
-                )}
-                Regenerate package
-              </Button>
-            ) : null}
           </div>
         </div>
         <MarkdownPreview value={activeText} />
       </div>
-      {regenerateNotice ? (
-        <p className="rounded-lg border border-teal-300/20 bg-teal-300/10 p-3 text-sm text-teal-50">
-          {regenerateNotice}
-        </p>
-      ) : null}
-
       <KnowledgeUsedPanel knowledgeUsed={pkg.knowledgeUsed ?? []} />
 
       <div className="flex flex-wrap gap-2">
@@ -352,7 +245,7 @@ export function OutputTabs({
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>Created {new Date(pkg.createdAt).toLocaleString()}</span>
-        <Link href="/packages" className="font-medium text-teal-100 hover:text-white">
+        <Link href="/packages" className="font-medium text-[#176a63] hover:text-foreground">
           View saved packages
         </Link>
       </div>

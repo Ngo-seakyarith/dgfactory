@@ -502,7 +502,7 @@ function KnowledgeCard({
             {document.content}
           </p>
         </div>
-        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-teal-100" />
+        <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-[#176a63]" />
       </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <Badge variant="outline">{document.type}</Badge>
