@@ -141,6 +141,32 @@ create unique index if not exists idx_intelligent_system_files_project_sha256
   on public.intelligent_system_files(proposal_id, sha256)
   where sha256 <> '';
 
+create table if not exists public.syllabus_imports (
+  id uuid primary key default gen_random_uuid(),
+  status text not null default 'Uploaded' check (
+    status in ('Uploaded', 'Processing', 'Needs Input', 'Finalizing', 'Completed', 'Failed')
+  ),
+  original_name text not null,
+  storage_path text unique,
+  mime_type text not null,
+  size_bytes bigint not null check (size_bytes > 0 and size_bytes <= 10485760),
+  sha256 text not null default '',
+  pricing_inputs jsonb not null default '{}'::jsonb,
+  mapping jsonb,
+  corrections jsonb not null default '{}'::jsonb,
+  missing_fields text[] not null default '{}',
+  package_id uuid unique references public.training_packages(id) on delete set null,
+  error_message text not null default '',
+  created_by uuid references public.profiles(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+alter table public.syllabus_imports enable row level security;
+
+create index if not exists idx_syllabus_imports_status_updated
+  on public.syllabus_imports(status, updated_at desc);
+
 create table if not exists public.generation_jobs (
   id uuid primary key default gen_random_uuid(),
   job_type text not null check (
@@ -150,7 +176,8 @@ create table if not exists public.generation_jobs (
       'system_proposal',
       'delivery_material',
       'evaluation_questions',
-      'delivery_report'
+      'delivery_report',
+      'syllabus_proposal'
     )
   ),
   resource_type text not null,
@@ -182,9 +209,11 @@ create unique index if not exists idx_generation_jobs_active_unique
 
 revoke all on table public.intelligent_system_proposals from anon, authenticated;
 revoke all on table public.intelligent_system_files from anon, authenticated;
+revoke all on table public.syllabus_imports from anon, authenticated;
 revoke all on table public.generation_jobs from anon, authenticated;
 grant all on table public.intelligent_system_proposals to service_role;
 grant all on table public.intelligent_system_files to service_role;
+grant all on table public.syllabus_imports to service_role;
 grant all on table public.generation_jobs to service_role;
 
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
@@ -197,6 +226,22 @@ values (
     'text/csv',
     'application/csv',
     'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/octet-stream'
+  ]
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'syllabus-proposal-inputs',
+  'syllabus-proposal-inputs',
+  false,
+  10485760,
+  array[
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
     'application/octet-stream'
   ]
 )

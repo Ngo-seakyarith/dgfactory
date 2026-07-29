@@ -14,6 +14,7 @@ import {
   isEvaluationFormType,
 } from "@/features/delivery";
 import { GenerationInputError } from "../domain/errors";
+import { generatePackageFromSyllabusImport } from "@/features/syllabus-imports/server/generation-task";
 
 export async function executeGenerationJob(jobId: string) {
   const job = await getGenerationJob(jobId);
@@ -50,6 +51,9 @@ export async function executeGenerationJob(jobId: string) {
   }
   if (job.jobType === "delivery_report") {
     return generateDeliveryReportJob(job.resourceId, job.createdByActor);
+  }
+  if (job.jobType === "syllabus_proposal") {
+    return generatePackageFromSyllabusImport(job.resourceId, job.createdByActor);
   }
 
   // Feature executors are added as each generation surface is migrated.

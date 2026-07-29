@@ -55,7 +55,6 @@ export async function POST(request: Request) {
       subtotalBeforeDiscount: 0,
       discountAmount: 0,
       subtotalAfterDiscount: 0,
-      taxAmount: 0,
       finalPrice: 0,
       pricePerParticipant: 0,
       estimatedProfit: 0,

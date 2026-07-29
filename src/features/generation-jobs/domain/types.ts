@@ -5,6 +5,7 @@ export const generationJobTypes = [
   "delivery_material",
   "evaluation_questions",
   "delivery_report",
+  "syllabus_proposal",
 ] as const;
 
 export type GenerationJobType = (typeof generationJobTypes)[number];

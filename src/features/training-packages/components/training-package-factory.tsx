@@ -207,7 +207,6 @@ const blankPackagePricingInputs: PricingInputs = {
   otherCost: 0,
   targetProfitMarginPercent: 0,
   discountPercent: 0,
-  taxPercent: 0,
 };
 
 export function PackageForm({

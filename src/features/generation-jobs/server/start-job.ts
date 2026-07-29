@@ -1,11 +1,8 @@
-import { start } from "workflow/api";
-
 import type { StartGenerationJobInput } from "../domain/types";
 import {
   createGenerationJob,
   updateGenerationJob,
 } from "../storage/generation-job-storage";
-import { generationWorkflow } from "./workflow";
 import { markGenerationResourceFailed } from "./resource-failure";
 
 export async function startGenerationJob(input: StartGenerationJobInput) {
@@ -13,6 +10,10 @@ export async function startGenerationJob(input: StartGenerationJobInput) {
   if (!created.created) return created.job;
 
   try {
+    const [{ start }, { generationWorkflow }] = await Promise.all([
+      import("workflow/api"),
+      import("./workflow"),
+    ]);
     const run = await start(generationWorkflow, [created.job.id]);
     return updateGenerationJob(created.job.id, { workflowRunId: run.runId });
   } catch (error) {

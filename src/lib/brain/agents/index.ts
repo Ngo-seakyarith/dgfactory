@@ -14,6 +14,7 @@ import {
   proposalAgentOutputSchema,
   promptLibraryOutputSchema,
   qaReviewOutputSchema,
+  syllabusProposalOutputSchema,
   slideDeckOutputSchema,
   textOutputSchema,
   trainingPackageOutputSchema,
@@ -50,6 +51,10 @@ import type {
   SystemProposalBrainInput,
   SystemProposalBrainOutput,
 } from "@/features/intelligent-system-proposals";
+import type {
+  SyllabusProposalBrainInput,
+  SyllabusProposalBrainOutput,
+} from "@/features/syllabus-imports";
 
 export const brainTaskTypes = [
   "course_package",
@@ -78,6 +83,7 @@ export const brainTaskTypes = [
   "extinction_recommendation",
   "data_discovery",
   "intelligent_system_proposal",
+  "syllabus_to_training_proposal",
 ] as const;
 
 export type BrainTaskType = (typeof brainTaskTypes)[number];
@@ -119,6 +125,8 @@ export type {
   SystemProposalBrainInput,
   SystemProposalBrainOutput,
 };
+
+export type { SyllabusProposalBrainInput, SyllabusProposalBrainOutput };
 
 export type QaReviewInput = {
   packageContent: string;
@@ -355,6 +363,28 @@ export const intelligentSystemProposalAgent: BrainAgentDefinition<
   ].join("\n\n"),
   inputSchema: { type: "object" },
   outputSchema: intelligentSystemProposalOutputSchema,
+};
+
+export const syllabusProposalAgent: BrainAgentDefinition<
+  SyllabusProposalBrainInput,
+  SyllabusProposalBrainOutput
+> = {
+  taskType: "syllabus_to_training_proposal",
+  name: "syllabusProposalAgent",
+  role: "External syllabus normalization and DG Academy proposal specialist",
+  instructions: [
+    "Normalize the complete external syllabus into the DG Academy proposal schema. Preserve its meaning, topic sequence, schedule, and level of detail.",
+    "Identity rules: clientName is the organization receiving the training, not every organization mentioned. Infer that role from the title, audience, organization profile, and repeated contextual references; return its most complete source name. A new client is valid. Use Unclear only when multiple recipients remain plausible and Missing only when none is identifiable.",
+    "Participant rule: return participantCount only for one explicit participant, learner, attendee, staff, pax, class-size, or cohort count, written in digits or words. Check prose and tables, distinguish it from dates, durations, fees, and session numbers, and return null for an absent, approximate, or ranged count.",
+    "Trainer rule: return only people explicitly acting as trainers or facilitators. A name in a contact, acknowledgement, header, or footer is not enough. Match names against approvedTrainerNames when possible.",
+    "Evidence rules: sourceFilename is supporting context only. Do not invent identities, certifications, dates, venues, prices, commercial terms, or outcomes. Use empty strings, empty arrays, or null where the schema permits when evidence is absent.",
+    "For table-based schedules, encode each session as `Session N | detail; detail` in contentOutlines so the deterministic DOCX renderer preserves the session hierarchy.",
+    "Use professional connective language where needed, but do not add unsupported client facts or training promises.",
+    "Never return trainer biographies, pricing, signatory information, bank details, phone numbers, or email addresses.",
+    dgProposalTemplateGuide,
+  ].join("\n\n"),
+  inputSchema: { type: "object" },
+  outputSchema: syllabusProposalOutputSchema,
 };
 
 export const pricingNarrativeAgent: BrainAgentDefinition = {
@@ -638,6 +668,7 @@ export const brainAgents = [
   proposalAgent,
   dataDiscoveryAgent,
   intelligentSystemProposalAgent,
+  syllabusProposalAgent,
   pricingNarrativeAgent,
   slideAgent,
   workbookAgent,

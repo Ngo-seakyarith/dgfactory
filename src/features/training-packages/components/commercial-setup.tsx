@@ -28,11 +28,13 @@ export function CommercialSetup({
   onChange,
   title = "Commercial Setup",
   description = "Pricing assumptions for the client offer.",
+  showParticipants = true,
 }: {
   value: PricingInputs;
   onChange: (value: PricingInputs) => void;
   title?: string;
   description?: string;
+  showParticipants?: boolean;
 }) {
   const pricingOutputs = calculatePricing(value);
 
@@ -56,7 +58,9 @@ export function CommercialSetup({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <NumberField label="Participants" placeholder="Enter participant count" value={value.numberOfParticipants} onChange={(next) => updateNumber("numberOfParticipants", next)} />
+          {showParticipants ? (
+            <NumberField label="Participants" placeholder="Enter participant count" value={value.numberOfParticipants} onChange={(next) => updateNumber("numberOfParticipants", next)} />
+          ) : null}
           <NumberField label="Professional fee (USD)" placeholder="Enter quoted professional fee" value={value.professionalFee} onChange={(next) => updateNumber("professionalFee", next)} />
           <Field label="VAT wording">
             <Select
@@ -75,7 +79,6 @@ export function CommercialSetup({
             </Select>
           </Field>
           <NumberField label="Discount %" placeholder="Enter discount percent" value={value.discountPercent} onChange={(next) => updateNumber("discountPercent", next)} />
-          <NumberField label="VAT / tax %" placeholder="Enter VAT or tax percent" value={value.taxPercent} onChange={(next) => updateNumber("taxPercent", next)} />
         </div>
 
         {pricingOutputs.warnings.length > 0 ? (
@@ -179,7 +182,7 @@ export function PricingPanel({
             <MiniMetric label="Estimated profit margin" value={formatPercent(outputs.estimatedProfitMargin)} />
           </>
         ) : null}
-        <MiniMetric label="Discount / Tax" value={`${formatMoney(outputs.discountAmount, inputs.currency)} / ${formatMoney(outputs.taxAmount, inputs.currency)}`} />
+        <MiniMetric label="Discount" value={formatMoney(outputs.discountAmount, inputs.currency)} />
       </div>
 
       {canViewInternal ? (

@@ -60,6 +60,7 @@ function outputTypeForTask(taskType: BrainTaskType): OutputEvaluationType {
     extinction_recommendation: "full_package",
     data_discovery: "full_package",
     intelligent_system_proposal: "proposal",
+    syllabus_to_training_proposal: "proposal",
   };
 
   return map[taskType];

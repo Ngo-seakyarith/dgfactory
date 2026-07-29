@@ -18,6 +18,7 @@ import {
   improvementAgent,
   improvementOpportunityAgent,
   intelligentSystemProposalAgent,
+  syllabusProposalAgent,
   learningGenomeAgent,
   marketSensingAgent,
   mutationAgent,
@@ -61,6 +62,7 @@ const taskMap: Record<BrainTaskType, BrainAgentDefinition> = {
   extinction_recommendation: extinctionAgent,
   data_discovery: dataDiscoveryAgent,
   intelligent_system_proposal: intelligentSystemProposalAgent,
+  syllabus_to_training_proposal: syllabusProposalAgent,
 };
 
 export function getAgentForTask(taskType: BrainTaskType) {

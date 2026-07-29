@@ -4,6 +4,7 @@ import type {
   DataDiscoveryBrainOutput,
   SystemProposalBrainOutput,
 } from "@/features/intelligent-system-proposals";
+import type { SyllabusProposalBrainOutput } from "@/features/syllabus-imports";
 import { proposalNarrativeSchema } from "@/features/training-packages/domain/proposal-narrative";
 import {
   slideDeckIconKeys,
@@ -113,6 +114,38 @@ export const intelligentSystemProposalOutputSchema = z.strictObject({
 export const trainingPackageOutputSchema = z.strictObject({
   proposalNarrative: proposalNarrativeSchema,
 });
+
+export const syllabusProposalOutputSchema = z.strictObject({
+  mapping: z.strictObject({
+    courseTitle: z.string(),
+    clientName: z.string(),
+    clientIdentification: z.enum(["Confirmed", "Unclear", "Missing"]),
+    audience: z.string(),
+    participantCount: z.number().int().positive().nullable(),
+    duration: z.string(),
+    programGoal: z.string(),
+    context: z.string(),
+    trainerNames: stringArraySchema,
+    trainerIdentification: z.enum(["Confirmed", "Unclear", "Missing"]),
+    proposalBrief: z.strictObject({
+      coverSubtitle: z.string(),
+      certificationLabel: z.string(),
+      clientBackground: z.string(),
+      trainingNeed: z.string(),
+      objectives: z.string(),
+      expectedLearningOutcomes: z.string(),
+      contentPriorities: z.string(),
+      whoShouldAttend: z.string(),
+      methodology: z.string(),
+      trainingTools: z.string(),
+      evaluationApproach: z.string(),
+      scheduleDate: z.string(),
+      scheduleTime: z.string(),
+      scheduleVenue: z.string(),
+    }),
+    proposalNarrative: proposalNarrativeSchema,
+  }),
+}) satisfies BrainOutputSchema<SyllabusProposalBrainOutput>;
 
 export const proposalAgentOutputSchema = trainingPackageOutputSchema;
 

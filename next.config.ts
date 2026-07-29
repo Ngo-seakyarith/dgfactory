@@ -3,6 +3,7 @@ import { withWorkflow } from "workflow/next";
 
 const nextConfig: NextConfig = {
   outputFileTracingRoot: process.cwd(),
+  serverExternalPackages: ["@vercel/queue"],
   images: {
     remotePatterns: [
       {

@@ -15,7 +15,6 @@ export type PricingInputs = {
   otherCost: number;
   targetProfitMarginPercent: number;
   discountPercent: number;
-  taxPercent: number;
 };
 
 export type PricingOutputs = {
@@ -26,7 +25,6 @@ export type PricingOutputs = {
   subtotalBeforeDiscount: number;
   discountAmount: number;
   subtotalAfterDiscount: number;
-  taxAmount: number;
   finalPrice: number;
   pricePerParticipant: number;
   estimatedProfit: number;
@@ -51,7 +49,6 @@ export const defaultPricingInputs: PricingInputs = {
   otherCost: 0,
   targetProfitMarginPercent: 35,
   discountPercent: 0,
-  taxPercent: 0,
 };
 
 const numericFields: Array<keyof Omit<
@@ -72,7 +69,6 @@ const numericFields: Array<keyof Omit<
   "otherCost",
   "targetProfitMarginPercent",
   "discountPercent",
-  "taxPercent",
 ];
 
 function toNumber(value: unknown, defaultValue: number) {
@@ -140,11 +136,10 @@ export function calculatePricing(
   const targetProfit = subtotalBeforeDiscount - totalDirectCost;
   const discountAmount = (subtotalBeforeDiscount * inputs.discountPercent) / 100;
   const subtotalAfterDiscount = subtotalBeforeDiscount - discountAmount;
-  const taxAmount = (subtotalAfterDiscount * inputs.taxPercent) / 100;
-  const finalPrice = subtotalAfterDiscount + taxAmount;
+  const finalPrice = subtotalAfterDiscount;
   const pricePerParticipant =
     inputs.numberOfParticipants > 0 ? finalPrice / inputs.numberOfParticipants : 0;
-  const estimatedProfit = finalPrice - taxAmount - totalDirectCost;
+  const estimatedProfit = finalPrice - totalDirectCost;
   const estimatedProfitMargin =
     finalPrice > 0 ? (estimatedProfit / finalPrice) * 100 : 0;
 
@@ -156,7 +151,6 @@ export function calculatePricing(
     subtotalBeforeDiscount,
     discountAmount,
     subtotalAfterDiscount,
-    taxAmount,
     finalPrice,
     pricePerParticipant,
     estimatedProfit,
@@ -187,12 +181,12 @@ export function pricingSummaryToMarkdown(
     `Participants: ${inputs.numberOfParticipants}`,
     `Training days: ${inputs.numberOfTrainingDays}`,
     `Recommended program fee: ${formatMoney(outputs.finalPrice, inputs.currency)}`,
+    `VAT wording: ${inputs.vatStatus}`,
     `Price per participant: ${formatMoney(outputs.pricePerParticipant, inputs.currency)}`,
     `Total direct cost: ${formatMoney(outputs.totalDirectCost, inputs.currency)}`,
     `Estimated profit: ${formatMoney(outputs.estimatedProfit, inputs.currency)}`,
     `Estimated profit margin: ${formatPercent(outputs.estimatedProfitMargin)}`,
     `Discount: ${formatMoney(outputs.discountAmount, inputs.currency)}`,
-    `Tax: ${formatMoney(outputs.taxAmount, inputs.currency)}`,
     "",
     "## Cost Breakdown",
     `- Trainer cost: ${formatMoney(outputs.trainerCost, inputs.currency)}`,
@@ -214,13 +208,10 @@ export function clientPricingSummaryToMarkdown(
     "",
     `Participants: ${inputs.numberOfParticipants}`,
     `Training days: ${inputs.numberOfTrainingDays}`,
-    `Recommended program fee: ${formatMoney(outputs.finalPrice, inputs.currency)}`,
+    `Recommended program fee: ${formatMoney(outputs.finalPrice, inputs.currency)} (${inputs.vatStatus.toLowerCase()})`,
     `Price per participant: ${formatMoney(outputs.pricePerParticipant, inputs.currency)}`,
     outputs.discountAmount > 0
       ? `Discount included: ${formatMoney(outputs.discountAmount, inputs.currency)}`
-      : "",
-    outputs.taxAmount > 0
-      ? `Tax/VAT included: ${formatMoney(outputs.taxAmount, inputs.currency)}`
       : "",
     "",
     clientPricingParagraph(inputs, outputs),
@@ -236,7 +227,7 @@ export function clientPricingParagraph(
   return `The recommended investment for this program is ${formatMoney(
     outputs.finalPrice,
     inputs.currency,
-  )}, based on ${inputs.numberOfParticipants} participants and ${
+  )} (${inputs.vatStatus.toLowerCase()}), based on ${inputs.numberOfParticipants} participants and ${
     inputs.numberOfTrainingDays
   } training day${inputs.numberOfTrainingDays === 1 ? "" : "s"}. This equals approximately ${formatMoney(
     outputs.pricePerParticipant,
@@ -258,7 +249,7 @@ export function internalProfitabilityNote(
     inputs.currency,
   )}, with an estimated margin of ${formatPercent(
     outputs.estimatedProfitMargin,
-  )} after discount and before tax remittance.${warnings}`;
+  )} after discount.${warnings}`;
 }
 
 export function buildCommercialProposalSection({
@@ -283,7 +274,7 @@ export function buildCommercialProposalSection({
 DG Academy proposes to deliver ${title} for ${client}.
 
 ## Program Fee
-Recommended program fee: ${formatMoney(outputs.finalPrice, inputs.currency)}
+Recommended program fee: ${formatMoney(outputs.finalPrice, inputs.currency)} (${inputs.vatStatus.toLowerCase()})
 Approximate price per participant: ${formatMoney(outputs.pricePerParticipant, inputs.currency)}
 
 ## What Is Included
