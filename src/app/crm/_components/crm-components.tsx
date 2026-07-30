@@ -32,6 +32,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { QueryErrorState } from "@/components/query-error-state";
+import { DetailLoadingSkeleton } from "@/components/page-loading-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
 import { ClientPortalManager } from "@/app/client-portal/_components/client-portal-components";
 import {
@@ -74,7 +75,7 @@ function useCrmData() {
   const notice = error
     ? error.message
     : isLoading
-      ? "Loading CRM records..."
+      ? ""
       : isFetching
         ? "Refreshing CRM records..."
         : "";
@@ -1426,14 +1427,7 @@ function CrmGridSkeleton() {
 }
 
 function LoadingCard({ label }: { label: string }) {
-  return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-      <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
-        <Loader2 className="h-4 w-4 animate-spin" />
-        {label}
-      </CardContent>
-    </Card>
-  );
+  return <DetailLoadingSkeleton label={label} />;
 }
 
 function MissingCard({ label, href }: { label: string; href: string }) {

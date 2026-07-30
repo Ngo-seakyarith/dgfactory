@@ -60,14 +60,16 @@ export function TrainingDashboardClient() {
         <MetricCard
           icon={Layers3}
           label="Saved Packages"
-          value={isLoading ? "..." : generatedCount.toString()}
+          value={generatedCount.toString()}
           detail="Ready to reopen"
+          loading={isLoading}
         />
         <MetricCard
           icon={Database}
           label="Markets Covered"
-          value={isLoading ? "..." : openMarkets.toString()}
+          value={openMarkets.toString()}
           detail="Clients or market segments"
+          loading={isLoading}
         />
       </section>
 
@@ -165,10 +167,10 @@ export function SavedPackagesClient() {
           packages={filteredPackages}
           storageNotice={
             packagesQuery.isPending
-                ? "Loading saved packages..."
-                : packagesQuery.isFetching
-                  ? "Refreshing saved packages..."
-                  : ""
+              ? ""
+              : packagesQuery.isFetching
+                ? "Refreshing saved packages..."
+                : ""
           }
           isLoading={packagesQuery.isPending}
           emptyTitle={query.trim() ? "No matching packages" : "No packages yet"}
@@ -293,7 +295,7 @@ function SavedPackageGrid({
             <p className="mt-1 text-sm text-muted-foreground">{storageNotice}</p>
           ) : null}
         </div>
-        <Badge variant="teal">{isLoading ? "Loading" : `${packages.length} visible`}</Badge>
+        {isLoading ? <Skeleton className="h-6 w-20" /> : <Badge variant="teal">{packages.length} visible</Badge>}
       </div>
       <div>
         {isLoading ? (
@@ -380,18 +382,24 @@ function MetricCard({
   label,
   value,
   detail,
+  loading = false,
 }: {
   icon: typeof Layers3;
   label: string;
   value: string;
   detail: string;
+  loading?: boolean;
 }) {
   return (
     <Card className="border-white/10 bg-white/[0.04] shadow-executive">
       <CardContent className="flex items-start justify-between gap-4 p-5">
         <div>
           <div className="text-sm text-muted-foreground">{label}</div>
-          <div className="mt-2 font-mono text-3xl font-semibold text-white">{value}</div>
+          {loading ? (
+            <Skeleton className="mt-2 h-9 w-16" />
+          ) : (
+            <div className="mt-2 font-mono text-3xl font-semibold text-white">{value}</div>
+          )}
           <div className="mt-2 text-xs leading-5 text-muted-foreground">{detail}</div>
         </div>
         <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-teal-300/20 bg-teal-300/10 text-teal-100">

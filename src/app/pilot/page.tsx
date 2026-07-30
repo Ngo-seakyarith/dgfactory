@@ -13,6 +13,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { MetricLoadingSkeleton } from "@/components/page-loading-skeleton";
 import {
   Card,
   CardContent,
@@ -233,12 +234,7 @@ export default function PilotPage() {
       ) : null}
 
       {isLoading && !metrics ? (
-        <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-          <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            Loading pilot data...
-          </CardContent>
-        </Card>
+        <MetricLoadingSkeleton label="Loading pilot metrics" count={8} />
       ) : null}
 
       {metrics ? (

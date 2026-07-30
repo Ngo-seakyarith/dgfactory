@@ -5,6 +5,7 @@ import { Check, Clipboard, Loader2, RefreshCw, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ListLoadingSkeleton } from "@/components/page-loading-skeleton";
 import {
   Card,
   CardContent,
@@ -53,7 +54,7 @@ export default function ImprovementsPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
   const [sourceSummary, setSourceSummary] = useState("");
-  const [notice, setNotice] = useState("Loading improvement opportunities...");
+  const [notice, setNotice] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
 
@@ -68,6 +69,7 @@ export default function ImprovementsPage() {
 
   async function refresh() {
     setIsLoading(true);
+    setNotice("");
     try {
       const response = await fetch("/api/improvements", { cache: "no-store" });
       const payload = (await response.json()) as ImprovementPayload;
@@ -323,10 +325,7 @@ export default function ImprovementsPage() {
                 </Field>
               </div>
               {isLoading ? (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading improvements...
-                </div>
+                <ListLoadingSkeleton label="Loading improvements" rows={4} />
               ) : filtered.length ? (
                 <div className="grid gap-3">
                   {filtered.map((item) => (

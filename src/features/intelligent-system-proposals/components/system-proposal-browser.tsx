@@ -54,9 +54,11 @@ export function SystemProposalBrowser() {
           <div className="data-label">Consulting archive</div>
           <h2 className="mt-1 text-lg font-semibold">System proposals</h2>
         </div>
-        <Badge variant="teal">
-          {proposalsQuery.isPending ? "Loading" : `${filtered.length} visible`}
-        </Badge>
+        {proposalsQuery.isPending ? (
+          <Skeleton className="h-6 w-20" />
+        ) : (
+          <Badge variant="teal">{filtered.length} visible</Badge>
+        )}
       </div>
 
       {proposalsQuery.isError ? (

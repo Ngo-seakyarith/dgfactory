@@ -20,6 +20,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageLoadingSkeleton } from "@/components/page-loading-skeleton";
 import {
   Card,
   CardContent,
@@ -151,14 +152,7 @@ export function AdaptiveGrowthWorkspace({ view }: { view: GrowthView }) {
   const { data, isLoading, notice, refresh } = useAdaptiveGrowthData();
 
   if (isLoading) {
-    return (
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading Adaptive Growth OS...
-        </CardContent>
-      </Card>
-    );
+    return <PageLoadingSkeleton label="Loading Adaptive Growth workspace" />;
   }
 
   if (view === "signals") {

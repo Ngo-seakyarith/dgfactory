@@ -15,6 +15,7 @@ import {
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DetailLoadingSkeleton, ListLoadingSkeleton } from "@/components/page-loading-skeleton";
 import {
   Card,
   CardContent,
@@ -39,7 +40,7 @@ import {
 function useKnowledgeData() {
   const [documents, setDocuments] = useState<KnowledgeDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [notice, setNotice] = useState("Loading DG Academy knowledge...");
+  const [notice, setNotice] = useState("");
 
   async function refresh() {
     try {
@@ -230,7 +231,7 @@ export function KnowledgeDocumentForm({
 }
 
 export function KnowledgeLibrary() {
-  const { documents, notice } = useKnowledgeData();
+  const { documents, isLoading, notice } = useKnowledgeData();
   const [query, setQuery] = useState("");
   const [type, setType] = useState<KnowledgeDocumentType | "">("");
   const [tag, setTag] = useState("");
@@ -346,10 +347,12 @@ export function KnowledgeLibrary() {
       <Card className="border-white/10 bg-white/[0.04] shadow-executive">
         <CardHeader>
           <CardTitle>Knowledge Library</CardTitle>
-          <CardDescription>{notice}</CardDescription>
+          {notice ? <CardDescription>{notice}</CardDescription> : null}
         </CardHeader>
         <CardContent>
-          {filteredDocuments.length ? (
+          {isLoading ? (
+            <ListLoadingSkeleton label="Loading knowledge documents" rows={4} />
+          ) : filteredDocuments.length ? (
             <div className="grid gap-3 md:grid-cols-2">
               {filteredDocuments.map((document) => (
                 <KnowledgeCard key={document.id} document={document} />
@@ -381,14 +384,7 @@ export function KnowledgeDocumentDetail({ id }: { id: string }) {
   }
 
   if (isLoading && !document) {
-    return (
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading knowledge document...
-        </CardContent>
-      </Card>
-    );
+    return <DetailLoadingSkeleton label="Loading knowledge document" />;
   }
 
   if (!document) {

@@ -5,6 +5,7 @@ import { Activity, BarChart3, Loader2, Play, Plus, ShieldAlert } from "lucide-re
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { ListLoadingSkeleton } from "@/components/page-loading-skeleton";
 import {
   Card,
   CardContent,
@@ -214,10 +215,7 @@ export default function EvalConsole() {
           </CardHeader>
           <CardContent className="space-y-3">
             {isLoading ? (
-              <div className="flex items-center gap-3 rounded-lg border border-white/10 bg-[#07111f]/55 p-4 text-sm text-muted-foreground">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading evals...
-              </div>
+              <ListLoadingSkeleton label="Loading evaluation datasets" rows={3} />
             ) : null}
             {datasets.map((dataset) => (
               <button

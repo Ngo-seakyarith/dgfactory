@@ -5,6 +5,7 @@ import { Check, Loader2, ShieldAlert, X } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { PageLoadingSkeleton } from "@/components/page-loading-skeleton";
 import {
   Card,
   CardContent,
@@ -84,14 +85,7 @@ export default function ApprovalCenter() {
   }, []);
 
   if (isLoading) {
-    return (
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardContent className="flex items-center gap-3 p-6 text-sm text-muted-foreground">
-          <Loader2 className="h-4 w-4 animate-spin" />
-          Loading approval requests...
-        </CardContent>
-      </Card>
-    );
+    return <PageLoadingSkeleton label="Loading approval requests" />;
   }
 
   const pending = approvals.filter((approval) => approval.status === "Pending");

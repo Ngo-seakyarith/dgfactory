@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 
 import { OpportunityForm } from "@/app/crm/_components/crm-components";
+import { DetailLoadingSkeleton } from "@/components/page-loading-skeleton";
 
 export default function NewOpportunityPage() {
   return (
@@ -11,7 +12,7 @@ export default function NewOpportunityPage() {
           Create a proposal pipeline record and optionally link a training package.
         </p>
       </div>
-      <Suspense fallback={<div className="text-sm text-muted-foreground">Loading opportunity form...</div>}>
+      <Suspense fallback={<DetailLoadingSkeleton label="Loading opportunity form" />}>
         <OpportunityForm />
       </Suspense>
     </div>
