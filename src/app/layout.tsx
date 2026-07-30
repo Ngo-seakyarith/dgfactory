@@ -18,11 +18,9 @@ export const metadata: Metadata = {
 
 const navItems: SidebarItem[] = [
   { label: "Dashboard", href: "/dashboard", section: "Workspace" },
-  { label: "New Package", href: "/packages/new", section: "Training" },
-  { label: "Proposal from Syllabus", href: "/packages/from-syllabus", section: "Training" },
-  { label: "Saved Packages", href: "/packages", section: "Training" },
+  { label: "Training Packages", href: "/packages", section: "Training" },
+  { label: "Syllabus Imports", href: "/packages/from-syllabus", section: "Training" },
   { label: "Delivery", href: "/delivery", section: "Training" },
-  { label: "New System Proposal", href: "/system-proposals/new", section: "Systems" },
   { label: "System Proposals", href: "/system-proposals", section: "Systems" },
   { label: "Clients", href: "/clients", section: "Business" },
   { label: "Pipeline", href: "/pipeline", section: "Business" },

@@ -56,7 +56,7 @@ function useKnowledgeData() {
       }
 
       setDocuments(payload.documents ?? []);
-      setNotice("Showing Supabase-backed knowledge documents.");
+      setNotice("");
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Knowledge database read failed.");
     } finally {

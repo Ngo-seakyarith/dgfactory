@@ -49,7 +49,7 @@ export function TrainingDashboardClient() {
   const isLoading = packagesQuery.isPending;
   const storageNotice = packagesQuery.isFetching && packagesQuery.data
     ? "Refreshing saved packages..."
-    : "Showing Supabase-backed packages.";
+    : "";
   const latest = packages.slice(0, 4);
   const generatedCount = packages.length;
   const openMarkets = new Set(packages.map((pkg) => pkg.client).filter(Boolean)).size;
@@ -61,7 +61,7 @@ export function TrainingDashboardClient() {
           icon={Layers3}
           label="Saved Packages"
           value={isLoading ? "..." : generatedCount.toString()}
-          detail="Stored in Supabase"
+          detail="Ready to reopen"
         />
         <MetricCard
           icon={Database}
@@ -91,7 +91,7 @@ export function TrainingDashboardClient() {
           <div className="grid gap-3 md:grid-cols-3">
             <FactoryStep title="1. Brief" detail="Capture the title, audience, client, promise, examples, and tone." />
             <FactoryStep title="2. Generate" detail="Create the syllabus and proposal." />
-            <FactoryStep title="3. Package" detail="Copy outputs, save to Supabase, and reopen detail pages." />
+            <FactoryStep title="3. Package" detail="Review outputs, save the package, and reopen it when needed." />
           </div>
         </CardContent>
       </Card>
@@ -156,7 +156,7 @@ export function SavedPackagesClient() {
 
       {packagesQuery.isError ? (
         <QueryErrorState
-          title="Saved packages could not be loaded"
+          title="Training packages could not be loaded"
           detail={packagesQuery.error.message}
           onRetry={() => void packagesQuery.refetch()}
         />
@@ -165,10 +165,10 @@ export function SavedPackagesClient() {
           packages={filteredPackages}
           storageNotice={
             packagesQuery.isPending
-              ? "Loading saved packages..."
-              : packagesQuery.isFetching
-                ? "Refreshing saved packages..."
-                : "Showing Supabase-backed packages."
+                ? "Loading saved packages..."
+                : packagesQuery.isFetching
+                  ? "Refreshing saved packages..."
+                  : ""
           }
           isLoading={packagesQuery.isPending}
           emptyTitle={query.trim() ? "No matching packages" : "No packages yet"}
@@ -289,7 +289,9 @@ function SavedPackageGrid({
         <div>
           <div className="data-label">Package archive</div>
           <h2 className="mt-1 text-lg font-semibold">Saved packages</h2>
-          <p className="mt-1 text-sm text-muted-foreground">{storageNotice}</p>
+          {storageNotice ? (
+            <p className="mt-1 text-sm text-muted-foreground">{storageNotice}</p>
+          ) : null}
         </div>
         <Badge variant="teal">{isLoading ? "Loading" : `${packages.length} visible`}</Badge>
       </div>

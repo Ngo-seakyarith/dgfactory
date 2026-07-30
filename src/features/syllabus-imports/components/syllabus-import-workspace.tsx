@@ -317,7 +317,7 @@ export function SyllabusImportWorkspace({
               <CheckCircle2 className="h-4 w-4 text-teal-700" />Proposal ready
             </CardTitle>
             <CardDescription>
-              Generation is complete and the result is available in Saved Packages.
+              Generation is complete and the result is available in Training Packages.
             </CardDescription>
           </CardHeader>
           <CardContent className="flex flex-wrap gap-2">

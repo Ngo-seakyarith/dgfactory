@@ -77,7 +77,7 @@ function useCrmData() {
       ? "Loading CRM records..."
       : isFetching
         ? "Refreshing CRM records..."
-        : "Showing Supabase-backed CRM records.";
+        : "";
 
   async function refresh() {
     await Promise.all(queries.map((query) => query.refetch()));

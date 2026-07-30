@@ -22,7 +22,6 @@ import {
   Lightbulb,
   Menu,
   MessageSquareCode,
-  PackagePlus,
   Repeat2,
   Sparkles,
   X,
@@ -55,10 +54,8 @@ const icons: Record<string, LucideIcon> = {
   Approvals: ClipboardCheck,
   Loops: Repeat2,
   Improvements: Lightbulb,
-  "New Package": PackagePlus,
-  "Proposal from Syllabus": FileInput,
-  "Saved Packages": Archive,
-  "New System Proposal": FileCog,
+  "Training Packages": Archive,
+  "Syllabus Imports": FileInput,
   "System Proposals": FileCog,
 };
 
