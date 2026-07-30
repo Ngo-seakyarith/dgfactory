@@ -118,7 +118,10 @@ export async function getDeliveryProjectHandler(
       );
     }
 
-    return NextResponse.json({ project });
+    return NextResponse.json(
+      { project },
+      { headers: { "Cache-Control": "no-store" } },
+    );
   } catch (error) {
     return NextResponse.json(
       { error: friendlyError(error, "Delivery project request failed.") },

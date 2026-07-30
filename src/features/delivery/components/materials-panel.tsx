@@ -21,6 +21,7 @@ import {
 } from "@/features/delivery";
 import {
   deliveryKeys,
+  fetchDeliveryProject,
   useGenerateDeliveryMaterialMutation,
 } from "@/features/delivery/queries";
 import { useLatestGenerationJobQuery } from "@/features/generation-jobs/queries";
@@ -66,6 +67,9 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
   const [activeJobIds, setActiveJobIds] = useState<
     Partial<Record<DeliveryMaterialKey, string>>
   >({});
+  const [syncing, setSyncing] = useState<
+    Partial<Record<DeliveryMaterialKey, boolean>>
+  >({});
 
   const meta = materialMeta[active];
   const content = project.materials[active];
@@ -104,12 +108,56 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
       if (job.status !== "Completed") return;
       setNotices((current) => ({
         ...current,
-        [target]: `${materialMeta[target].label} generated and saved.`,
+        [target]: `Loading the generated ${materialMeta[target].label.toLowerCase()}...`,
       }));
-      void queryClient.invalidateQueries({
-        queryKey: deliveryKeys.project(project.id),
-      });
-      void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
+      setSyncing((current) => ({ ...current, [target]: true }));
+
+      void fetchDeliveryProject(project.id)
+        .then((updatedProject) => {
+          if (!updatedProject.materials[target]?.trim()) {
+            throw new Error(
+              `${materialMeta[target].label} completed, but no saved content was returned.`,
+            );
+          }
+          queryClient.setQueryData<DeliveryProject>(
+            deliveryKeys.project(project.id),
+            (currentProject) => {
+              if (!currentProject) return updatedProject;
+
+              const materials = { ...updatedProject.materials };
+              for (const key of deliveryMaterialKeys) {
+                if (
+                  !materials[key]?.trim() &&
+                  currentProject.materials[key]?.trim()
+                ) {
+                  materials[key] = currentProject.materials[key];
+                }
+              }
+
+              return { ...updatedProject, materials };
+            },
+          );
+          setNotices((current) => ({
+            ...current,
+            [target]: `${materialMeta[target].label} generated and saved.`,
+          }));
+          void queryClient.invalidateQueries({
+            queryKey: deliveryKeys.projects(),
+            exact: true,
+          });
+        })
+        .catch((error) => {
+          setNotices((current) => ({
+            ...current,
+            [target]: errorMessage(
+              error,
+              `${materialMeta[target].label} was generated, but the page could not refresh.`,
+            ),
+          }));
+        })
+        .finally(() => {
+          setSyncing((current) => ({ ...current, [target]: false }));
+        });
     },
     [project.id, queryClient],
   );
@@ -188,7 +236,8 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
           {deliveryMaterialKeys.map((key) => {
             const item = materialMeta[key];
             const ready = Boolean(project.materials[key]?.trim());
-            const generating = Boolean(activeJobIds[key]);
+            const generating =
+              Boolean(activeJobIds[key]) || Boolean(syncing[key]);
             const activeTab = active === key;
             return (
               <button
@@ -220,10 +269,16 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
           <Button
             type="button"
             variant="gold"
-            disabled={generateMaterial.isPending || Boolean(activeJobId)}
+            disabled={
+              generateMaterial.isPending ||
+              Boolean(activeJobId) ||
+              Boolean(syncing[active])
+            }
             onClick={() => void generate()}
           >
-            {generateMaterial.isPending || Boolean(activeJobId) ? (
+            {generateMaterial.isPending ||
+            Boolean(activeJobId) ||
+            syncing[active] ? (
               <Loader2 className="animate-spin" />
             ) : (
               <Sparkles />

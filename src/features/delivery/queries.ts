@@ -34,6 +34,14 @@ export type DeliveryEvaluationPayload = {
   summary: EvaluationSummary | null;
 };
 
+export async function fetchDeliveryProject(id: string) {
+  const payload = await requestJson<{ project: DeliveryProject }>(
+    `/api/delivery-projects/${id}`,
+    { cache: "no-store" },
+  );
+  return payload.project;
+}
+
 export function useDeliveryProjectsQuery() {
   return useQuery({
     queryKey: deliveryKeys.projects(),
@@ -49,12 +57,7 @@ export function useDeliveryProjectsQuery() {
 export function useDeliveryProjectQuery(id: string) {
   return useQuery({
     queryKey: deliveryKeys.project(id),
-    queryFn: async () => {
-      const payload = await requestJson<{ project: DeliveryProject }>(
-        `/api/delivery-projects/${id}`,
-      );
-      return payload.project;
-    },
+    queryFn: () => fetchDeliveryProject(id),
     enabled: Boolean(id),
   });
 }

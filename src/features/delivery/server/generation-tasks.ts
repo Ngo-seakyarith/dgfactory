@@ -32,6 +32,7 @@ import {
 } from "@/features/delivery";
 import {
   getDeliveryProject,
+  saveDeliveryMaterial,
   saveDeliveryProject,
 } from "../storage/delivery-storage";
 import {
@@ -70,6 +71,7 @@ export async function generateDeliveryMaterialJob(
   id: string,
   target: DeliveryMaterialKey,
   actor: string,
+  generationJobId: string,
 ) {
   const project = await getDeliveryProject(id);
   if (!project.packageId) {
@@ -129,10 +131,13 @@ export async function generateDeliveryMaterialJob(
     model = result.model;
   }
 
-  await saveDeliveryProject({
-    ...project,
-    materials: { ...project.materials, [target]: generatedContent },
-  });
+  await saveDeliveryMaterial(
+    id,
+    target,
+    generatedContent,
+    generationJobId,
+    model,
+  );
   await saveAuditLog({
     actor,
     action: "delivery_material_generated",

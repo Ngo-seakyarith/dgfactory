@@ -25,6 +25,7 @@
     "docx": "^9.7.1",
     "exceljs": "^4.4.0",
     "image-size": "1.2.1",
+    "jose": "5.10.0",
     "jszip": "3.10.1",
     "lucide-react": "^0.468.0",
     "mammoth": "^1.12.0",

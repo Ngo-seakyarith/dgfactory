@@ -37,6 +37,7 @@ export async function executeGenerationJob(jobId: string) {
       job.resourceId,
       job.target,
       job.createdByActor,
+      job.id,
     );
   }
   if (job.jobType === "evaluation_questions") {
