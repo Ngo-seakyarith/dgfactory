@@ -67,6 +67,9 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
   const [activeJobIds, setActiveJobIds] = useState<
     Partial<Record<DeliveryMaterialKey, string>>
   >({});
+  const [starting, setStarting] = useState<
+    Partial<Record<DeliveryMaterialKey, boolean>>
+  >({});
   const [syncing, setSyncing] = useState<
     Partial<Record<DeliveryMaterialKey, boolean>>
   >({});
@@ -165,6 +168,7 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
   async function generate() {
     const target = active;
     setNotices((current) => ({ ...current, [target]: "" }));
+    setStarting((current) => ({ ...current, [target]: true }));
     try {
       const payload = await generateMaterial.mutateAsync(target);
       handleActiveJob(target, payload.job.id);
@@ -173,6 +177,8 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
         ...current,
         [target]: errorMessage(error, "Material generation failed."),
       }));
+    } finally {
+      setStarting((current) => ({ ...current, [target]: false }));
     }
   }
 
@@ -237,7 +243,9 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
             const item = materialMeta[key];
             const ready = Boolean(project.materials[key]?.trim());
             const generating =
-              Boolean(activeJobIds[key]) || Boolean(syncing[key]);
+              Boolean(starting[key]) ||
+              Boolean(activeJobIds[key]) ||
+              Boolean(syncing[key]);
             const activeTab = active === key;
             return (
               <button
@@ -270,13 +278,13 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
             type="button"
             variant="gold"
             disabled={
-              generateMaterial.isPending ||
+              Boolean(starting[active]) ||
               Boolean(activeJobId) ||
               Boolean(syncing[active])
             }
             onClick={() => void generate()}
           >
-            {generateMaterial.isPending ||
+            {starting[active] ||
             Boolean(activeJobId) ||
             syncing[active] ? (
               <Loader2 className="animate-spin" />
