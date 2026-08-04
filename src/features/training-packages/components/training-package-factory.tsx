@@ -107,6 +107,29 @@ const defaultInput: TrainingPackageInput = {
   tone: "Executive, practical, commercially sharp",
 };
 
+const halfDaySchedule = [
+  "8:00-10:00",
+  "10:00-10:15 Coffee break",
+  "10:15-12:00",
+].join("\n");
+
+const fullDaySchedule = [
+  "8:30-10:00",
+  "10:00-10:15 Coffee break",
+  "10:15-12:00",
+  "12:00-13:00 Lunch break",
+  "13:00-15:00",
+  "15:00-15:15 Coffee break",
+  "15:15-17:00",
+  "17:00-17:30",
+].join("\n");
+
+const defaultSchedules: Record<string, string> = {
+  "Half-day": halfDaySchedule,
+  "Full-day": fullDaySchedule,
+  "2 days": `Day 1\n${fullDaySchedule}\n\nDay 2\n${fullDaySchedule}`,
+};
+
 const emptyClientProfile: ClientProfileInput = {
   name: "",
   sector: "",
@@ -369,6 +392,21 @@ export function PackageForm({
 
   function updateProposalBrief(key: keyof ProposalBrief, value: string) {
     setProposalBrief((current) => ({ ...current, [key]: value }));
+  }
+
+  function selectDuration(duration: string) {
+    updateField("duration", duration);
+    setProposalBrief((current) => {
+      const defaultSchedule = defaultSchedules[duration];
+      if (defaultSchedule) {
+        return { ...current, scheduleTime: defaultSchedule };
+      }
+
+      const wasDefaultSchedule = Object.values(defaultSchedules).includes(
+        current.scheduleTime,
+      );
+      return wasDefaultSchedule ? { ...current, scheduleTime: "" } : current;
+    });
   }
 
   function updateClientField(
@@ -687,20 +725,41 @@ export function PackageForm({
             <CardDescription>Delivery details and facilitator profile shown in the proposal.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:grid-cols-3">
               <Field label="Duration">
-                <Input value={form.duration} onChange={(event) => updateField("duration", event.target.value)} placeholder="Half-day" />
+                <Select
+                  value={form.duration}
+                  onChange={(event) => selectDuration(event.target.value)}
+                  required
+                >
+                  <option value="">Select duration</option>
+                  {form.duration &&
+                  !["Half-day", "Full-day", "2 days"].includes(form.duration) ? (
+                    <option value={form.duration}>{form.duration}</option>
+                  ) : null}
+                  <option value="Half-day">Half-day</option>
+                  <option value="Full-day">Full-day</option>
+                  <option value="2 days">2 days</option>
+                </Select>
               </Field>
               <Field label="Date">
                 <Input value={proposalBrief.scheduleDate} onChange={(event) => updateProposalBrief("scheduleDate", event.target.value)} placeholder="TBC" />
-              </Field>
-              <Field label="Time">
-                <Input value={proposalBrief.scheduleTime} onChange={(event) => updateProposalBrief("scheduleTime", event.target.value)} placeholder="8:30 AM - 12:00 PM" />
               </Field>
               <Field label="Venue">
                 <Input value={proposalBrief.scheduleVenue} onChange={(event) => updateProposalBrief("scheduleVenue", event.target.value)} placeholder="Client office or TBC" />
               </Field>
             </div>
+            <Field
+              label="Session schedule"
+              description="The selected duration inserts a default schedule. Edit any line as needed."
+            >
+              <Textarea
+                rows={form.duration === "2 days" ? 18 : 8}
+                value={proposalBrief.scheduleTime}
+                onChange={(event) => updateProposalBrief("scheduleTime", event.target.value)}
+                placeholder="Enter the session times and breaks"
+              />
+            </Field>
             <div className="grid gap-4 lg:grid-cols-2">
               <Field
                 label="Primary trainer"

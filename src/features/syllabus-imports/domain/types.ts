@@ -38,8 +38,7 @@ export type SyllabusProposalBriefMapping = {
 
 export type SyllabusProposalMapping = {
   courseTitle: string;
-  clientName: string;
-  clientIdentification: "Confirmed" | "Unclear" | "Missing";
+  clientName: string | null;
   audience: string;
   participantCount: number | null;
   duration: string;
@@ -78,7 +77,6 @@ export type SyllabusProposalImport = {
 };
 
 export type SyllabusProposalBrainInput = {
-  sourceFilename: string;
   document: SourceDocumentBlock[];
   approvedTrainerNames: string[];
 };

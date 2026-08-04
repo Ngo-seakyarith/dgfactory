@@ -85,7 +85,7 @@ async function resolveClientName(value: SyllabusProposalImport) {
     );
     if (selected) return selected.name;
   }
-  return value.mapping?.clientName.trim() ?? "";
+  return value.mapping?.clientName?.trim() ?? "";
 }
 
 export async function generatePackageFromSyllabusImport(id: string, actor: string) {
@@ -102,13 +102,7 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     errorMessage: "",
   });
 
-  const shouldRetryMissingClient = Boolean(
-    value.mapping?.clientIdentification === "Missing" &&
-      !value.corrections.clientId &&
-      !value.corrections.clientName.trim(),
-  );
-
-  if (!value.mapping || shouldRetryMissingClient) {
+  if (!value.mapping) {
     let buffer: Buffer;
     try {
       buffer = await downloadSyllabusImport(value);
@@ -116,7 +110,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
       const document = await parseSyllabusDocx(buffer);
       const result = await routeBrainTask<
         {
-          sourceFilename: string;
           document: typeof document;
           approvedTrainerNames: string[];
         },
@@ -124,7 +117,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
       >({
         taskType: "syllabus_to_training_proposal",
         input: {
-          sourceFilename: value.originalName,
           document,
           approvedTrainerNames: trainerCatalog.map((trainer) => trainer.name),
         },
@@ -176,14 +168,8 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     secondTrainerId: value.corrections.secondTrainerId,
   });
   const missingFields: SyllabusProposalImport["missingFields"] = [];
-  const clientConfirmedByUser = Boolean(
-    value.corrections.clientId || value.corrections.clientName.trim(),
-  );
   const trainerConfirmedByUser = Boolean(value.corrections.trainerId);
-  if (
-    !clientName ||
-    (!clientConfirmedByUser && mapping.clientIdentification !== "Confirmed")
-  ) {
+  if (!clientName) {
     missingFields.push("client");
   }
   if (
@@ -203,7 +189,7 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
       status: "Needs Input",
       corrections: {
         ...value.corrections,
-        clientName: value.corrections.clientName || mapping.clientName,
+        clientName: value.corrections.clientName || mapping.clientName || "",
         trainerId:
           value.corrections.trainerId || trainerResolution.trainers[0]?.id || "",
         secondTrainerId:
@@ -222,7 +208,7 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     clientName,
   );
   const [primaryTrainer, secondTrainer] = trainerResolution.trainers;
-  const title = mapping.courseTitle.trim() || value.originalName.replace(/\.docx$/i, "");
+  const title = mapping.courseTitle.trim();
   const audience = mapping.audience.trim() || "To be confirmed";
   const duration = mapping.duration.trim() || "To be confirmed";
   const promise =

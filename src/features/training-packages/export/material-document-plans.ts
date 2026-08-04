@@ -98,7 +98,7 @@ export const workbookGenerationRules = [
 
 export const facilitatorGuideGenerationRules = [
   "Return a structured trainer-facing facilitator guide, not Markdown. Follow the supplied course topic, audience, duration, objectives, outcomes, methodology, and content priorities; never default to AI when another subject was requested.",
-  "Create a realistic timed agenda and detailed run sheets that help a trainer deliver the session. Make the timing internally coherent with the supplied duration and include breaks only when appropriate.",
+  "Create a realistic timed agenda and detailed run sheets that help a trainer deliver the session. Preserve supplied session order and timing, use schedule.time as the clock window when provided, and fit all sections within the supplied duration. If no clock window is supplied, use relative session durations instead of inventing times that start at 00:00. Organize multi-day courses by day and include breaks only when appropriate.",
   "For every section provide the objective, substantive key messages, sequential facilitation steps, debrief questions, expected participant outputs, and a transition. Include preparation, materials, likely participant questions with strong answers, contingencies, and a closing checklist.",
   "Develop generally valid subject knowledge needed to facilitate the requested course, but do not invent client facts, attendance, policies, tools, facilities, or confirmed arrangements.",
 ] as const;
@@ -157,7 +157,7 @@ export function normalizeWorkbookPlan(value: unknown): WorkbookPlan {
           ? moduleInput.activities.slice(0, 4).map((rawActivity) => {
               const activity = objectValue(rawActivity);
               return {
-                title: cleanText(activity.title, 140) || "Participant activity",
+                title: cleanText(activity.title, 140),
                 purpose: cleanText(activity.purpose),
                 instructions: cleanItems(activity.instructions, 8),
                 reflectionQuestions: cleanItems(activity.reflectionQuestions, 8),
@@ -167,7 +167,7 @@ export function normalizeWorkbookPlan(value: unknown): WorkbookPlan {
             })
           : [];
         return {
-          title: cleanText(moduleInput.title, 140) || "Learning module",
+          title: cleanText(moduleInput.title, 140),
           introduction: cleanText(moduleInput.introduction, 1600),
           keyPoints: cleanItems(moduleInput.keyPoints, 8),
           activities,
@@ -179,7 +179,7 @@ export function normalizeWorkbookPlan(value: unknown): WorkbookPlan {
 
   return {
     version: 1,
-    title: cleanText(input.title, 160) || "Participant Workbook",
+    title: cleanText(input.title, 160),
     welcome: cleanText(input.welcome, 1800),
     howToUse: cleanItems(input.howToUse, 8),
     modules,
@@ -195,7 +195,7 @@ export function normalizeFacilitatorGuidePlan(value: unknown): FacilitatorGuideP
   const input = objectValue(value);
   return {
     version: 1,
-    title: cleanText(input.title, 160) || "Facilitator Guide",
+    title: cleanText(input.title, 160),
     purpose: cleanText(input.purpose, 1800),
     trainerPreparation: cleanItems(input.trainerPreparation, 12),
     agenda: Array.isArray(input.agenda)
@@ -214,7 +214,7 @@ export function normalizeFacilitatorGuidePlan(value: unknown): FacilitatorGuideP
       ? input.sections.slice(0, 20).map((raw) => {
           const section = objectValue(raw);
           return {
-            title: cleanText(section.title, 160) || "Session section",
+            title: cleanText(section.title, 160),
             timing: cleanText(section.timing, 80),
             objective: cleanText(section.objective, 800),
             keyMessages: cleanItems(section.keyMessages, 10),
@@ -252,20 +252,20 @@ export function normalizePromptLibraryPlan(value: unknown): PromptLibraryPlan {
   const input = objectValue(value);
   return {
     version: 1,
-    title: cleanText(input.title, 160) || "Participant Prompt Library",
+    title: cleanText(input.title, 160),
     introduction: cleanText(input.introduction, 1800),
     usageGuidance: cleanItems(input.usageGuidance, 10),
     sections: Array.isArray(input.sections)
       ? input.sections.slice(0, 10).map((rawSection) => {
           const section = objectValue(rawSection);
           return {
-            title: cleanText(section.title, 140) || "Workflow prompts",
+            title: cleanText(section.title, 140),
             description: cleanText(section.description, 1000),
             prompts: Array.isArray(section.prompts)
               ? section.prompts.slice(0, 10).map((rawPrompt) => {
                   const prompt = objectValue(rawPrompt);
                   return {
-                    title: cleanText(prompt.title, 140) || "Reusable prompt",
+                    title: cleanText(prompt.title, 140),
                     whenToUse: cleanText(prompt.whenToUse, 800),
                     prompt: cleanMultiline(prompt.prompt),
                     adaptationTips: cleanItems(prompt.adaptationTips, 6),

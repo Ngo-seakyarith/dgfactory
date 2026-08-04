@@ -23,6 +23,10 @@ export function packageGenerationContext(trainingPackage: TrainingPackage) {
     duration: trainingPackage.duration,
     promise: trainingPackage.promise,
     businessContext: trainingPackage.context,
+    tone: trainingPackage.tone,
+    coverHeading: brief.coverHeading,
+    coverSubtitle: brief.coverSubtitle,
+    certificationLabel: brief.certificationLabel,
     clientBackground: brief.clientBackground,
     trainingNeed: brief.trainingNeed,
     objectives: briefLines(brief.objectives),
@@ -32,5 +36,18 @@ export function packageGenerationContext(trainingPackage: TrainingPackage) {
     methodology: briefLines(brief.methodology),
     trainingTools: briefLines(brief.trainingTools),
     evaluationApproach: brief.evaluationApproach,
+    schedule: {
+      date: brief.scheduleDate,
+      time: brief.scheduleTime,
+      venue: brief.scheduleVenue,
+    },
+    participantCount:
+      trainingPackage.pricingInputs.numberOfParticipants > 0
+        ? trainingPackage.pricingInputs.numberOfParticipants
+        : null,
+    trainers: [
+      { name: brief.trainerName, title: brief.trainerTitle },
+      { name: brief.secondTrainerName, title: brief.secondTrainerTitle },
+    ].filter((trainer) => trainer.name),
   };
 }

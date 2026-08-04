@@ -360,6 +360,14 @@ function addSlideTitle(
     h: 0,
     line: { color: dark ? "5E6A64" : COLORS.line, width: 1.2 },
   });
+  const titleLength = title.replace(/\s+/g, " ").trim().length;
+  const titleFontSize = titleLength > 92
+    ? 25
+    : titleLength > 68
+      ? 28
+      : titleLength > 46
+        ? 31
+        : 36;
   slide.addText(title, {
     x: 0.82,
     y: 0.94,
@@ -367,7 +375,7 @@ function addSlideTitle(
     h: 0.88,
     margin: 0,
     fontFace: HEAD_FONT,
-    fontSize: 36,
+    fontSize: titleFontSize,
     bold: true,
     color: dark ? COLORS.paper : COLORS.ink,
     breakLine: false,
@@ -376,9 +384,27 @@ function addSlideTitle(
   });
 }
 
-function estimatedItemHeight(text: string, charsPerLine: number) {
-  const lines = Math.max(1, Math.min(4, Math.ceil(text.length / charsPerLine)));
-  return 0.28 + lines * 0.28;
+function estimatedLineCount(text: string, charsPerLine: number) {
+  return text.split(/\r?\n/).reduce(
+    (total, line) => total + Math.max(1, Math.ceil(line.length / charsPerLine)),
+    0,
+  );
+}
+
+function fittedTextFontSize(
+  text: string,
+  width: number,
+  height: number,
+  baseFontSize: number,
+  minimumFontSize: number,
+) {
+  const charsPerLine = Math.max(24, Math.floor(width * 10.8));
+  const lines = estimatedLineCount(text, charsPerLine);
+  const availablePointsPerLine = (height * 72) / Math.max(1, lines) / 1.18;
+  return Math.max(
+    minimumFontSize,
+    Math.min(baseFontSize, availablePointsPerLine),
+  );
 }
 
 function addBulletList(
@@ -394,13 +420,36 @@ function addBulletList(
   },
 ) {
   const accent = options.accent ?? COLORS.orange;
-  const charsPerLine = Math.max(34, Math.floor(options.w * 11));
-  const estimatedHeights = items.map((item) =>
-    estimatedItemHeight(item.text, charsPerLine),
+  const textWidth = Math.max(1, options.w - 0.46);
+  const charsPerLine = Math.max(24, Math.floor(textWidth * 9.4));
+  const lineCounts = items.map((item) =>
+    estimatedLineCount(item.text, charsPerLine),
   );
+  const totalLines = lineCounts.reduce((sum, value) => sum + value, 0);
+  const minimumGap = items.length > 1 ? 0.08 : 0;
+  const reservedHeight = minimumGap * Math.max(0, items.length - 1) +
+    items.length * 0.06;
+  const availableLineHeight = Math.max(0.12, options.h - reservedHeight) /
+    Math.max(1, totalLines);
+  const fontSize = Math.max(
+    12,
+    Math.min(17.5, (availableLineHeight * 72) / 1.16),
+  );
+  const lineHeight = (fontSize * 1.16) / 72;
+  const rawHeights = lineCounts.map((lines) => 0.06 + lines * lineHeight);
+  const rawTotal = rawHeights.reduce((sum, value) => sum + value, 0);
+  const availableItemHeight = Math.max(
+    0.4,
+    options.h - minimumGap * Math.max(0, items.length - 1),
+  );
+  const heightScale = Math.min(1, availableItemHeight / Math.max(rawTotal, 0.01));
+  const estimatedHeights = rawHeights.map((height) => height * heightScale);
   const totalHeight = estimatedHeights.reduce((sum, value) => sum + value, 0);
   const gap = items.length > 1
-    ? Math.max(0.12, Math.min(0.3, (options.h - totalHeight) / (items.length - 1)))
+    ? Math.max(
+        minimumGap,
+        Math.min(0.24, (options.h - totalHeight) / (items.length - 1)),
+      )
     : 0;
   let y = options.y;
   let numberIndex = options.numberStart ?? 1;
@@ -448,12 +497,12 @@ function addBulletList(
       h: itemHeight,
       margin: 0,
       fontFace: BODY_FONT,
-      fontSize: item.kind === "paragraph" ? 18.5 : 17.5,
+      fontSize: item.kind === "paragraph" ? Math.min(18.5, fontSize) : fontSize,
       color: COLORS.ink,
       breakLine: false,
       fit: "shrink",
       valign: "top",
-      paraSpaceAfter: 5,
+      paraSpaceAfter: 0,
     });
     y += itemHeight + gap;
   });
@@ -966,6 +1015,138 @@ function addTwoColumnSlide(
   slide.addNotes(
     planned.speakerNotes ||
       `Compare both sides of ${planned.title} and connect them to the training outcome.`,
+  );
+}
+
+function addDemoSlide(
+  pptx: PptxGenJS,
+  planned: SlideDeckSlide,
+  sectionNumber: number,
+  pkg: PptxTrainingPackage,
+  slideNumber: number,
+) {
+  const slide = pptx.addSlide();
+  slide.background = { color: COLORS.paper };
+  addSlideTitle(slide, planned.title, sectionNumber);
+
+  slide.addShape("roundRect", {
+    x: 10.72,
+    y: 0.55,
+    w: 1.58,
+    h: 0.34,
+    rectRadius: 0.06,
+    fill: { color: "FFF0E7" },
+    line: { color: COLORS.orange, width: 0.8 },
+  });
+  slide.addText("LIVE DEMO", {
+    x: 10.82,
+    y: 0.64,
+    w: 1.38,
+    h: 0.14,
+    margin: 0,
+    align: "center",
+    fontFace: BODY_FONT,
+    fontSize: 9,
+    bold: true,
+    color: COLORS.orangeDark,
+    charSpacing: 1.2,
+  });
+
+  if (planned.intro) {
+    slide.addText(planned.intro, {
+      x: 0.92,
+      y: 1.88,
+      w: 11.35,
+      h: 0.56,
+      margin: 0,
+      fontFace: BODY_FONT,
+      fontSize: 16,
+      color: COLORS.muted,
+      fit: "shrink",
+      valign: "top",
+    });
+  }
+
+  const panelY = planned.intro ? 2.62 : 2.12;
+  const panelH = planned.intro ? 3.72 : 4.22;
+  slide.addShape("roundRect", {
+    x: 0.9,
+    y: panelY,
+    w: 5.72,
+    h: panelH,
+    rectRadius: 0.06,
+    fill: { color: "FFF8F3" },
+    line: { color: "F4B38D", width: 1 },
+  });
+  slide.addShape("roundRect", {
+    x: 6.82,
+    y: panelY,
+    w: 5.62,
+    h: panelH,
+    rectRadius: 0.06,
+    fill: { color: COLORS.mint },
+    line: { color: "8FC8C1", width: 1 },
+  });
+
+  slide.addText(planned.leftTitle || "Demonstration input", {
+    x: 1.2,
+    y: panelY + 0.28,
+    w: 5.1,
+    h: 0.26,
+    margin: 0,
+    fontFace: BODY_FONT,
+    fontSize: 13,
+    bold: true,
+    color: COLORS.orangeDark,
+  });
+  slide.addText(planned.leftItems.join("\n\n"), {
+    x: 1.2,
+    y: panelY + 0.76,
+    w: 5.08,
+    h: panelH - 1.02,
+    margin: 0,
+    fontFace: BODY_FONT,
+    fontSize: fittedTextFontSize(
+      planned.leftItems.join("\n\n"),
+      5.08,
+      panelH - 1.02,
+      15.5,
+      11,
+    ),
+    color: COLORS.ink,
+    breakLine: false,
+    fit: "shrink",
+    valign: "top",
+    paraSpaceAfter: 8,
+  });
+
+  slide.addText(planned.rightTitle || "Run, observe, verify", {
+    x: 7.12,
+    y: panelY + 0.28,
+    w: 5.02,
+    h: 0.26,
+    margin: 0,
+    fontFace: BODY_FONT,
+    fontSize: 13,
+    bold: true,
+    color: COLORS.tealDark,
+  });
+  addBulletList(
+    slide,
+    planned.rightItems.map((text) => ({ kind: "bullet", text })),
+    {
+      x: 7.12,
+      y: panelY + 0.76,
+      w: 4.98,
+      h: panelH - 1.02,
+      accent: COLORS.teal,
+    },
+  );
+
+  addFooter(slide, slideNumber, pkg.client);
+  slide.addNotes(
+    planned.speakerNotes ||
+      `Run the demonstration visibly, narrate the decisions, then verify the result before participants practice ${planned.title}.`,
   );
 }
 
@@ -1773,6 +1954,11 @@ function addPlannedSlide(
       slideNumber,
       planned.speakerNotes,
     );
+    return;
+  }
+
+  if (planned.layout === "demo") {
+    addDemoSlide(pptx, planned, sectionNumber, pkg, slideNumber);
     return;
   }
 

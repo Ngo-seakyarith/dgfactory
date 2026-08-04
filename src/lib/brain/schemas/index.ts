@@ -35,6 +35,8 @@ export function formatBrainSchemaErrors(error: z.ZodError) {
 }
 
 const stringArraySchema = z.array(z.string());
+const requiredTextSchema = z.string().trim().min(1);
+const requiredTextArraySchema = z.array(requiredTextSchema).min(1);
 const confidenceSchema = z.enum(["low", "medium", "high"]);
 
 export const qualityChecklistItemSchema = z.strictObject({
@@ -117,9 +119,8 @@ export const trainingPackageOutputSchema = z.strictObject({
 
 export const syllabusProposalOutputSchema = z.strictObject({
   mapping: z.strictObject({
-    courseTitle: z.string(),
-    clientName: z.string(),
-    clientIdentification: z.enum(["Confirmed", "Unclear", "Missing"]),
+    courseTitle: z.string().trim().min(1),
+    clientName: z.string().min(1).nullable(),
     audience: z.string(),
     participantCount: z.number().int().positive().nullable(),
     duration: z.string(),
@@ -155,14 +156,14 @@ export const textOutputSchema = z.strictObject({
 
 const slideDeckVisualItemSchema = z.strictObject({
   icon: z.enum(slideDeckIconKeys),
-  label: z.string(),
-  description: z.string(),
+  label: requiredTextSchema,
+  description: requiredTextSchema,
   value: z.number(),
 });
 
 const slideDeckSlideSchema = z.strictObject({
   layout: z.enum(slideDeckLayouts),
-  title: z.string(),
+  title: requiredTextSchema,
   intro: z.string(),
   statement: z.string(),
   bullets: stringArraySchema,
@@ -179,41 +180,147 @@ const slideDeckSlideSchema = z.strictObject({
   speakerNotes: z.string(),
 });
 
+function validatePracticalSlideModules(
+  slides: z.infer<typeof slideDeckSlideSchema>[],
+  context: z.RefinementCtx,
+) {
+  const sectionIndexes = slides
+    .map((slide, index) => (slide.layout === "section" ? index : -1))
+    .filter((index) => index >= 0);
+
+  if (!sectionIndexes.length) {
+    context.addIssue({
+      code: "custom",
+      message: "Use section slides to identify the major learning modules.",
+    });
+    return;
+  }
+
+  slides.forEach((slide, index) => {
+    if (slide.layout === "demo") {
+      if (!slide.intro.trim() || !slide.leftItems.length || !slide.rightItems.length) {
+        context.addIssue({
+          code: "custom",
+          path: [index],
+          message: "Demo slides require a scenario, demonstration input, and run/observe/verify content.",
+        });
+      }
+      if (!slide.speakerNotes.trim()) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "speakerNotes"],
+          message: "Demo slides require facilitator notes.",
+        });
+      }
+      if (slide.intro.length > 280) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "intro"],
+          message: "Demo scenarios must fit within 280 characters.",
+        });
+      }
+      if (slide.leftItems.join(" ").length > 760) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "leftItems"],
+          message: "Demo input content must fit within 760 characters.",
+        });
+      }
+      if (slide.rightItems.join(" ").length > 760) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "rightItems"],
+          message: "Demo run and verification content must fit within 760 characters.",
+        });
+      }
+    }
+
+    if (slide.layout === "practice") {
+      if (!slide.bullets.some((item) => /^Deliverable:/i.test(item.trim()))) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "bullets"],
+          message: "Practice slides require a visible Deliverable bullet.",
+        });
+      }
+      if (!slide.bullets.some((item) => /^Debrief:/i.test(item.trim()))) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "bullets"],
+          message: "Practice slides require a visible Debrief bullet.",
+        });
+      }
+    }
+  });
+
+  sectionIndexes.forEach((sectionIndex, moduleIndex) => {
+    const endIndex = sectionIndexes[moduleIndex + 1] ?? slides.length;
+    const moduleSlides = slides.slice(sectionIndex + 1, endIndex);
+    const demoOffset = moduleSlides.findIndex((slide) => slide.layout === "demo");
+    const practiceOffset = moduleSlides.findIndex(
+      (slide, index) => index > demoOffset && slide.layout === "practice",
+    );
+    const moduleTitle = slides[sectionIndex].title;
+
+    if (demoOffset < 0) {
+      context.addIssue({
+        code: "custom",
+        path: [sectionIndex],
+        message: `Module '${moduleTitle}' requires a live demonstration.`,
+      });
+    } else if (demoOffset > 2) {
+      context.addIssue({
+        code: "custom",
+        path: [sectionIndex + demoOffset + 1],
+        message: `Module '${moduleTitle}' must reach its demonstration within two teaching slides.`,
+      });
+    }
+
+    if (practiceOffset < 0) {
+      context.addIssue({
+        code: "custom",
+        path: [sectionIndex],
+        message: `Module '${moduleTitle}' requires participant practice after its demonstration.`,
+      });
+    }
+  });
+}
+
 export const slideDeckOutputSchema = z.strictObject({
   deck: z.strictObject({
     version: z.literal(2),
-    title: z.string(),
-    slides: z.array(slideDeckSlideSchema),
+    title: requiredTextSchema,
+    slides: z.array(slideDeckSlideSchema).min(1).superRefine(validatePracticalSlideModules),
   }),
 }) satisfies BrainOutputSchema<SlideDeckBrainOutput>;
 
 const workbookActivitySchema = z.strictObject({
-  title: z.string(),
-  purpose: z.string(),
-  instructions: stringArraySchema,
-  reflectionQuestions: stringArraySchema,
-  expectedOutput: z.string(),
+  title: requiredTextSchema,
+  purpose: requiredTextSchema,
+  instructions: requiredTextArraySchema,
+  reflectionQuestions: requiredTextArraySchema,
+  expectedOutput: requiredTextSchema,
   responseLines: z.number().int().min(3).max(8),
 });
 
 export const workbookOutputSchema = z.strictObject({
   workbook: z.strictObject({
     version: z.literal(1),
-    title: z.string(),
-    welcome: z.string(),
-    howToUse: stringArraySchema,
+    title: requiredTextSchema,
+    welcome: requiredTextSchema,
+    howToUse: requiredTextArraySchema,
     modules: z.array(
       z.strictObject({
-        title: z.string(),
-        introduction: z.string(),
-        keyPoints: stringArraySchema,
-        activities: z.array(workbookActivitySchema),
-        applicationPrompt: z.string(),
+        title: requiredTextSchema,
+        introduction: requiredTextSchema,
+        keyPoints: requiredTextArraySchema,
+        activities: z.array(workbookActivitySchema).min(1),
+        applicationPrompt: requiredTextSchema,
       }),
-    ),
+    ).min(1),
     actionPlan: z.strictObject({
-      introduction: z.string(),
-      prompts: stringArraySchema,
+      introduction: requiredTextSchema,
+      prompts: requiredTextArraySchema,
       responseLines: z.number().int().min(3).max(8),
     }),
   }),
@@ -222,63 +329,63 @@ export const workbookOutputSchema = z.strictObject({
 export const facilitatorGuideOutputSchema = z.strictObject({
   guide: z.strictObject({
     version: z.literal(1),
-    title: z.string(),
-    purpose: z.string(),
-    trainerPreparation: stringArraySchema,
+    title: requiredTextSchema,
+    purpose: requiredTextSchema,
+    trainerPreparation: requiredTextArraySchema,
     agenda: z.array(
       z.strictObject({
-        timing: z.string(),
-        duration: z.string(),
-        session: z.string(),
-        objective: z.string(),
-        method: z.string(),
+        timing: requiredTextSchema,
+        duration: requiredTextSchema,
+        session: requiredTextSchema,
+        objective: requiredTextSchema,
+        method: requiredTextSchema,
       }),
-    ),
+    ).min(1),
     sections: z.array(
       z.strictObject({
-        title: z.string(),
-        timing: z.string(),
-        objective: z.string(),
-        keyMessages: stringArraySchema,
-        runSteps: stringArraySchema,
-        debriefQuestions: stringArraySchema,
-        expectedOutputs: stringArraySchema,
-        transition: z.string(),
+        title: requiredTextSchema,
+        timing: requiredTextSchema,
+        objective: requiredTextSchema,
+        keyMessages: requiredTextArraySchema,
+        runSteps: requiredTextArraySchema,
+        debriefQuestions: requiredTextArraySchema,
+        expectedOutputs: requiredTextArraySchema,
+        transition: requiredTextSchema,
       }),
-    ),
-    materialsChecklist: stringArraySchema,
+    ).min(1),
+    materialsChecklist: requiredTextArraySchema,
     likelyQuestions: z.array(
-      z.strictObject({ question: z.string(), answer: z.string() }),
-    ),
+      z.strictObject({ question: requiredTextSchema, answer: requiredTextSchema }),
+    ).min(1),
     contingencies: z.array(
-      z.strictObject({ situation: z.string(), response: z.string() }),
-    ),
-    closingChecklist: stringArraySchema,
+      z.strictObject({ situation: requiredTextSchema, response: requiredTextSchema }),
+    ).min(1),
+    closingChecklist: requiredTextArraySchema,
   }),
 }) satisfies BrainOutputSchema<FacilitatorGuideBrainOutput>;
 
 export const promptLibraryOutputSchema = z.strictObject({
   library: z.strictObject({
     version: z.literal(1),
-    title: z.string(),
-    introduction: z.string(),
-    usageGuidance: stringArraySchema,
+    title: requiredTextSchema,
+    introduction: requiredTextSchema,
+    usageGuidance: requiredTextArraySchema,
     sections: z.array(
       z.strictObject({
-        title: z.string(),
-        description: z.string(),
+        title: requiredTextSchema,
+        description: requiredTextSchema,
         prompts: z.array(
           z.strictObject({
-            title: z.string(),
-            whenToUse: z.string(),
-            prompt: z.string(),
-            adaptationTips: stringArraySchema,
-            reviewChecks: stringArraySchema,
+            title: requiredTextSchema,
+            whenToUse: requiredTextSchema,
+            prompt: requiredTextSchema,
+            adaptationTips: requiredTextArraySchema,
+            reviewChecks: requiredTextArraySchema,
           }),
-        ),
+        ).min(1),
       }),
-    ),
-    responsibleUseChecks: stringArraySchema,
+    ).min(1),
+    responsibleUseChecks: requiredTextArraySchema,
   }),
 }) satisfies BrainOutputSchema<PromptLibraryBrainOutput>;
 

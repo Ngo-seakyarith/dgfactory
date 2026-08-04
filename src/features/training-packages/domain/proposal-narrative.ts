@@ -31,15 +31,19 @@ export function proposalNarrativeBriefFrom(
   };
 }
 
+const narrativeItemSchema = z.string().trim().min(1);
+const requiredNarrativeItemsSchema = z.array(narrativeItemSchema).min(1);
+const optionalNarrativeItemsSchema = z.array(narrativeItemSchema);
+
 export const proposalNarrativeSchema = z.strictObject({
-  courseOverview: z.array(z.string()),
-  courseObjectives: z.array(z.string()),
-  expectedLearningOutcomes: z.array(z.string()),
-  contentOutlines: z.array(z.string()),
-  whoShouldAttend: z.array(z.string()),
-  trainingMethodology: z.array(z.string()),
-  trainingTools: z.array(z.string()),
-  trainingEvaluation: z.array(z.string()),
+  courseOverview: requiredNarrativeItemsSchema,
+  courseObjectives: requiredNarrativeItemsSchema,
+  expectedLearningOutcomes: optionalNarrativeItemsSchema,
+  contentOutlines: requiredNarrativeItemsSchema,
+  whoShouldAttend: optionalNarrativeItemsSchema,
+  trainingMethodology: requiredNarrativeItemsSchema,
+  trainingTools: optionalNarrativeItemsSchema,
+  trainingEvaluation: optionalNarrativeItemsSchema,
 });
 
 export type ProposalNarrative = z.infer<typeof proposalNarrativeSchema>;

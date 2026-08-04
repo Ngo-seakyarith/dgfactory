@@ -5,19 +5,15 @@ import type {
 } from "@/lib/brain/agents";
 import { routeBrainTask } from "@/lib/brain/routing/router";
 import {
-  facilitatorGuideGenerationRules,
-  promptLibraryGenerationRules,
   serializeFacilitatorGuidePlan,
   serializePromptLibraryPlan,
   serializeWorkbookPlan,
-  workbookGenerationRules,
   type FacilitatorGuideBrainOutput,
   type PromptLibraryBrainOutput,
   type WorkbookBrainOutput,
 } from "@/features/training-packages/export/material-document-plans";
 import {
   serializeSlideDeckPlan,
-  slideDeckGenerationRules,
   type SlideDeckBrainOutput,
 } from "@/features/training-packages/export/slide-deck-plan";
 import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
@@ -51,7 +47,7 @@ const materialTasks: Record<
 > = {
   slides: {
     taskType: "slide_outline" as const,
-    task: "Create a complete, trainer-ready slide deck for this confirmed training delivery. Develop the requested subject deeply, choose the teaching flow yourself, and match each slide to a supported export layout.",
+    task: "Create a complete, trainer-ready and practice-led slide deck for this confirmed training delivery. Organize every major module around concise teaching, a runnable live demonstration, related participant practice, a concrete deliverable, and debrief.",
   },
   workbook: {
     taskType: "workbook" as const,
@@ -97,7 +93,7 @@ export async function generateDeliveryMaterialJob(
   if (target === "slides") {
     const result = await routeBrainTask<Record<string, unknown>, SlideDeckBrainOutput>({
       taskType: "slide_outline",
-      input: { ...commonInput, rules: [...commonInput.rules, ...slideDeckGenerationRules] },
+      input: commonInput,
       retries: 1,
     });
     generatedContent = serializeSlideDeckPlan(result.output.deck);
@@ -105,7 +101,7 @@ export async function generateDeliveryMaterialJob(
   } else if (target === "workbook") {
     const result = await routeBrainTask<Record<string, unknown>, WorkbookBrainOutput>({
       taskType: "workbook",
-      input: { ...commonInput, rules: [...commonInput.rules, ...workbookGenerationRules] },
+      input: commonInput,
       retries: 1,
     });
     generatedContent = serializeWorkbookPlan(result.output.workbook);
@@ -113,10 +109,7 @@ export async function generateDeliveryMaterialJob(
   } else if (target === "facilitatorGuide") {
     const result = await routeBrainTask<Record<string, unknown>, FacilitatorGuideBrainOutput>({
       taskType: "facilitator_guide",
-      input: {
-        ...commonInput,
-        rules: [...commonInput.rules, ...facilitatorGuideGenerationRules],
-      },
+      input: commonInput,
       retries: 1,
     });
     generatedContent = serializeFacilitatorGuidePlan(result.output.guide);
@@ -124,7 +117,7 @@ export async function generateDeliveryMaterialJob(
   } else {
     const result = await routeBrainTask<Record<string, unknown>, PromptLibraryBrainOutput>({
       taskType: "prompt_library",
-      input: { ...commonInput, rules: [...commonInput.rules, ...promptLibraryGenerationRules] },
+      input: commonInput,
       retries: 1,
     });
     generatedContent = serializePromptLibraryPlan(result.output.library);
@@ -206,47 +199,43 @@ export async function generateDeliveryReportJob(id: string, actor: string) {
     );
   }
   const trainingPackage = await getTrainingPackage(project.packageId);
+  const form = await getEvaluationFormByDelivery(project.id);
+  const responses = form ? await listEvaluationResponses(form.id) : [];
+  const summary = form ? summarizeEvaluationResponses(form, responses) : null;
   let participantEvaluation: Record<string, unknown> | null = null;
-  try {
-    const form = await getEvaluationFormByDelivery(project.id);
-    const responses = form ? await listEvaluationResponses(form.id) : [];
-    const summary = form ? summarizeEvaluationResponses(form, responses) : null;
-    if (summary && summary.responseCount > 0) {
-      participantEvaluation = {
-        responseCount: summary.responseCount,
-        averageSatisfactionScore: summary.ratingQuestionCount
-          ? Math.round(summary.overallAverage * 10) / 10
-          : null,
-        ratingResults: summary.questions
-          .filter((question) => question.type === "rating")
-          .map((question) => ({
-            question: question.label,
-            answered: question.answered,
-            average:
-              question.type === "rating"
-                ? Math.round(question.average * 10) / 10
-                : 0,
-          })),
-        choiceResults: summary.questions
-          .filter((question) => question.type === "choice")
-          .map((question) => ({
-            question: question.label,
-            counts: question.type === "choice" ? question.options : [],
-          })),
-        participantComments: summary.questions
-          .filter((question) => question.type === "text")
-          .flatMap((question) =>
-            question.type === "text"
-              ? question.answers.map((answer) => ({
-                  question: question.label,
-                  answer,
-                }))
-              : [],
-          ),
-      };
-    }
-  } catch {
-    participantEvaluation = null;
+  if (summary && summary.responseCount > 0) {
+    participantEvaluation = {
+      responseCount: summary.responseCount,
+      averageSatisfactionScore: summary.ratingQuestionCount
+        ? Math.round(summary.overallAverage * 10) / 10
+        : null,
+      ratingResults: summary.questions
+        .filter((question) => question.type === "rating")
+        .map((question) => ({
+          question: question.label,
+          answered: question.answered,
+          average:
+            question.type === "rating"
+              ? Math.round(question.average * 10) / 10
+              : 0,
+        })),
+      choiceResults: summary.questions
+        .filter((question) => question.type === "choice")
+        .map((question) => ({
+          question: question.label,
+          counts: question.type === "choice" ? question.options : [],
+        })),
+      participantComments: summary.questions
+        .filter((question) => question.type === "text")
+        .flatMap((question) =>
+          question.type === "text"
+            ? question.answers.map((answer) => ({
+                question: question.label,
+                answer,
+              }))
+            : [],
+        ),
+    };
   }
   const result = await routeBrainTask<Record<string, unknown>, DeliveryDraft>({
     taskType: "delivery_report",
