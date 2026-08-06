@@ -28,7 +28,6 @@ import { useLatestGenerationJobQuery } from "@/features/generation-jobs/queries"
 import type { GenerationJob } from "@/features/generation-jobs/domain/types";
 import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
 import { errorMessage } from "@/lib/api-client";
-import { SlideBlueprintEditor } from "./slide-blueprint-editor";
 
 const materialMeta: Record<
   DeliveryMaterialKey,
@@ -60,7 +59,6 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
   const queryClient = useQueryClient();
   const generateMaterial = useGenerateDeliveryMaterialMutation(project.id);
   const [active, setActive] = useState<DeliveryMaterialKey>("slides");
-  const [blueprint, setBlueprint] = useState(project.slideBlueprint);
   const [notices, setNotices] = useState<
     Partial<Record<DeliveryMaterialKey, string>>
   >({});
@@ -79,10 +77,6 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
   const content = project.materials[active];
   const activeJobId = activeJobIds[active];
   const notice = notices[active] ?? "";
-
-  useEffect(() => {
-    setBlueprint(project.slideBlueprint);
-  }, [project.id]);
 
   const handleActiveJob = useCallback(
     (target: DeliveryMaterialKey, jobId: string) => {
@@ -175,15 +169,7 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
     setNotices((current) => ({ ...current, [target]: "" }));
     setStarting((current) => ({ ...current, [target]: true }));
     try {
-      const payload = await generateMaterial.mutateAsync(
-        target === "slides" ? { target, blueprint } : target,
-      );
-      if (target === "slides") {
-        queryClient.setQueryData<DeliveryProject>(
-          deliveryKeys.project(project.id),
-          (current) => current ? { ...current, slideBlueprint: blueprint } : current,
-        );
-      }
+      const payload = await generateMaterial.mutateAsync(target);
       handleActiveJob(target, payload.job.id);
     } catch (error) {
       setNotices((current) => ({
@@ -286,14 +272,6 @@ export function MaterialsPanel({ project }: { project: DeliveryProject }) {
 
         {meta.description ? (
           <p className="text-sm text-muted-foreground">{meta.description}</p>
-        ) : null}
-
-        {active === "slides" ? (
-          <SlideBlueprintEditor
-            value={blueprint}
-            disabled={Boolean(starting.slides) || Boolean(activeJobIds.slides)}
-            onChange={setBlueprint}
-          />
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2">

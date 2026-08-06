@@ -13,12 +13,10 @@ import type { ExportFormat, ExportTarget } from "@/features/training-packages/ex
 import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
 import {
   getDeliveryProject,
-  saveDeliverySlideSelection,
   saveDeliveryProject,
 } from "@/features/delivery/storage/delivery-storage";
 import {
   isDeliveryMaterialKey,
-  slideDeckBlueprintSchema,
   type DeliveryMaterialKey,
   type DeliveryProject,
 } from "@/features/delivery";
@@ -120,31 +118,13 @@ export async function generateDeliveryMaterialHandler(
 
   try {
     const { id } = await context.params;
-    const body = (await request.json()) as {
-      target?: unknown;
-      blueprint?: unknown;
-    };
+    const body = (await request.json()) as { target?: unknown };
 
     if (!isDeliveryMaterialKey(body.target)) {
       return NextResponse.json(
         { error: "A valid material target is required." },
         { status: 400 },
       );
-    }
-
-    if (body.target === "slides") {
-      const blueprint = slideDeckBlueprintSchema.safeParse(body.blueprint);
-      if (!blueprint.success) {
-        return NextResponse.json(
-          {
-            error:
-              blueprint.error.issues[0]?.message ??
-              "A valid slide content selection is required.",
-          },
-          { status: 400 },
-        );
-      }
-      await saveDeliverySlideSelection(id, blueprint.data);
     }
 
     const job = await startGenerationJob({

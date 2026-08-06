@@ -175,12 +175,6 @@ textarea {
   background-color: rgba(32, 134, 125, 0.09);
 }
 
-/* Keep one structural border per surface: nested content uses spacing/dividers. */
-.app-workspace [data-slot="card"]
-  :where(div, section, article, li, pre, details)[class~="border"] {
-  border-color: transparent;
-}
-
 .page-heading {
   border-left: 3px solid #f4772e;
   padding-left: 1rem;

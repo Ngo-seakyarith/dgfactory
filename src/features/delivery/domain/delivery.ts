@@ -1,8 +1,4 @@
 import { normalizeNumber } from "@/lib/crm";
-import {
-  normalizeSlideDeckBlueprint,
-  type SlideDeckBlueprint,
-} from "./slide-blueprint";
 
 export const deliveryStatuses = [
   "Syllabus Sent",
@@ -86,7 +82,6 @@ export type DeliveryProject = {
   notes: string;
   evaluation: DeliveryEvaluation;
   materials: DeliveryMaterials;
-  slideBlueprint: SlideDeckBlueprint;
   postTrainingReport: string;
   createdAt: string;
   updatedAt: string;
@@ -182,14 +177,12 @@ export function normalizeDeliveryProject(
   value: Partial<DeliveryProject>,
 ): DeliveryProject {
   const now = new Date().toISOString();
-  const title = String(value.title ?? "").trim();
-
   return {
     id: value.id || crypto.randomUUID(),
     opportunityId: value.opportunityId || null,
     packageId: value.packageId || null,
     clientId: value.clientId || null,
-    title,
+    title: String(value.title ?? "").trim(),
     deliveryStatus: isDeliveryStatus(value.deliveryStatus)
       ? value.deliveryStatus
       : "Syllabus Sent",
@@ -200,7 +193,6 @@ export function normalizeDeliveryProject(
     notes: String(value.notes ?? "").trim(),
     evaluation: normalizeEvaluation(value.evaluation),
     materials: normalizeDeliveryMaterials(value.materials),
-    slideBlueprint: normalizeSlideDeckBlueprint(value.slideBlueprint, title || "Module 1"),
     postTrainingReport: String(value.postTrainingReport ?? "").trim(),
     createdAt: value.createdAt || now,
     updatedAt: value.updatedAt || now,

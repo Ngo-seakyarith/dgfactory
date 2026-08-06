@@ -15,7 +15,6 @@ import {
 import {
   serializeSlideDeckPlan,
   slideDeckLengthGuidance,
-  validateSlideDeckAgainstSelection,
   type SlideDeckBrainOutput,
 } from "@/features/training-packages/export/slide-deck-plan";
 import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
@@ -23,7 +22,6 @@ import { GenerationInputError } from "@/features/generation-jobs/domain/errors";
 
 import {
   createDefaultEvaluationForm,
-  learningBlockPresets,
   summarizeEvaluationResponses,
   type DeliveryDraft,
   type DeliveryMaterialKey,
@@ -98,9 +96,6 @@ export async function generateDeliveryMaterialJob(
 
   if (target === "slides") {
     const lengthGuidance = slideDeckLengthGuidance(trainingPackage.duration);
-    const selectedContent = project.slideBlueprint.selectedPresetIds
-      .map((presetId) => learningBlockPresets.find((item) => item.id === presetId))
-      .filter((blockPreset) => Boolean(blockPreset));
     const result = await routeBrainTask<Record<string, unknown>, SlideDeckBrainOutput>({
       taskType: "slide_outline",
       input: {
@@ -108,10 +103,6 @@ export async function generateDeliveryMaterialJob(
         input: {
           ...commonInput.input,
           savedSyllabus: packageSyllabusContext(trainingPackage),
-          slideContentSelection: {
-            trainingType: project.slideBlueprint.trainingType,
-            items: selectedContent,
-          },
           slideDeckLength: lengthGuidance,
         },
         rules: [
@@ -122,17 +113,11 @@ export async function generateDeliveryMaterialJob(
                 `The exporter adds the cover and agenda. Generate about ${lengthGuidance.targetBodySlides} body slides (${lengthGuidance.minimumBodySlides}-${lengthGuidance.maximumBodySlides} is acceptable) so the exported ${trainingPackage.duration} deck contains approximately ${lengthGuidance.targetTotalSlides} slides in total.`,
               ]
             : []),
-          "Treat slideContentSelection as the user's inclusion choices. Represent every selected item at least once, but decide where it belongs in the syllabus-led teaching sequence.",
-          "For each non-section slide, copy the selected item's id into blockId and its learning method into blockType. Do not introduce unselected content items.",
         ],
       },
       retries: 1,
     });
-    const validatedDeck = validateSlideDeckAgainstSelection(
-      result.output.deck,
-      project.slideBlueprint,
-    );
-    generatedContent = serializeSlideDeckPlan(validatedDeck);
+    generatedContent = serializeSlideDeckPlan(result.output.deck);
     model = result.model;
   } else if (target === "workbook") {
     const result = await routeBrainTask<Record<string, unknown>, WorkbookBrainOutput>({

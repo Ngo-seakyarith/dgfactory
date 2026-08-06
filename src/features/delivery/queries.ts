@@ -11,7 +11,6 @@ import type {
   DeliveryProject,
   DeliveryTask,
 } from "./domain/delivery";
-import type { SlideDeckBlueprint } from "./domain/slide-blueprint";
 import type {
   EvaluationForm,
   EvaluationFormType,
@@ -218,21 +217,15 @@ export function useGenerateDeliveryMaterialMutation(projectId: string) {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: (
-      input:
-        | DeliveryMaterialKey
-        | { target: DeliveryMaterialKey; blueprint?: SlideDeckBlueprint },
-    ) => {
-      const body = typeof input === "string" ? { target: input } : input;
-      return requestJson<{ job: GenerationJob }>(
+    mutationFn: (target: DeliveryMaterialKey) =>
+      requestJson<{ job: GenerationJob }>(
         `/api/delivery-projects/${projectId}/materials/generate`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(body),
+          body: JSON.stringify({ target }),
         },
-      );
-    },
+      ),
     onSuccess(payload) {
       setGenerationJobQueryData(queryClient, payload.job);
     },

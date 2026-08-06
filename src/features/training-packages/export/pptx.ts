@@ -853,28 +853,6 @@ function addPracticeSlide(
   );
 }
 
-function activityLabel(planned: SlideDeckSlide, fallback: string) {
-  const labels: Record<string, string> = {
-    concept: "CONCEPT",
-    "worked-example": "WORKED EXAMPLE",
-    demonstration: "LIVE DEMO",
-    "role-play": "ROLE-PLAY",
-    "guided-practice": "PRACTICE",
-    case: "CASE",
-    reflection: "REFLECTION",
-    assessment: "ASSESSMENT",
-    "action-plan": "ACTION PLAN",
-    "facilitated-discussion": "DISCUSSION",
-    scenario: "SCENARIO",
-    simulation: "SIMULATION",
-    "group-exercise": "GROUP EXERCISE",
-    "peer-feedback": "PEER FEEDBACK",
-    "knowledge-check": "KNOWLEDGE CHECK",
-    "tool-lab": "TOOL LAB",
-  };
-  return labels[planned.blockType] ?? fallback;
-}
-
 function addContentSlide(
   pptx: PptxGenJS,
   section: DeckSection,
@@ -1058,7 +1036,7 @@ function addDemoSlide(
   const slide = pptx.addSlide();
   slide.background = { color: COLORS.paper };
   addSlideTitle(slide, planned.title, sectionNumber);
-  const badgeLabel = activityLabel(planned, "LIVE DEMO");
+  const badgeLabel = "LIVE DEMO";
   const badgeWidth = Math.min(2.25, Math.max(1.58, 0.75 + badgeLabel.length * 0.1));
   const badgeX = 12.3 - badgeWidth;
 
@@ -1194,7 +1172,7 @@ function addCaseLabSlide(
   const slide = pptx.addSlide();
   slide.background = { color: COLORS.workspace };
   addSlideTitle(slide, planned.title, sectionNumber);
-  const badgeLabel = activityLabel(planned, "CASE LAB");
+  const badgeLabel = "CASE LAB";
   const badgeWidth = Math.min(2.25, Math.max(1.58, 0.75 + badgeLabel.length * 0.1));
   const badgeX = 12.3 - badgeWidth;
 
@@ -2294,7 +2272,7 @@ function addPlannedSlide(
       pkg,
       slideNumber,
       planned.speakerNotes,
-      activityLabel(planned, "PRACTICE"),
+      "PRACTICE",
     );
     return;
   }

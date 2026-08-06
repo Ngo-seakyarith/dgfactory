@@ -5,14 +5,12 @@ import {
   isDeliveryMaterialKey,
   normalizeDeliveryMaterials,
   normalizeDeliveryProject,
-  normalizeSlideDeckBlueprint,
   normalizeDeliveryTask,
   normalizeEvaluation,
   type DeliveryMaterialKey,
   type DeliveryEvaluation,
   type DeliveryMaterials,
   type DeliveryProject,
-  type SlideDeckBlueprint,
   type DeliveryStatus,
   type DeliveryTask,
   type DeliveryTaskCategory,
@@ -50,7 +48,6 @@ type DeliveryMaterialRow = {
   content: string;
   generation_job_id: string | null;
   model: string;
-  blueprint: unknown | null;
   created_at: string;
   updated_at: string;
 };
@@ -113,9 +110,6 @@ function projectFromRow(
   materialRows: DeliveryMaterialRow[] = [],
 ): DeliveryProject {
   const materials = normalizeDeliveryMaterials(row.materials);
-  const slidesRow = materialRows.find(
-    (material) => material.material_type === "slides",
-  );
   for (const material of materialRows) {
     if (isDeliveryMaterialKey(material.material_type)) {
       materials[material.material_type] = material.content.trim();
@@ -136,10 +130,6 @@ function projectFromRow(
     notes: row.notes ?? "",
     evaluation: normalizeEvaluation(row.evaluation),
     materials,
-    slideBlueprint: normalizeSlideDeckBlueprint(
-      slidesRow?.blueprint,
-      row.title || "Module 1",
-    ),
     postTrainingReport: row.post_training_report ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -321,46 +311,6 @@ export async function saveDeliveryMaterial(
 
   if (error) throw new Error(error.message);
   return data as DeliveryMaterialRow;
-}
-
-export async function saveDeliverySlideSelection(
-  id: string,
-  selection: SlideDeckBlueprint,
-) {
-  const supabase = getSupabaseServerClient();
-
-  if (!supabase) {
-    throw new Error("Supabase is required to save the slide content selection.");
-  }
-
-  const normalized = normalizeSlideDeckBlueprint(selection);
-  const now = new Date().toISOString();
-  const updated = await supabase
-    .from("delivery_materials")
-    .update({ blueprint: normalized, updated_at: now })
-    .eq("delivery_project_id", id)
-    .eq("material_type", "slides")
-    .select("*")
-    .maybeSingle();
-
-  if (updated.error) throw new Error(updated.error.message);
-  if (updated.data) return updated.data as DeliveryMaterialRow;
-
-  const inserted = await supabase
-    .from("delivery_materials")
-    .insert({
-      delivery_project_id: id,
-      material_type: "slides",
-      content: "",
-      model: "",
-      blueprint: normalized,
-      updated_at: now,
-    })
-    .select("*")
-    .single();
-
-  if (inserted.error) throw new Error(inserted.error.message);
-  return inserted.data as DeliveryMaterialRow;
 }
 
 export async function findDeliveryProjectByPackageId(packageId: string) {

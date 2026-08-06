@@ -5,7 +5,6 @@ import type {
   SystemProposalBrainOutput,
 } from "@/features/intelligent-system-proposals";
 import type { SyllabusProposalBrainOutput } from "@/features/syllabus-imports";
-import { learningBlockTypes } from "@/features/delivery/domain/slide-blueprint";
 import { proposalNarrativeSchema } from "@/features/training-packages/domain/proposal-narrative";
 import {
   slideDeckIconKeys,
@@ -163,9 +162,6 @@ const slideDeckVisualItemSchema = z.strictObject({
 });
 
 const slideDeckSlideSchema = z.strictObject({
-  moduleId: z.string(),
-  blockId: z.string(),
-  blockType: z.union([z.enum(learningBlockTypes), z.literal("")]),
   layout: z.enum(slideDeckLayouts),
   title: requiredTextSchema,
   intro: z.string(),
@@ -188,7 +184,6 @@ function validatePracticalSlideModules(
   slides: z.infer<typeof slideDeckSlideSchema>[],
   context: z.RefinementCtx,
 ) {
-  const followsBlueprint = slides.some((slide) => slide.blockId.trim());
   const sectionIndexes = slides
     .map((slide, index) => (slide.layout === "section" ? index : -1))
     .filter((index) => index >= 0);
@@ -295,8 +290,6 @@ function validatePracticalSlideModules(
       }
     }
   });
-
-  if (followsBlueprint) return;
 
   sectionIndexes.forEach((sectionIndex, moduleIndex) => {
     const endIndex = sectionIndexes[moduleIndex + 1] ?? slides.length;

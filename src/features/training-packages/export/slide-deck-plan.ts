@@ -1,10 +1,3 @@
-import {
-  learningBlockPresets,
-  learningBlockTypes,
-  type LearningBlockType,
-  type SlideDeckBlueprint,
-} from "@/features/delivery/domain/slide-blueprint";
-
 export const slideDeckLayouts = [
   "section",
   "statement",
@@ -52,9 +45,6 @@ export type SlideDeckVisualItem = {
 };
 
 export type SlideDeckSlide = {
-  moduleId: string;
-  blockId: string;
-  blockType: LearningBlockType | "";
   layout: SlideDeckLayout;
   title: string;
   intro: string;
@@ -125,9 +115,9 @@ export const slideDeckGenerationRules = [
   "A demo is a live trainer demonstration, not a description of one. Use intro for the scenario and purpose; leftTitle and leftItems for the realistic input, script, case, prompt, calculation, worked example, or source material; rightTitle and rightItems for the trainer actions, expected observable result, and verification checks. Use 1-4 items per side and make the slide runnable without hidden information.",
   "Adapt demonstrations to the requested subject. Suitable formats include role-play, worked calculation, live critique, workflow walkthrough, case analysis, decision demonstration, or tool demonstration. Never default to an AI prompt when the course is about another subject.",
   "Do not assume access to software, files, equipment, policies, client data, or numeric results that were not supplied. When no special resource is confirmed, design a low-resource demonstration using a realistic scenario or worked example and clearly label assumptions.",
-  "Pair demonstrations with related participant practice when those content types are selected and the syllabus supports the sequence. Practice bullets must begin with 'Time:' and include clear instructions plus separate final bullets beginning with 'Deliverable:', 'Success criteria:', and 'Debrief:'. The deliverable must be observable and the debrief must include a quality, verification, or reflection check.",
+  "Pair every demonstration with related participant practice within the next two slides. Practice bullets must begin with 'Time:' and include clear instructions plus separate final bullets beginning with 'Deliverable:', 'Success criteria:', and 'Debrief:'. The deliverable must be observable and the debrief must include a quality, verification, or reflection check.",
   "After guided demo-practice blocks, use case-lab for a realistic integrated business problem. Put the full scenario in intro, evidence or source material in leftItems, and the participant task, required outputs, risks, and review criteria in rightItems. Include rightItems beginning with 'Deliverable:' and 'Review:'. Clearly label invented examples as synthetic or illustrative.",
-  "When no slideContentSelection is supplied, at least 35 percent of non-section body slides must be demo, practice, or case-lab, and decks of 18 or more body slides should include a case-lab. When a selection is supplied, represent every selected content item and do not introduce unselected content items.",
+  "At least 35 percent of non-section body slides must be demo, practice, or case-lab, and decks of 18 or more body slides should include a case-lab.",
   "When an existing concept slide needs to introduce named AI products, use icon-cards with 2-4 exact product names as visualItems labels. Available branded examples are ChatGPT / OpenAI, Claude, Gemini, Grok, DeepSeek, Qwen, Perplexity, Copilot, and Replit. The exporter supplies their official logos and researched product facts. Include only tools relevant to the lesson, split a longer list across the surrounding lesson where needed, and never recommend one without supplied client requirements and evidence.",
   "Layout capacity limits: section supports an introduction of up to 60 words plus up to 4 focus points; statement supports one developed message of up to 100 words; bullets supports an introduction of up to 45 words plus up to 7 detailed points of up to 35 words each; numbered supports an introduction of up to 40 words plus up to 7 sequential steps of up to 35 words each; two-column supports an introduction of up to 40 words, short left and right titles, and up to 4 items of up to 30 words per side; demo and case-lab support an introduction of up to 40 words and up to 4 items per side, including one detailed source item of up to 80 words; practice supports an introduction of up to 45 words plus 4-7 numbered instructions; closing supports one synthesis of up to 100 words.",
   "Use visual layouts whenever a diagram communicates the teaching point more clearly than bullets. Across a normal deck, aim for a varied mix rather than repeating one silhouette: icon-cards for 3-4 parallel concepts; process for 3-5 sequential stages; cycle for 3-5 repeating stages; comparison for two clearly named sides with up to 4 items each; matrix for exactly 4 quadrants and clear horizontal and vertical axis labels; timeline for 3-6 chronological milestones; funnel for 3-5 narrowing stages; chart for 3-7 supplied numeric values.",
@@ -135,8 +125,6 @@ export const slideDeckGenerationRules = [
   "For comparison, fill leftTitle, leftItems, rightTitle, and rightItems. For cycle, visualCenter may name the shared outcome. For matrix, fill visualXAxis and visualYAxis and order visualItems as upper-left, upper-right, lower-left, then lower-right. For chart, fill visualUnit and visualSource, and use chart only when the supplied material contains real numeric data; never invent measurements, percentages, benchmarks, or results.",
   "Use intro only for section, bullets, numbered, two-column, demo, and practice layouts. Use statement only for statement and closing layouts.",
   "Populate every schema field. Use empty strings, empty arrays, or numeric 0 for fields the chosen layout does not use, and never place content in unsupported fields.",
-  "Every slide must populate moduleId, blockId, and blockType. Create concise stable module IDs from the syllabus structure. Section slides use the module ID with empty blockId and blockType. When slideContentSelection is supplied, every non-section slide uses one selected item ID as blockId and copies that item's learning method as blockType. Without a selection, use empty blockId and blockType.",
-  "Respect the selected learning intent: facilitated-discussion uses structured questions and synthesis; scenario is a short decision point; simulation is a multi-step realistic experience; group-exercise creates a shared output; peer-feedback uses explicit review criteria; knowledge-check checks recall or understanding; tool-lab is hands-on and may use only confirmed software or equipment.",
   "Keep each slide focused on one idea and use the available layout space well. Split a complex topic across multiple complete slides instead of producing title-only slides, fragmentary content, or an overflowing slide.",
   "Add one to three concise sentences of speaker notes to every slide. Notes may explain, transition, ask a question, or debrief, but essential participant-facing content must remain on the slide.",
 ] as const;
@@ -169,13 +157,6 @@ function isSlideDeckIconKey(value: unknown): value is SlideDeckIconKey {
   return (
     typeof value === "string" &&
     slideDeckIconKeys.includes(value as SlideDeckIconKey)
-  );
-}
-
-function isLearningBlockType(value: unknown): value is LearningBlockType {
-  return (
-    typeof value === "string" &&
-    learningBlockTypes.includes(value as LearningBlockType)
   );
 }
 
@@ -245,9 +226,6 @@ function normalizeSlide(value: unknown, index: number): SlideDeckSlide | null {
   }
 
   return {
-    moduleId: cleanText(input.moduleId, 80),
-    blockId: cleanText(input.blockId, 80),
-    blockType: isLearningBlockType(input.blockType) ? input.blockType : "",
     layout,
     title,
     intro:
@@ -275,51 +253,6 @@ function normalizeSlide(value: unknown, index: number): SlideDeckSlide | null {
     visualSource: layout === "chart" ? cleanText(input.visualSource, 140) : "",
     speakerNotes: cleanText(input.speakerNotes, 900),
   };
-}
-
-export function validateSlideDeckAgainstSelection(
-  planValue: unknown,
-  blueprint: SlideDeckBlueprint,
-) {
-  const plan = normalizeSlideDeckPlan(planValue);
-  const selectedPresets = blueprint.selectedPresetIds.map((presetId) => {
-    const blockPreset = learningBlockPresets.find((item) => item.id === presetId);
-    if (!blockPreset) throw new Error(`Unknown selected slide content '${presetId}'.`);
-    return blockPreset;
-  });
-  const selectedById = new Map(
-    selectedPresets.map((blockPreset) => [blockPreset.id, blockPreset]),
-  );
-  const represented = new Set<string>();
-
-  for (const slide of plan.slides) {
-    if (!slide.moduleId) {
-      throw new Error(`Slide '${slide.title}' is missing its syllabus module ID.`);
-    }
-    if (slide.layout === "section") {
-      if (slide.blockId || slide.blockType) {
-        throw new Error(`Section slide '${slide.title}' cannot represent a content selection.`);
-      }
-      continue;
-    }
-
-    const blockPreset = selectedById.get(slide.blockId);
-    if (!blockPreset || slide.blockType !== blockPreset.type) {
-      throw new Error(`Slide '${slide.title}' does not match a selected content item.`);
-    }
-    represented.add(blockPreset.id);
-  }
-
-  const missing = selectedPresets.filter(
-    (blockPreset) => !represented.has(blockPreset.id),
-  );
-  if (missing.length) {
-    throw new Error(
-      `The generated deck omitted selected content: ${missing.map((item) => item.label).join(", ")}.`,
-    );
-  }
-
-  return plan;
 }
 
 export function normalizeSlideDeckPlan(value: unknown): SlideDeckPlan {
