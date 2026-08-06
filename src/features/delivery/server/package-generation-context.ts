@@ -51,3 +51,21 @@ export function packageGenerationContext(trainingPackage: TrainingPackage) {
     ].filter((trainer) => trainer.name),
   };
 }
+
+export function packageSyllabusContext(trainingPackage: TrainingPackage) {
+  const content = trainingPackage.proposalContent;
+  if (!content) {
+    return { syllabusMarkdown: trainingPackage.syllabus };
+  }
+
+  return {
+    courseOverview: content.courseOverview,
+    courseObjectives: content.courseObjectives,
+    expectedLearningOutcomes: content.expectedLearningOutcomes,
+    contentOutline: content.contentOutlines,
+    methodology: content.trainingMethodology,
+    tools: content.trainingTools,
+    evaluation: content.trainingEvaluation,
+    schedule: content.schedule,
+  };
+}

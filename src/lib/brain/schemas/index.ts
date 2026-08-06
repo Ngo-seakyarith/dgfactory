@@ -5,6 +5,7 @@ import type {
   SystemProposalBrainOutput,
 } from "@/features/intelligent-system-proposals";
 import type { SyllabusProposalBrainOutput } from "@/features/syllabus-imports";
+import { learningBlockTypes } from "@/features/delivery/domain/slide-blueprint";
 import { proposalNarrativeSchema } from "@/features/training-packages/domain/proposal-narrative";
 import {
   slideDeckIconKeys,
@@ -162,6 +163,9 @@ const slideDeckVisualItemSchema = z.strictObject({
 });
 
 const slideDeckSlideSchema = z.strictObject({
+  moduleId: z.string(),
+  blockId: z.string(),
+  blockType: z.union([z.enum(learningBlockTypes), z.literal("")]),
   layout: z.enum(slideDeckLayouts),
   title: requiredTextSchema,
   intro: z.string(),
@@ -184,6 +188,7 @@ function validatePracticalSlideModules(
   slides: z.infer<typeof slideDeckSlideSchema>[],
   context: z.RefinementCtx,
 ) {
+  const followsBlueprint = slides.some((slide) => slide.blockId.trim());
   const sectionIndexes = slides
     .map((slide, index) => (slide.layout === "section" ? index : -1))
     .filter((index) => index >= 0);
@@ -236,6 +241,13 @@ function validatePracticalSlideModules(
     }
 
     if (slide.layout === "practice") {
+      if (!slide.bullets.some((item) => /^Time:/i.test(item.trim()))) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "bullets"],
+          message: "Practice slides require a visible Time bullet.",
+        });
+      }
       if (!slide.bullets.some((item) => /^Deliverable:/i.test(item.trim()))) {
         context.addIssue({
           code: "custom",
@@ -250,40 +262,117 @@ function validatePracticalSlideModules(
           message: "Practice slides require a visible Debrief bullet.",
         });
       }
+      if (!slide.bullets.some((item) => /^Success criteria:/i.test(item.trim()))) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "bullets"],
+          message: "Practice slides require visible Success criteria.",
+        });
+      }
+    }
+
+    if (slide.layout === "case-lab") {
+      if (!slide.intro.trim() || !slide.leftItems.length || !slide.rightItems.length) {
+        context.addIssue({
+          code: "custom",
+          path: [index],
+          message: "Case labs require a scenario, available evidence, and participant tasks.",
+        });
+      }
+      if (!slide.rightItems.some((item) => /^Deliverable:/i.test(item.trim()))) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "rightItems"],
+          message: "Case labs require a visible Deliverable item.",
+        });
+      }
+      if (!slide.rightItems.some((item) => /^Review:/i.test(item.trim()))) {
+        context.addIssue({
+          code: "custom",
+          path: [index, "rightItems"],
+          message: "Case labs require visible Review criteria.",
+        });
+      }
     }
   });
+
+  if (followsBlueprint) return;
 
   sectionIndexes.forEach((sectionIndex, moduleIndex) => {
     const endIndex = sectionIndexes[moduleIndex + 1] ?? slides.length;
     const moduleSlides = slides.slice(sectionIndex + 1, endIndex);
-    const demoOffset = moduleSlides.findIndex((slide) => slide.layout === "demo");
-    const practiceOffset = moduleSlides.findIndex(
-      (slide, index) => index > demoOffset && slide.layout === "practice",
-    );
     const moduleTitle = slides[sectionIndex].title;
+    const demoOffsets = moduleSlides
+      .map((slide, index) => (slide.layout === "demo" ? index : -1))
+      .filter((index) => index >= 0);
+    const hasPracticalApplication = moduleSlides.some((slide) =>
+      ["demo", "practice", "case-lab"].includes(slide.layout)
+    );
+    let teachingStreak = 0;
 
-    if (demoOffset < 0) {
+    if (!hasPracticalApplication) {
       context.addIssue({
         code: "custom",
         path: [sectionIndex],
-        message: `Module '${moduleTitle}' requires a live demonstration.`,
-      });
-    } else if (demoOffset > 2) {
-      context.addIssue({
-        code: "custom",
-        path: [sectionIndex + demoOffset + 1],
-        message: `Module '${moduleTitle}' must reach its demonstration within two teaching slides.`,
+        message: `Module '${moduleTitle}' requires demonstration, participant practice, or a case lab.`,
       });
     }
 
-    if (practiceOffset < 0) {
-      context.addIssue({
-        code: "custom",
-        path: [sectionIndex],
-        message: `Module '${moduleTitle}' requires participant practice after its demonstration.`,
-      });
-    }
+    moduleSlides.forEach((slide, offset) => {
+      if (["demo", "practice", "case-lab"].includes(slide.layout)) {
+        teachingStreak = 0;
+        return;
+      }
+      if (slide.layout === "closing") return;
+      teachingStreak += 1;
+      if (teachingStreak > 2) {
+        context.addIssue({
+          code: "custom",
+          path: [sectionIndex + offset + 1],
+          message: `Module '${moduleTitle}' has more than two consecutive teaching slides without practical application.`,
+        });
+      }
+    });
+
+    demoOffsets.forEach((demoOffset) => {
+      const followedByPractice = moduleSlides
+        .slice(demoOffset + 1, demoOffset + 3)
+        .some((slide) => slide.layout === "practice");
+      if (!followedByPractice) {
+        context.addIssue({
+          code: "custom",
+          path: [sectionIndex + demoOffset + 1],
+          message: `Every demonstration in '${moduleTitle}' requires related participant practice within the next two slides.`,
+        });
+      }
+    });
   });
+
+  const teachingSlides = slides.filter(
+    (slide) => !["section", "closing"].includes(slide.layout),
+  );
+  const practicalSlides = teachingSlides.filter((slide) =>
+    ["demo", "practice", "case-lab"].includes(slide.layout)
+  );
+  if (
+    teachingSlides.length >= 6 &&
+    practicalSlides.length / teachingSlides.length < 0.35
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "At least 35 percent of teaching slides must be demonstrations, practices, or case labs.",
+    });
+  }
+
+  if (
+    teachingSlides.length >= 18 &&
+    !teachingSlides.some((slide) => slide.layout === "case-lab")
+  ) {
+    context.addIssue({
+      code: "custom",
+      message: "Long training decks require at least one integrated case lab.",
+    });
+  }
 }
 
 export const slideDeckOutputSchema = z.strictObject({

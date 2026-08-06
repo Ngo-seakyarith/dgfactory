@@ -24,6 +24,12 @@ import {
   type SlideDeckSlide,
   type SlideDeckVisualItem,
 } from "./slide-deck-plan";
+import {
+  loadToolLogos,
+  resolveToolLogoKey,
+  toolLogoCatalog,
+  type LoadedToolLogos,
+} from "./tool-logo-catalog";
 
 export type PptxTrainingPackage = {
   title: string;
@@ -769,6 +775,7 @@ function addPracticeSlide(
   pkg: PptxTrainingPackage,
   slideNumber: number,
   speakerNotes?: string,
+  activityLabel = "PRACTICE",
 ) {
   const slide = pptx.addSlide();
   slide.background = { color: COLORS.workspace };
@@ -780,10 +787,10 @@ function addPracticeSlide(
     fill: { color: COLORS.tealDark },
     line: { color: COLORS.tealDark, transparency: 100 },
   });
-  slide.addText("PRACTICE", {
+  slide.addText(activityLabel, {
     x: 0.74,
     y: 0.72,
-    w: 1.8,
+    w: 2.8,
     h: 0.28,
     margin: 0,
     fontFace: BODY_FONT,
@@ -791,6 +798,7 @@ function addPracticeSlide(
     bold: true,
     color: "B9E2DD",
     charSpacing: 2,
+    fit: "shrink",
   });
   slide.addText(section.title, {
     x: 0.74,
@@ -843,6 +851,28 @@ function addPracticeSlide(
     speakerNotes ||
       `Explain the task, confirm the expected output, and debrief ${section.title}.`,
   );
+}
+
+function activityLabel(planned: SlideDeckSlide, fallback: string) {
+  const labels: Record<string, string> = {
+    concept: "CONCEPT",
+    "worked-example": "WORKED EXAMPLE",
+    demonstration: "LIVE DEMO",
+    "role-play": "ROLE-PLAY",
+    "guided-practice": "PRACTICE",
+    case: "CASE",
+    reflection: "REFLECTION",
+    assessment: "ASSESSMENT",
+    "action-plan": "ACTION PLAN",
+    "facilitated-discussion": "DISCUSSION",
+    scenario: "SCENARIO",
+    simulation: "SIMULATION",
+    "group-exercise": "GROUP EXERCISE",
+    "peer-feedback": "PEER FEEDBACK",
+    "knowledge-check": "KNOWLEDGE CHECK",
+    "tool-lab": "TOOL LAB",
+  };
+  return labels[planned.blockType] ?? fallback;
 }
 
 function addContentSlide(
@@ -1028,20 +1058,23 @@ function addDemoSlide(
   const slide = pptx.addSlide();
   slide.background = { color: COLORS.paper };
   addSlideTitle(slide, planned.title, sectionNumber);
+  const badgeLabel = activityLabel(planned, "LIVE DEMO");
+  const badgeWidth = Math.min(2.25, Math.max(1.58, 0.75 + badgeLabel.length * 0.1));
+  const badgeX = 12.3 - badgeWidth;
 
   slide.addShape("roundRect", {
-    x: 10.72,
+    x: badgeX,
     y: 0.55,
-    w: 1.58,
+    w: badgeWidth,
     h: 0.34,
     rectRadius: 0.06,
     fill: { color: "FFF0E7" },
     line: { color: COLORS.orange, width: 0.8 },
   });
-  slide.addText("LIVE DEMO", {
-    x: 10.82,
+  slide.addText(badgeLabel, {
+    x: badgeX + 0.1,
     y: 0.64,
-    w: 1.38,
+    w: badgeWidth - 0.2,
     h: 0.14,
     margin: 0,
     align: "center",
@@ -1050,6 +1083,7 @@ function addDemoSlide(
     bold: true,
     color: COLORS.orangeDark,
     charSpacing: 1.2,
+    fit: "shrink",
   });
 
   if (planned.intro) {
@@ -1150,7 +1184,7 @@ function addDemoSlide(
   );
 }
 
-function addIconCardsSlide(
+function addCaseLabSlide(
   pptx: PptxGenJS,
   planned: SlideDeckSlide,
   sectionNumber: number,
@@ -1158,10 +1192,293 @@ function addIconCardsSlide(
   slideNumber: number,
 ) {
   const slide = pptx.addSlide();
+  slide.background = { color: COLORS.workspace };
+  addSlideTitle(slide, planned.title, sectionNumber);
+  const badgeLabel = activityLabel(planned, "CASE LAB");
+  const badgeWidth = Math.min(2.25, Math.max(1.58, 0.75 + badgeLabel.length * 0.1));
+  const badgeX = 12.3 - badgeWidth;
+
+  slide.addShape("roundRect", {
+    x: badgeX,
+    y: 0.55,
+    w: badgeWidth,
+    h: 0.34,
+    rectRadius: 0.06,
+    fill: { color: COLORS.mint },
+    line: { color: COLORS.teal, width: 0.8 },
+  });
+  slide.addText(badgeLabel, {
+    x: badgeX + 0.1,
+    y: 0.64,
+    w: badgeWidth - 0.2,
+    h: 0.14,
+    margin: 0,
+    align: "center",
+    fontFace: BODY_FONT,
+    fontSize: 9,
+    bold: true,
+    color: COLORS.tealDark,
+    charSpacing: 1.2,
+    fit: "shrink",
+  });
+
+  slide.addShape("roundRect", {
+    x: 0.9,
+    y: 1.82,
+    w: 11.54,
+    h: 0.86,
+    rectRadius: 0.05,
+    fill: { color: "F7F9F7" },
+    line: { color: COLORS.line, width: 0.8 },
+  });
+  slide.addText(planned.intro, {
+    x: 1.16,
+    y: 2.02,
+    w: 11.02,
+    h: 0.46,
+    margin: 0,
+    fontFace: BODY_FONT,
+    fontSize: 15,
+    color: COLORS.ink,
+    fit: "shrink",
+    valign: "middle",
+  });
+
+  const panelY = 2.92;
+  const panelH = 3.4;
+  slide.addShape("roundRect", {
+    x: 0.9,
+    y: panelY,
+    w: 5.6,
+    h: panelH,
+    rectRadius: 0.06,
+    fill: { color: COLORS.paper },
+    line: { color: "CAD7D4", width: 0.9 },
+  });
+  slide.addShape("roundRect", {
+    x: 6.72,
+    y: panelY,
+    w: 5.72,
+    h: panelH,
+    rectRadius: 0.06,
+    fill: { color: COLORS.mint },
+    line: { color: "8FC8C1", width: 0.9 },
+  });
+
+  slide.addText(planned.leftTitle || "Available evidence", {
+    x: 1.18,
+    y: panelY + 0.24,
+    w: 5.04,
+    h: 0.28,
+    margin: 0,
+    fontFace: HEAD_FONT,
+    fontSize: 14,
+    bold: true,
+    color: COLORS.ink,
+  });
+  addBulletList(
+    slide,
+    planned.leftItems.map((text) => ({ kind: "bullet", text })),
+    {
+      x: 1.18,
+      y: panelY + 0.68,
+      w: 5,
+      h: panelH - 0.9,
+      accent: COLORS.orange,
+    },
+  );
+
+  slide.addText(planned.rightTitle || "Task and required output", {
+    x: 7.02,
+    y: panelY + 0.24,
+    w: 5.08,
+    h: 0.28,
+    margin: 0,
+    fontFace: HEAD_FONT,
+    fontSize: 14,
+    bold: true,
+    color: COLORS.tealDark,
+  });
+  const taskY = panelY + 0.68;
+  const taskHeight = panelH - 0.9;
+  const taskRowHeight = taskHeight / Math.max(1, planned.rightItems.length);
+  planned.rightItems.forEach((text, index) => {
+    const rowY = taskY + index * taskRowHeight;
+    slide.addShape("ellipse", {
+      x: 7.02,
+      y: rowY + 0.07,
+      w: 0.28,
+      h: 0.28,
+      fill: { color: COLORS.teal },
+      line: { color: COLORS.teal, transparency: 100 },
+    });
+    slide.addText(String(index + 1), {
+      x: 7.02,
+      y: rowY + 0.13,
+      w: 0.28,
+      h: 0.1,
+      margin: 0,
+      align: "center",
+      fontFace: BODY_FONT,
+      fontSize: 7.5,
+      bold: true,
+      color: COLORS.paper,
+    });
+    slide.addText(text, {
+      x: 7.46,
+      y: rowY,
+      w: 4.6,
+      h: Math.max(0.38, taskRowHeight - 0.06),
+      margin: 0,
+      fontFace: BODY_FONT,
+      fontSize: 13.2,
+      color: COLORS.ink,
+      fit: "shrink",
+      valign: "middle",
+    });
+  });
+
+  addFooter(slide, slideNumber, pkg.client);
+  slide.addNotes(
+    planned.speakerNotes ||
+      `Brief the case, let participants work from the supplied evidence, then review their deliverable against the stated criteria.`,
+  );
+}
+
+function addIconCardsSlide(
+  pptx: PptxGenJS,
+  planned: SlideDeckSlide,
+  sectionNumber: number,
+  pkg: PptxTrainingPackage,
+  slideNumber: number,
+  logos: LoadedToolLogos,
+) {
+  const slide = pptx.addSlide();
   slide.background = { color: COLORS.paper };
   addSlideTitle(slide, planned.title, sectionNumber);
 
   const items = planned.visualItems.slice(0, 4);
+  const toolItems = items.map((item) => {
+    const key = resolveToolLogoKey(item.label);
+    return key ? { item, key, entry: toolLogoCatalog[key], logo: logos[key] } : null;
+  });
+  const sources = new Set<string>();
+
+  if (items.length >= 2 && toolItems.every(Boolean)) {
+    const startX = 0.86;
+    const startY = 2.16;
+    const totalWidth = 11.62;
+    const headerHeight = 0.38;
+    const rowHeight = 0.96;
+    const columns = [2.18, 1.42, 4.18, 3.84];
+    const headings = ["TOOL", "MAKER", "WHAT IT IS", "KNOWN FOR"];
+    let headingX = startX;
+
+    headings.forEach((heading, index) => {
+      slide.addText(heading, {
+        x: headingX + 0.12,
+        y: startY,
+        w: columns[index] - 0.24,
+        h: headerHeight,
+        margin: 0,
+        fontFace: BODY_FONT,
+        fontSize: 9.5,
+        bold: true,
+        color: COLORS.muted,
+        charSpacing: 0.7,
+        valign: "middle",
+      });
+      headingX += columns[index];
+    });
+
+    toolItems.forEach((tool, index) => {
+      if (!tool) return;
+      const rowY = startY + headerHeight + index * rowHeight;
+      slide.addShape("roundRect", {
+        x: startX,
+        y: rowY,
+        w: totalWidth,
+        h: rowHeight - 0.08,
+        rectRadius: 0.04,
+        fill: { color: index % 2 === 0 ? "F2F7F6" : "FAF8F5" },
+        line: { color: index % 2 === 0 ? COLORS.line : "E8D9CE", width: 0.65 },
+      });
+
+      if (tool.logo) {
+        sources.add(tool.logo.source);
+        slide.addImage({
+          data: tool.logo.data,
+          x: startX + 0.18,
+          y: rowY + 0.2,
+          w: 0.46,
+          h: 0.46,
+          altText: `${tool.logo.name} logo`,
+        });
+      }
+      sources.add(tool.entry.informationSource);
+      slide.addText(tool.entry.name, {
+        x: startX + 0.76,
+        y: rowY + 0.17,
+        w: columns[0] - 0.88,
+        h: 0.5,
+        margin: 0,
+        fontFace: HEAD_FONT,
+        fontSize: 15.5,
+        bold: true,
+        color: COLORS.ink,
+        fit: "shrink",
+        valign: "middle",
+      });
+      slide.addText(tool.entry.provider, {
+        x: startX + columns[0] + 0.12,
+        y: rowY + 0.17,
+        w: columns[1] - 0.24,
+        h: 0.5,
+        margin: 0,
+        fontFace: BODY_FONT,
+        fontSize: 12.5,
+        bold: true,
+        color: COLORS.muted,
+        fit: "shrink",
+        valign: "middle",
+      });
+      slide.addText(tool.entry.description, {
+        x: startX + columns[0] + columns[1] + 0.12,
+        y: rowY + 0.12,
+        w: columns[2] - 0.24,
+        h: 0.62,
+        margin: 0,
+        fontFace: BODY_FONT,
+        fontSize: 11.5,
+        color: COLORS.ink,
+        fit: "shrink",
+        valign: "middle",
+      });
+      slide.addText(tool.entry.knownFor, {
+        x: startX + columns[0] + columns[1] + columns[2] + 0.12,
+        y: rowY + 0.12,
+        w: columns[3] - 0.24,
+        h: 0.62,
+        margin: 0,
+        fontFace: BODY_FONT,
+        fontSize: 11.5,
+        color: COLORS.tealDark,
+        fit: "shrink",
+        valign: "middle",
+      });
+    });
+
+    addFooter(slide, slideNumber, pkg.client);
+    const sourceNotes = Array.from(sources).map((source) => `- ${source}`);
+    slide.addNotes([
+      planned.speakerNotes || `Explain where each named tool may fit, then ask participants to evaluate it against their actual work requirements.`,
+      "",
+      "[Sources]",
+      ...sourceNotes,
+    ].join("\n"));
+    return;
+  }
+
   const gap = 0.28;
   const x = 0.9;
   const y = 2.22;
@@ -1171,6 +1488,12 @@ function addIconCardsSlide(
 
   items.forEach((item, index) => {
     const itemX = x + index * (columnWidth + gap);
+    const key = resolveToolLogoKey(item.label);
+    const logo = key ? logos[key] : null;
+    const catalogEntry = key ? toolLogoCatalog[key] : null;
+    const description = catalogEntry
+      ? `${catalogEntry.description}\nKnown for: ${catalogEntry.knownFor}`
+      : item.description;
     if (index > 0) {
       slide.addShape("line", {
         x: itemX - gap / 2,
@@ -1188,12 +1511,25 @@ function addIconCardsSlide(
       fill: { color: index % 2 === 0 ? COLORS.mint : "FFF0E7" },
       line: { color: index % 2 === 0 ? COLORS.teal : COLORS.orange, width: 1 },
     });
-    addVisualIcon(slide, item.icon, {
-      x: itemX + 0.24,
-      y: y + 0.2,
-      size: 0.42,
-      color: index % 2 === 0 ? COLORS.tealDark : COLORS.orangeDark,
-    });
+    if (logo) {
+      sources.add(logo.source);
+      slide.addImage({
+        data: logo.data,
+        x: itemX + 0.24,
+        y: y + 0.2,
+        w: 0.42,
+        h: 0.42,
+        altText: `${logo.name} logo`,
+      });
+    } else {
+      addVisualIcon(slide, item.icon, {
+        x: itemX + 0.24,
+        y: y + 0.2,
+        size: 0.42,
+        color: index % 2 === 0 ? COLORS.tealDark : COLORS.orangeDark,
+      });
+    }
+    if (catalogEntry) sources.add(catalogEntry.informationSource);
     slide.addText(item.label, {
       x: itemX + 0.04,
       y: y + 1.12,
@@ -1207,7 +1543,7 @@ function addIconCardsSlide(
       fit: "shrink",
       valign: "top",
     });
-    slide.addText(item.description, {
+    slide.addText(description, {
       x: itemX + 0.04,
       y: y + 2,
       w: columnWidth - 0.08,
@@ -1223,7 +1559,11 @@ function addIconCardsSlide(
   });
 
   addFooter(slide, slideNumber, pkg.client);
-  slide.addNotes(planned.speakerNotes || `Explain how the concepts on ${planned.title} work together.`);
+  const sourceNotes = Array.from(sources).map((source) => `- ${source}`);
+  slide.addNotes([
+    planned.speakerNotes || `Explain how the concepts on ${planned.title} work together.`,
+    ...(sourceNotes.length ? ["", "[Sources]", ...sourceNotes] : []),
+  ].join("\n"));
 }
 
 function addProcessSlide(
@@ -1909,6 +2249,7 @@ function addPlannedSlide(
   sectionNumber: number,
   pkg: PptxTrainingPackage,
   slideNumber: number,
+  toolLogos: LoadedToolLogos,
 ) {
   if (planned.layout === "section") {
     addDividerSlide(
@@ -1953,6 +2294,7 @@ function addPlannedSlide(
       pkg,
       slideNumber,
       planned.speakerNotes,
+      activityLabel(planned, "PRACTICE"),
     );
     return;
   }
@@ -1962,13 +2304,25 @@ function addPlannedSlide(
     return;
   }
 
+  if (planned.layout === "case-lab") {
+    addCaseLabSlide(pptx, planned, sectionNumber, pkg, slideNumber);
+    return;
+  }
+
   if (planned.layout === "two-column") {
     addTwoColumnSlide(pptx, planned, sectionNumber, pkg, slideNumber);
     return;
   }
 
   if (planned.layout === "icon-cards") {
-    addIconCardsSlide(pptx, planned, sectionNumber, pkg, slideNumber);
+    addIconCardsSlide(
+      pptx,
+      planned,
+      sectionNumber,
+      pkg,
+      slideNumber,
+      toolLogos,
+    );
     return;
   }
 
@@ -2052,9 +2406,14 @@ export async function createPptx(pkg: PptxTrainingPackage) {
   addCoverSlide(pptx, pkg, logoData);
 
   if (structuredPlan) {
+    const toolLogos = await loadToolLogos(
+      structuredPlan.slides
+        .filter((slide) => slide.layout === "icon-cards")
+        .flatMap((slide) => slide.visualItems.map((item) => item.label)),
+    );
     addAgendaSlide(pptx, agendaSectionsFromPlan(structuredPlan.slides), pkg, 2);
     structuredPlan.slides.forEach((planned, index) => {
-      addPlannedSlide(pptx, planned, index + 1, pkg, index + 3);
+      addPlannedSlide(pptx, planned, index + 1, pkg, index + 3, toolLogos);
     });
   } else {
     const parsedSections = parseDeckSections(pkg.deckOutline);

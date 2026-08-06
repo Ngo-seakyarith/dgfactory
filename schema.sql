@@ -337,6 +337,7 @@ create table if not exists public.delivery_materials (
     material_type in ('slides', 'workbook', 'facilitatorGuide', 'promptLibrary')
   ),
   content text not null default '',
+  blueprint jsonb,
   generation_job_id uuid
     references public.generation_jobs(id) on delete set null,
   model text not null default '',
@@ -355,6 +356,9 @@ grant select, insert, update, delete on table public.delivery_materials
 create index if not exists idx_delivery_materials_generation_job
   on public.delivery_materials(generation_job_id)
   where generation_job_id is not null;
+
+comment on column public.delivery_materials.blueprint is
+  'User-controlled linear module and learning-block structure for slide generation. Used only when material_type is slides.';
 
 insert into public.delivery_materials (
   delivery_project_id,
