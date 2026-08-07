@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
 import { getOpportunity, listOpportunities, saveOpportunity } from "@/lib/crm-storage";
+import { ensureDeliveryForWonOpportunity } from "@/lib/crm-sync";
 import type { Opportunity } from "@/lib/crm";
 import { requireApproved } from "@/lib/route-guards";
 
@@ -40,6 +41,22 @@ export async function POST(request: Request) {
 
     const existing = body.id ? await getOpportunity(body.id) : null;
     const result = await saveOpportunity(body);
+
+    let deliveryProjectId: string | null = null;
+    let deliveryNotice: string | undefined;
+    try {
+      const delivery = await ensureDeliveryForWonOpportunity(
+        result.opportunity,
+        auth.user.actor,
+      );
+      deliveryProjectId = delivery?.project.id ?? null;
+    } catch (error) {
+      deliveryNotice =
+        error instanceof Error
+          ? `Opportunity saved, but the delivery record could not be created: ${error.message}`
+          : "Opportunity saved, but the delivery record could not be created.";
+    }
+
     await saveAuditLog({
       actor: auth.user.actor,
       action:
@@ -56,7 +73,7 @@ export async function POST(request: Request) {
         storage: result.storage,
       },
     });
-    return NextResponse.json(result);
+    return NextResponse.json({ ...result, deliveryProjectId, deliveryNotice });
   } catch (error) {
     return NextResponse.json({ error: friendlyError(error) }, { status: 500 });
   }

@@ -3,6 +3,10 @@ import "server-only";
 import { createHash } from "node:crypto";
 
 import { ensureDeliveryProjectForPackage } from "@/features/delivery/storage/delivery-storage";
+import {
+  ensureOpportunityForPackage,
+  linkDeliveryToOpportunity,
+} from "@/lib/crm-sync";
 import { GenerationInputError } from "@/features/generation-jobs/domain/errors";
 import {
   buildPackageFromParts,
@@ -276,7 +280,13 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     knowledgeUsed: [],
   });
   const saved = await saveTrainingPackage(trainingPackage);
-  await ensureDeliveryProjectForPackage(saved.package);
+  const opportunity = await ensureOpportunityForPackage(saved.package, actor).catch(
+    () => null,
+  );
+  const delivery = await ensureDeliveryProjectForPackage(saved.package);
+  if (opportunity) {
+    await linkDeliveryToOpportunity(delivery.project, opportunity.opportunity);
+  }
   value = await saveSyllabusImport({
     ...value,
     status: "Finalizing",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireApproved } from "@/lib/route-guards";
+import { syncDeliveryProjectBond } from "@/lib/crm-sync";
 import type { ExportFormat } from "@/features/training-packages/export/export-package";
 import {
   deleteDeliveryProject,
@@ -91,7 +92,14 @@ export async function saveDeliveryProjectHandler(request: Request) {
     }
 
     const result = await saveDeliveryProject(body);
-    return NextResponse.json(result);
+    const bonded = await syncDeliveryProjectBond(
+      result.project,
+      auth.user.actor,
+    ).catch(() => null);
+    return NextResponse.json({
+      ...result,
+      project: bonded?.project ?? result.project,
+    });
   } catch (error) {
     return NextResponse.json(
       { error: friendlyError(error, "Delivery project request failed.") },

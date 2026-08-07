@@ -4,6 +4,10 @@ import { saveAuditLog } from "@/lib/audit";
 import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import { requireApproved } from "@/lib/route-guards";
 import { resolvePackageClient } from "@/lib/crm-storage";
+import {
+  ensureOpportunityForPackage,
+  linkDeliveryToOpportunity,
+} from "@/lib/crm-sync";
 import type { ClientProfileInput } from "@/lib/crm";
 import {
   getTrainerById,
@@ -144,10 +148,28 @@ export async function saveTrainingPackageRequest(request: Request) {
       });
     }
 
+    let pipelineOpportunity: Awaited<
+      ReturnType<typeof ensureOpportunityForPackage>
+    >["opportunity"] | null = null;
+    let pipelineNotice: string | undefined;
+    try {
+      pipelineOpportunity = (
+        await ensureOpportunityForPackage(result.package, auth.user.actor)
+      ).opportunity;
+    } catch (error) {
+      pipelineNotice =
+        error instanceof Error
+          ? `Package saved, but the pipeline opportunity could not be created: ${error.message}`
+          : "Package saved, but the pipeline opportunity could not be created.";
+    }
+
     let deliveryNotice: string | undefined;
     if (result.package.status === "Generated") {
       try {
         const delivery = await ensureDeliveryProjectForPackage(result.package);
+        if (pipelineOpportunity) {
+          await linkDeliveryToOpportunity(delivery.project, pipelineOpportunity);
+        }
         if (delivery.created) {
           await saveAuditLog({
             actor: auth.user.actor,
@@ -171,6 +193,7 @@ export async function saveTrainingPackageRequest(request: Request) {
     return NextResponse.json({
       ...result,
       client: clientResult.client,
+      pipelineNotice,
       deliveryNotice,
     });
   } catch (error) {

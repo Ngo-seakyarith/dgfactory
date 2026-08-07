@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
+  CalendarCheck,
   CalendarClock,
   Clipboard,
   DollarSign,
@@ -50,6 +51,7 @@ import {
   type OpportunityStatus,
 } from "@/lib/crm";
 import type { TrainingPackage } from "@/features/training-packages";
+import type { DeliveryProject } from "@/features/delivery";
 import type { IntelligentSystemProposal } from "@/features/intelligent-system-proposals";
 import { useSystemProposalsQuery } from "@/features/intelligent-system-proposals/queries";
 import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
@@ -862,11 +864,11 @@ export function OpportunityCard({
   return (
     <Link
       href={`/opportunities/${opportunity.id}`}
-      className="group rounded-lg border border-white/10 bg-[#07111f]/55 p-4 transition hover:border-teal-300/35 hover:bg-teal-300/10"
+      className="group rounded-lg border border-border bg-card p-4 shadow-sm transition hover:border-[#20867d]/45 hover:shadow-md"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="line-clamp-2 font-semibold leading-6 text-white">
+          <div className="line-clamp-2 font-semibold leading-6 text-card-foreground">
             {opportunity.title}
           </div>
           <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
@@ -960,7 +962,9 @@ export function OpportunityDetailClient({ id }: { id: string }) {
   );
   const deliveriesQuery = useDeliveryProjectsQuery();
   const linkedDelivery = (deliveriesQuery.data ?? []).find(
-    (project) => project.packageId && project.packageId === linkedPackage?.id,
+    (project) =>
+      project.opportunityId === id ||
+      (project.packageId && project.packageId === linkedPackage?.id),
   );
   const [draft, setDraft] = useState<FollowUpDraft | null>(null);
   const [draftNotice, setDraftNotice] = useState("");
@@ -1071,8 +1075,11 @@ export function OpportunityDetailClient({ id }: { id: string }) {
             <div>
               <CardTitle>Schedule Training Delivery</CardTitle>
               <CardDescription>
-                This opportunity is won. Open the delivery that was created with
-                the proposal and confirm the training details.
+                {linkedDelivery
+                  ? "This opportunity is won. Open the delivery that was created with the proposal and confirm the training details."
+                  : linkedPackage
+                    ? "This opportunity is won. Save the opportunity to create the delivery record for the linked package."
+                    : "This opportunity is won. Link a training package to create its delivery record, or open the delivery workspace."}
               </CardDescription>
             </div>
             <Button asChild variant="gold">
@@ -1128,8 +1135,83 @@ export function OpportunityDetailClient({ id }: { id: string }) {
   );
 }
 
+const pipelineStatusAccents: Record<OpportunityStatus, string> = {
+  Lead: "bg-[hsl(var(--muted-foreground))]",
+  Discovery: "bg-[hsl(var(--chart-3))]",
+  "Proposal Draft": "bg-[hsl(var(--chart-1))]",
+  "Proposal Sent": "bg-[hsl(var(--chart-4))]",
+  Negotiation: "bg-[hsl(var(--chart-4))]",
+  Won: "bg-[hsl(var(--chart-2))]",
+  Lost: "bg-[hsl(var(--destructive))]",
+  Dormant: "bg-[hsl(var(--muted-foreground))]",
+};
+
+const closedOpportunityStatuses: OpportunityStatus[] = ["Won", "Lost", "Dormant"];
+
+function deliveryProgressLabel(delivery?: DeliveryProject) {
+  if (!delivery || delivery.deliveryStatus === "Syllabus Sent") {
+    return null;
+  }
+  return delivery.deliveryStatus;
+}
+
+function PipelineDealCard({
+  opportunity,
+  client,
+  delivery,
+}: {
+  opportunity: Opportunity;
+  client?: Client;
+  delivery?: DeliveryProject;
+}) {
+  const deliveryLabel = deliveryProgressLabel(delivery);
+  const showFollowUp =
+    Boolean(opportunity.nextFollowUpDate) &&
+    !closedOpportunityStatuses.includes(opportunity.status);
+
+  return (
+    <Link
+      href={`/opportunities/${opportunity.id}`}
+      className="block rounded-md border border-border bg-card p-3 shadow-sm transition hover:border-[#20867d]/50 hover:shadow-md"
+    >
+      <div className="line-clamp-2 text-sm font-semibold leading-5 text-card-foreground">
+        {opportunity.title}
+      </div>
+      <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
+        {client?.name ?? "Unassigned client"}
+      </p>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <span className="font-mono text-xs font-semibold text-foreground">
+          {formatCrmMoney(opportunity.estimatedValue)}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {opportunity.probabilityPercent}%
+        </span>
+      </div>
+      {deliveryLabel || showFollowUp ? (
+        <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1.5 border-t border-border pt-2.5">
+          {deliveryLabel ? (
+            <span className="inline-flex items-center gap-1.5 rounded-sm bg-accent px-1.5 py-0.5 text-[11px] font-medium text-accent-foreground">
+              <CalendarCheck className="h-3 w-3" />
+              {deliveryLabel}
+            </span>
+          ) : null}
+          {showFollowUp ? (
+            <span className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground">
+              <CalendarClock className="h-3 w-3" />
+              {opportunity.nextFollowUpDate}
+            </span>
+          ) : null}
+        </div>
+      ) : null}
+    </Link>
+  );
+}
+
 export function PipelineBoard() {
   const { clients, opportunities, notice } = useCrmData();
+  const deliveriesQuery = useDeliveryProjectsQuery();
+  const deliveries = deliveriesQuery.data ?? [];
   const metrics = calculatePipelineMetrics(opportunities);
 
   return (
@@ -1145,37 +1227,59 @@ export function PipelineBoard() {
 
       <FollowUpReminder opportunities={metrics.upcomingFollowUps} clients={clients} />
 
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+      <Card>
         <CardHeader>
           <CardTitle>Pipeline Board</CardTitle>
           <CardDescription>{notice}</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-3 xl:grid-cols-4">
-            {opportunityStatuses.map((status) => {
-              const items = opportunities.filter((item) => item.status === status);
-              return (
-                <div
-                  key={status}
-                  className="min-h-48 rounded-lg border border-white/10 bg-[#07111f]/55 p-3"
-                >
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <OpportunityStatusBadge status={status} />
-                    <span className="text-xs text-muted-foreground">{items.length}</span>
+          <div className="-mx-1 overflow-x-auto pb-1">
+            <div className="flex min-w-max gap-3 px-1">
+              {opportunityStatuses.map((status) => {
+                const items = opportunities.filter((item) => item.status === status);
+                return (
+                  <div
+                    key={status}
+                    className="flex w-[260px] shrink-0 flex-col rounded-lg border border-border bg-muted/60"
+                  >
+                    <div className="flex items-center justify-between gap-2 border-b border-border px-3 py-2.5">
+                      <div className="flex min-w-0 items-center gap-2">
+                        <span
+                          className={`h-2 w-2 shrink-0 rounded-full ${pipelineStatusAccents[status]}`}
+                        />
+                        <span className="data-label truncate">{status}</span>
+                      </div>
+                      <span className="rounded-sm bg-background px-1.5 py-0.5 font-mono text-[11px] font-semibold text-muted-foreground">
+                        {items.length}
+                      </span>
+                    </div>
+                    <div className="flex min-h-[140px] flex-col gap-2 p-2">
+                      {items.length ? (
+                        items.map((opportunity) => (
+                          <PipelineDealCard
+                            key={opportunity.id}
+                            opportunity={opportunity}
+                            client={clients.find(
+                              (client) => client.id === opportunity.clientId,
+                            )}
+                            delivery={deliveries.find(
+                              (project) =>
+                                project.opportunityId === opportunity.id ||
+                                (opportunity.linkedPackageId !== null &&
+                                  project.packageId === opportunity.linkedPackageId),
+                            )}
+                          />
+                        ))
+                      ) : (
+                        <div className="flex flex-1 items-center justify-center rounded-md border border-dashed border-border px-3 py-6 text-center text-xs text-muted-foreground">
+                          No deals
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="space-y-2">
-                    {items.map((opportunity) => (
-                      <OpportunityCard
-                        key={opportunity.id}
-                        opportunity={opportunity}
-                        client={clients.find((client) => client.id === opportunity.clientId)}
-                        compact
-                      />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1191,7 +1295,7 @@ export function FollowUpReminder({
   clients: Client[];
 }) {
   return (
-    <Card className="border-teal-300/20 bg-teal-300/10 shadow-executive">
+    <Card className="border-[#20867d]/25 bg-[#20867d]/[0.06]">
       <CardHeader>
         <CardTitle>Upcoming Follow-Ups</CardTitle>
         <CardDescription>
@@ -1205,17 +1309,20 @@ export function FollowUpReminder({
               <Link
                 key={opportunity.id}
                 href={`/opportunities/${opportunity.id}`}
-                className="rounded-lg border border-teal-300/20 bg-[#07111f]/55 p-3 transition hover:border-teal-300/40"
+                className="rounded-md border border-border bg-card p-3 shadow-sm transition hover:border-[#20867d]/50 hover:shadow-md"
               >
-                <div className="font-medium text-white">{opportunity.title}</div>
-                <p className="mt-1 text-sm text-teal-50/80">
+                <div className="line-clamp-1 font-medium text-card-foreground">
+                  {opportunity.title}
+                </div>
+                <p className="mt-1 flex items-center gap-1.5 text-sm text-muted-foreground">
+                  <CalendarClock className="h-3.5 w-3.5 shrink-0 text-[#176a63]" />
                   {clients.find((client) => client.id === opportunity.clientId)?.name ?? "Client"} - {opportunity.nextFollowUpDate}
                 </p>
               </Link>
             ))}
           </div>
         ) : (
-          <p className="text-sm text-teal-50/80">
+          <p className="text-sm text-muted-foreground">
             No upcoming follow-ups in the next 14 days.
           </p>
         )}
@@ -1376,10 +1483,10 @@ function InfoBlock({ label, value }: { label: string; value: string }) {
 
 function Metric({ label, value }: { label: string; value: string }) {
   return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+    <Card>
       <CardContent className="p-4">
-        <div className="text-xs text-muted-foreground">{label}</div>
-        <div className="mt-2 font-mono text-xl font-semibold text-white">{value}</div>
+        <div className="data-label">{label}</div>
+        <div className="mt-2 font-mono text-xl font-semibold text-foreground">{value}</div>
       </CardContent>
     </Card>
   );

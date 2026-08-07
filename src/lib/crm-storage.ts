@@ -243,6 +243,27 @@ export async function getOpportunity(id: string) {
   throw new Error("Supabase is required to load opportunities.");
 }
 
+export async function findOpportunityByLinkedPackageId(packageId: string) {
+  const supabase = getSupabaseServerClient();
+
+  if (!supabase) {
+    throw new Error("Supabase is required to load opportunities.");
+  }
+
+  const { data, error } = await scopeAppData(
+    supabase
+      .from("opportunities")
+      .select("*")
+      .eq("linked_package_id", packageId),
+  ).maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  return data ? opportunityFromRow(data as OpportunityRow) : null;
+}
+
 export async function saveOpportunity(input: Partial<Opportunity>) {
   const opportunity = normalizeOpportunity({
     ...input,

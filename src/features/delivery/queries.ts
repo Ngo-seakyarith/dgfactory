@@ -91,6 +91,8 @@ export function useSaveDeliveryProjectMutation() {
         payload.project,
       );
       void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
+      // Keep this literal to avoid a circular import with the clients feature.
+      void queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     },
   });
 }

@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { requestJson } from "@/lib/api-client";
 import type { Client, Opportunity } from "@/lib/crm";
+import { deliveryKeys } from "@/features/delivery/queries";
 
 export const clientKeys = {
   all: ["clients"] as const,
@@ -88,7 +89,11 @@ export function useSaveOpportunityMutation() {
 
   return useMutation({
     mutationFn: (opportunity: Opportunity) =>
-      requestJson<{ opportunity: Opportunity }>("/api/opportunities", {
+      requestJson<{
+        opportunity: Opportunity;
+        deliveryProjectId?: string | null;
+        deliveryNotice?: string;
+      }>("/api/opportunities", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(opportunity),
@@ -99,6 +104,9 @@ export function useSaveOpportunityMutation() {
         payload.opportunity,
       );
       void queryClient.invalidateQueries({ queryKey: opportunityKeys.list() });
+      if (payload.deliveryProjectId) {
+        void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
+      }
     },
   });
 }

@@ -297,6 +297,11 @@ create index if not exists idx_opportunities_follow_up
 create index if not exists idx_opportunities_linked_package
   on public.opportunities(linked_package_id);
 
+-- One pipeline opportunity per training package.
+create unique index if not exists idx_opportunities_linked_package_unique
+  on public.opportunities(linked_package_id)
+  where linked_package_id is not null;
+
 create table if not exists public.delivery_projects (
   id uuid primary key default gen_random_uuid(),
   opportunity_id uuid references public.opportunities(id) on delete set null,
