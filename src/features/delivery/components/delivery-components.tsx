@@ -114,17 +114,17 @@ function Field({
 }
 
 function statusStage(status: DeliveryStatus): DeliveryStage {
-  if (status === "Completed" || status === "Delivered") return "after";
+  if (status === "Delivered") return "after";
   return "before";
 }
 
 export function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
   const variant =
-    status === "Completed" || status === "Delivered"
+    status === "Delivered"
       ? "teal"
-      : status === "Cancelled" ||
-          status === "Proposal Sent" ||
-          status === "Syllabus Sent"
+      : status === "Lost" ||
+          status === "Dormant" ||
+          status === "Proposal Sent"
         ? "outline"
         : "gold";
 
@@ -223,7 +223,7 @@ export function DeliveryProjectsPageClient() {
           <p className="mt-2 text-sm text-muted-foreground">
             {search
               ? "Try a different training or client name."
-              : "A delivery is created automatically each time you save a training proposal. It starts as Syllabus Sent until the client confirms."}
+              : "A delivery is created automatically with the same status as its linked pipeline opportunity."}
           </p>
         </div>
       )}
@@ -394,12 +394,12 @@ function EvaluationAndReport({ project, clientName, packageTitle, onSave }: { pr
     setDraft((current) => ({ ...current, evaluation: { ...current.evaluation, [key]: value } }));
   }
 
-  async function save(status?: DeliveryStatus) {
+  async function save() {
     setBusy(true);
     setNotice("");
     try {
-      await onSave({ ...draft, deliveryStatus: status ?? draft.deliveryStatus });
-      setNotice(status === "Completed" ? "Delivery completed." : "Evaluation saved.");
+      await onSave(draft);
+      setNotice("Evaluation saved.");
     } catch (error) {
       setNotice(errorMessage(error));
     } finally {
@@ -463,7 +463,6 @@ function EvaluationAndReport({ project, clientName, packageTitle, onSave }: { pr
           <Field label="Improvement suggestions" className="md:col-span-2"><Textarea value={draft.evaluation.improvementSuggestions} onChange={(event) => evaluation("improvementSuggestions", event.target.value)} placeholder="Internal takeaways for the next delivery" /></Field>
           <div className="flex flex-wrap items-center gap-3 md:col-span-2">
             <Button type="button" variant="outline" onClick={() => void save()} disabled={busy}><Save /> Save Notes</Button>
-            <Button type="button" variant="gold" onClick={() => void save("Completed")} disabled={busy}><CheckCircle2 /> Complete Delivery</Button>
             {notice ? <span className="text-sm text-muted-foreground">{notice}</span> : null}
           </div>
         </CardContent>

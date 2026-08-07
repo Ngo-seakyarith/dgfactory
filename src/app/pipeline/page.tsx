@@ -8,7 +8,7 @@ export default function PipelinePage() {
         <div className="page-eyebrow">Business development</div>
         <h1 className="page-title">Proposal pipeline</h1>
         <p className="page-description">
-          View training opportunities by status, value, probability, and follow-up.
+          View training opportunities by status, value, and follow-up.
         </p>
       </div>
       <PipelineBoard />

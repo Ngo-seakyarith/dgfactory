@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
 import { getOpportunity, listOpportunities, saveOpportunity } from "@/lib/crm-storage";
-import { ensureDeliveryForWonOpportunity } from "@/lib/crm-sync";
+import { syncOpportunityToDelivery } from "@/lib/crm-sync";
 import type { Opportunity } from "@/lib/crm";
 import { requireApproved } from "@/lib/route-guards";
 
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     let deliveryProjectId: string | null = null;
     let deliveryNotice: string | undefined;
     try {
-      const delivery = await ensureDeliveryForWonOpportunity(
+      const delivery = await syncOpportunityToDelivery(
         result.opportunity,
         auth.user.actor,
       );
@@ -53,8 +53,8 @@ export async function POST(request: Request) {
     } catch (error) {
       deliveryNotice =
         error instanceof Error
-          ? `Opportunity saved, but the delivery record could not be created: ${error.message}`
-          : "Opportunity saved, but the delivery record could not be created.";
+          ? `Opportunity saved, but the delivery status could not be synchronized: ${error.message}`
+          : "Opportunity saved, but the delivery status could not be synchronized.";
     }
 
     await saveAuditLog({

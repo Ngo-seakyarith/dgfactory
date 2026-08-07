@@ -30,7 +30,6 @@ type OpportunityRow = {
   training_need: string | null;
   estimated_value: number | null;
   status: OpportunityStatus | null;
-  probability_percent: number | null;
   expected_close_date: string | null;
   next_follow_up_date: string | null;
   notes: string | null;
@@ -77,7 +76,6 @@ function opportunityToRow(opportunity: Opportunity) {
     training_need: opportunity.trainingNeed,
     estimated_value: opportunity.estimatedValue,
     status: opportunity.status,
-    probability_percent: opportunity.probabilityPercent,
     expected_close_date: opportunity.expectedCloseDate || null,
     next_follow_up_date: opportunity.nextFollowUpDate || null,
     notes: opportunity.notes,
@@ -95,7 +93,6 @@ function opportunityFromRow(row: OpportunityRow): Opportunity {
     trainingNeed: row.training_need ?? "",
     estimatedValue: row.estimated_value ?? 0,
     status: row.status ?? "Lead",
-    probabilityPercent: row.probability_percent ?? 25,
     expectedCloseDate: row.expected_close_date ?? "",
     nextFollowUpDate: row.next_follow_up_date ?? "",
     notes: row.notes ?? "",

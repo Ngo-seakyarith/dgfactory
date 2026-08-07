@@ -1,4 +1,8 @@
-import { calculatePipelineMetrics, formatCrmMoney } from "@/lib/crm";
+import {
+  calculatePipelineMetrics,
+  formatCrmMoney,
+  isInactiveOpportunityStatus,
+} from "@/lib/crm";
 import { listOpportunities } from "@/lib/crm-storage";
 import { listDeliveryProjects } from "@/features/delivery/storage/delivery-storage";
 import { getQualityDashboardMetrics } from "@/lib/evaluation-storage";
@@ -40,10 +44,7 @@ export async function getDashboardMetrics() {
   ]);
   const pipeline = calculatePipelineMetrics(opportunities);
   const activeOpportunities = opportunities.filter(
-    (opportunity) =>
-      opportunity.status !== "Won" &&
-      opportunity.status !== "Lost" &&
-      opportunity.status !== "Dormant",
+    (opportunity) => !isInactiveOpportunityStatus(opportunity.status),
   );
   const monthStart = startOfMonth();
   const packagesCreatedThisMonth = packages.filter((pkg) => {
@@ -60,8 +61,9 @@ export async function getDashboardMetrics() {
       !!trainingDate &&
       trainingDate >= today &&
       trainingDate <= next30 &&
-      project.deliveryStatus !== "Completed" &&
-      project.deliveryStatus !== "Cancelled"
+      project.deliveryStatus !== "Delivered" &&
+      project.deliveryStatus !== "Lost" &&
+      project.deliveryStatus !== "Dormant"
     );
   });
   const pendingFollowUps = opportunities.filter((opportunity) => {
@@ -69,8 +71,7 @@ export async function getDashboardMetrics() {
     return (
       !!followUpDate &&
       followUpDate <= next30 &&
-      opportunity.status !== "Won" &&
-      opportunity.status !== "Lost"
+      !isInactiveOpportunityStatus(opportunity.status)
     );
   });
   const latestLoopRecommendations = loopRuns
@@ -87,8 +88,6 @@ export async function getDashboardMetrics() {
     activeOpportunities: activeOpportunities.length,
     pipelineValue: pipeline.totalEstimatedValue,
     pipelineValueFormatted: formatCrmMoney(pipeline.totalEstimatedValue),
-    weightedPipelineValue: pipeline.weightedPipelineValue,
-    weightedPipelineValueFormatted: formatCrmMoney(pipeline.weightedPipelineValue),
     packagesCreatedThisMonth: packagesCreatedThisMonth.length,
     upcomingDeliveryProjects: upcomingDeliveryProjects.length,
     averageQaScore: qualityMetrics.averageQaScore,

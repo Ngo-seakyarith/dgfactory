@@ -38,7 +38,7 @@ const features = [
   {
     title: "CRM and Pipeline",
     icon: Users,
-    body: "Track clients, opportunities, follow-ups, proposal status, weighted value, and won work.",
+    body: "Track clients, opportunities, follow-ups, proposal status, value, and won work.",
   },
   {
     title: "Delivery OS",
@@ -285,7 +285,7 @@ function ProductPreview() {
         <Badge variant="teal">Demo-ready</Badge>
       </div>
       <div className="grid gap-3 md:grid-cols-2">
-        <PreviewPanel icon={LayoutDashboard} title="Pipeline" value="$68k weighted value" />
+        <PreviewPanel icon={LayoutDashboard} title="Pipeline" value="$68k opportunity value" />
         <PreviewPanel icon={FileText} title="Packages" value="AI Skills for Managers" />
         <PreviewPanel icon={Route} title="Delivery" value="Checklist readiness 82%" />
         <PreviewPanel icon={LockKeyhole} title="Governance" value="Client-safe portal active" />

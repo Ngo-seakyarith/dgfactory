@@ -260,15 +260,16 @@ create table if not exists public.opportunities (
     status in (
       'Lead',
       'Discovery',
-      'Proposal Draft',
+      'Syllabus Sent',
       'Proposal Sent',
       'Negotiation',
       'Won',
+      'Prepared',
+      'Delivered',
       'Lost',
       'Dormant'
     )
   ),
-  probability_percent numeric default 25,
   expected_close_date date,
   next_follow_up_date date,
   notes text,
@@ -310,15 +311,16 @@ create table if not exists public.delivery_projects (
   title text not null,
   delivery_status text not null default 'Syllabus Sent' check (
     delivery_status in (
+      'Lead',
+      'Discovery',
       'Syllabus Sent',
       'Proposal Sent',
-      'Planning',
-      'Materials Preparation',
-      'Confirmed',
+      'Negotiation',
+      'Won',
+      'Prepared',
       'Delivered',
-      'Report Sent',
-      'Completed',
-      'Cancelled'
+      'Lost',
+      'Dormant'
     )
   ),
   training_date date,

@@ -8,6 +8,7 @@ import {
 } from "@/lib/client-portal/storage";
 import { isPortalDecisionStatus } from "@/lib/client-portal/types";
 import { listOpportunities, saveOpportunity } from "@/lib/crm-storage";
+import { syncOpportunityToDelivery } from "@/lib/crm-sync";
 
 export async function POST(
   request: NextRequest,
@@ -74,17 +75,21 @@ export async function POST(
       saved.feedback.decisionStatus === "Approved"
         ? "Negotiation"
         : saved.feedback.decisionStatus === "Needs Revision"
-          ? "Proposal Draft"
+          ? "Syllabus Sent"
           : saved.feedback.decisionStatus === "Not Approved"
             ? "Lost"
             : "Proposal Sent";
 
     if (linked) {
-      await saveOpportunity({
+      const opportunity = await saveOpportunity({
         ...linked,
         status: nextStatus,
         notes: `${linked.notes}\n\nClient portal decision: ${saved.feedback.decisionStatus}. ${saved.feedback.comments}`.trim(),
       });
+      await syncOpportunityToDelivery(
+        opportunity.opportunity,
+        validation.access.contactEmail || "Client portal visitor",
+      );
     }
   }
 

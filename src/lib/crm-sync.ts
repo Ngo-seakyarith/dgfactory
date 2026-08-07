@@ -1,8 +1,8 @@
 import { saveAuditLog } from "@/lib/audit";
 import {
+  isWonOpportunityStatus,
   normalizeOpportunity,
   type Opportunity,
-  type OpportunityStatus,
 } from "@/lib/crm";
 import {
   findOpportunityByLinkedPackageId,
@@ -11,9 +11,10 @@ import {
 } from "@/lib/crm-storage";
 import type { TrainingPackage } from "@/features/training-packages";
 import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
-import type { DeliveryProject, DeliveryStatus } from "@/features/delivery";
+import type { DeliveryProject } from "@/features/delivery";
 import {
   ensureDeliveryProjectForPackage,
+  findDeliveryProjectByPackageId,
   saveDeliveryProject,
 } from "@/features/delivery/storage/delivery-storage";
 
@@ -27,35 +28,10 @@ function opportunityFromPackage(pkg: TrainingPackage): Opportunity {
     title: pkg.title,
     trainingNeed: pkg.promise,
     estimatedValue: pkg.pricingOutputs?.finalPrice ?? 0,
-    status: "Proposal Draft",
-    probabilityPercent: 50,
+    status: "Syllabus Sent",
     linkedPackageId: pkg.id,
     notes: "Created automatically from the training package.",
   });
-}
-
-function opportunityStatusForDelivery(
-  status: DeliveryStatus,
-): OpportunityStatus | null {
-  return status === "Proposal Sent" ? "Proposal Sent" : null;
-}
-
-function mergedOpportunityStatus(
-  current: OpportunityStatus,
-  target: OpportunityStatus,
-): OpportunityStatus | null {
-  if (current === target) {
-    return null;
-  }
-
-  if (
-    target === "Proposal Sent" &&
-    (current === "Lead" || current === "Discovery" || current === "Proposal Draft")
-  ) {
-    return "Proposal Sent";
-  }
-
-  return null;
 }
 
 export async function ensureOpportunityForPackage(
@@ -107,16 +83,13 @@ async function applyDeliveryStatusToOpportunity(
   project: DeliveryProject,
   actor: string,
 ) {
-  const target = opportunityStatusForDelivery(project.deliveryStatus);
-  const next = target ? mergedOpportunityStatus(opportunity.status, target) : null;
-
-  if (!next) {
+  if (opportunity.status === project.deliveryStatus) {
     return { opportunity, changed: false as const };
   }
 
   const saved = await saveOpportunity({
     ...opportunity,
-    status: next,
+    status: project.deliveryStatus,
   });
   await saveAuditLog({
     actor,
@@ -126,7 +99,7 @@ async function applyDeliveryStatusToOpportunity(
     metadata: {
       deliveryProjectId: project.id,
       previousStatus: opportunity.status,
-      status: next,
+      status: project.deliveryStatus,
     },
   });
 
@@ -137,38 +110,45 @@ export async function linkDeliveryToOpportunity(
   project: DeliveryProject,
   opportunity: Opportunity,
 ) {
-  const wonUpgrade =
-    opportunity.status === "Won" &&
-    (project.deliveryStatus === "Syllabus Sent" ||
-      project.deliveryStatus === "Proposal Sent")
-      ? ("Preparing" as const)
-      : null;
-
-  if (project.opportunityId === opportunity.id && !wonUpgrade) {
+  if (
+    project.opportunityId === opportunity.id &&
+    project.deliveryStatus === opportunity.status
+  ) {
     return project;
   }
 
   const saved = await saveDeliveryProject({
     ...project,
     opportunityId: opportunity.id,
-    deliveryStatus: wonUpgrade ?? project.deliveryStatus,
+    deliveryStatus: opportunity.status,
   });
   return saved.project;
 }
 
-export async function ensureDeliveryForWonOpportunity(
+export async function syncOpportunityToDelivery(
   opportunity: Opportunity,
   actor: string,
 ) {
-  if (opportunity.status !== "Won" || !opportunity.linkedPackageId) {
+  if (!opportunity.linkedPackageId) {
     return null;
   }
 
-  const pkg = await getTrainingPackage(opportunity.linkedPackageId);
-  const ensured = await ensureDeliveryProjectForPackage(pkg);
-  const project = await linkDeliveryToOpportunity(ensured.project, opportunity);
+  let existing = await findDeliveryProjectByPackageId(opportunity.linkedPackageId);
+  let created = false;
+  if (!existing && isWonOpportunityStatus(opportunity.status)) {
+    const pkg = await getTrainingPackage(opportunity.linkedPackageId);
+    const ensured = await ensureDeliveryProjectForPackage(pkg);
+    existing = ensured.project;
+    created = ensured.created;
+  }
 
-  if (ensured.created) {
+  if (!existing) {
+    return null;
+  }
+
+  const project = await linkDeliveryToOpportunity(existing, opportunity);
+
+  if (created) {
     await saveAuditLog({
       actor,
       action: "delivery_created_from_opportunity",
@@ -182,7 +162,7 @@ export async function ensureDeliveryForWonOpportunity(
     });
   }
 
-  return { project, created: ensured.created };
+  return { project, created };
 }
 
 export async function syncDeliveryProjectBond(

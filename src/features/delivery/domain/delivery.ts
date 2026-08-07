@@ -1,16 +1,12 @@
-import { normalizeNumber } from "@/lib/crm";
+import {
+  normalizeNumber,
+  opportunityStatuses,
+  type OpportunityStatus,
+} from "@/lib/crm";
 
-export const deliveryStatuses = [
-  "Syllabus Sent",
-  "Proposal Sent",
-  "Preparing",
-  "Confirmed",
-  "Delivered",
-  "Completed",
-  "Cancelled",
-] as const;
+export const deliveryStatuses = opportunityStatuses;
 
-export type DeliveryStatus = (typeof deliveryStatuses)[number];
+export type DeliveryStatus = OpportunityStatus;
 
 export const deliveryTaskCategories = [
   "Client Confirmation",

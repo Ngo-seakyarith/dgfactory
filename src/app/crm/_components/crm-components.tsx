@@ -42,6 +42,7 @@ import {
   createEmptyClient,
   createEmptyOpportunity,
   formatCrmMoney,
+  isWonOpportunityStatus,
   normalizeClient,
   normalizeOpportunity,
   opportunityStatuses,
@@ -100,7 +101,11 @@ function useCrmData() {
 
 export function OpportunityStatusBadge({ status }: { status: OpportunityStatus }) {
   const variant =
-    status === "Won" ? "teal" : status === "Lost" || status === "Dormant" ? "outline" : "gold";
+    status === "Won" || status === "Delivered"
+      ? "teal"
+      : status === "Lost" || status === "Dormant"
+        ? "outline"
+        : "gold";
 
   return <Badge variant={variant}>{status}</Badge>;
 }
@@ -680,7 +685,7 @@ export function OpportunityForm({
       title: sourcePackage ? sourcePackage.title : "",
       trainingNeed: sourcePackage ? sourcePackage.promise : "",
       estimatedValue: sourcePackage?.pricingOutputs.finalPrice ?? 0,
-      status: sourcePackage ? "Proposal Draft" : "Lead",
+      status: sourcePackage ? "Syllabus Sent" : "Lead",
     }),
   );
   const [notice, setNotice] = useState("");
@@ -698,7 +703,7 @@ export function OpportunityForm({
       title: current.title || sourcePackage?.title || "",
       trainingNeed: current.trainingNeed || sourcePackage?.promise || "",
       estimatedValue: current.estimatedValue || sourcePackage?.pricingOutputs.finalPrice || 0,
-      status: current.status === "Lead" && sourcePackage ? "Proposal Draft" : current.status,
+      status: current.status === "Lead" && sourcePackage ? "Syllabus Sent" : current.status,
     }));
   }, [clientIdFromQuery, existingOpportunity, packageIdFromQuery, sourcePackage]);
 
@@ -780,17 +785,6 @@ export function OpportunityForm({
                 <option key={status}>{status}</option>
               ))}
             </Select>
-          </Field>
-          <Field label="Probability %">
-            <Input
-              type="number"
-              min={0}
-              max={100}
-              value={opportunity.probabilityPercent}
-              onChange={(event) =>
-                updateField("probabilityPercent", Number(event.target.value))
-              }
-            />
           </Field>
           <Field label="Expected close date">
             <Input
@@ -880,7 +874,6 @@ export function OpportunityCard({
       <div className="mt-4 flex flex-wrap gap-2">
         <OpportunityStatusBadge status={opportunity.status} />
         <Badge variant="outline">{formatCrmMoney(opportunity.estimatedValue)}</Badge>
-        <Badge variant="outline">{opportunity.probabilityPercent}%</Badge>
       </div>
       {!compact && opportunity.nextFollowUpDate ? (
         <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
@@ -1039,7 +1032,6 @@ export function OpportunityDetailClient({ id }: { id: string }) {
             <div className="mb-3 flex flex-wrap gap-2">
               <OpportunityStatusBadge status={opportunity.status} />
               <Badge variant="outline">{formatCrmMoney(opportunity.estimatedValue)}</Badge>
-              <Badge variant="outline">{opportunity.probabilityPercent}% probability</Badge>
             </div>
             <CardTitle>{opportunity.title}</CardTitle>
             <CardDescription className="mt-2">
@@ -1069,17 +1061,17 @@ export function OpportunityDetailClient({ id }: { id: string }) {
         </CardContent>
       </Card>
 
-      {opportunity.status === "Won" ? (
+      {isWonOpportunityStatus(opportunity.status) ? (
         <Card className="border-teal-300/20 bg-teal-300/10 shadow-executive">
           <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
             <div>
-              <CardTitle>Schedule Training Delivery</CardTitle>
+              <CardTitle>Training Delivery</CardTitle>
               <CardDescription>
                 {linkedDelivery
-                  ? "This opportunity is won. Open the delivery that was created with the proposal and confirm the training details."
+                  ? "Open the linked delivery to manage training preparation, delivery, and completion."
                   : linkedPackage
-                    ? "This opportunity is won. Save the opportunity to create the delivery record for the linked package."
-                    : "This opportunity is won. Link a training package to create its delivery record, or open the delivery workspace."}
+                    ? "Save this status to create the delivery record for the linked package."
+                    : "Link a training package to create its delivery record, or open the delivery workspace."}
               </CardDescription>
             </div>
             <Button asChild variant="gold">
@@ -1138,18 +1130,29 @@ export function OpportunityDetailClient({ id }: { id: string }) {
 const pipelineStatusAccents: Record<OpportunityStatus, string> = {
   Lead: "bg-[hsl(var(--muted-foreground))]",
   Discovery: "bg-[hsl(var(--chart-3))]",
-  "Proposal Draft": "bg-[hsl(var(--chart-1))]",
+  "Syllabus Sent": "bg-[hsl(var(--chart-1))]",
   "Proposal Sent": "bg-[hsl(var(--chart-4))]",
   Negotiation: "bg-[hsl(var(--chart-4))]",
   Won: "bg-[hsl(var(--chart-2))]",
+  Prepared: "bg-[hsl(var(--chart-1))]",
+  Delivered: "bg-[hsl(var(--chart-2))]",
   Lost: "bg-[hsl(var(--destructive))]",
   Dormant: "bg-[hsl(var(--muted-foreground))]",
 };
 
-const closedOpportunityStatuses: OpportunityStatus[] = ["Won", "Lost", "Dormant"];
+const closedOpportunityStatuses: OpportunityStatus[] = [
+  "Won",
+  "Prepared",
+  "Delivered",
+  "Lost",
+  "Dormant",
+];
 
 function deliveryProgressLabel(delivery?: DeliveryProject) {
-  if (!delivery || delivery.deliveryStatus === "Syllabus Sent") {
+  if (
+    !delivery ||
+    !["Prepared", "Delivered"].includes(delivery.deliveryStatus)
+  ) {
     return null;
   }
   return delivery.deliveryStatus;
@@ -1180,12 +1183,9 @@ function PipelineDealCard({
       <p className="mt-1 line-clamp-1 text-xs text-muted-foreground">
         {client?.name ?? "Unassigned client"}
       </p>
-      <div className="mt-3 flex items-center justify-between gap-2">
+      <div className="mt-3">
         <span className="font-mono text-xs font-semibold text-foreground">
           {formatCrmMoney(opportunity.estimatedValue)}
-        </span>
-        <span className="text-xs text-muted-foreground">
-          {opportunity.probabilityPercent}%
         </span>
       </div>
       {deliveryLabel || showFollowUp ? (
@@ -1216,10 +1216,9 @@ export function PipelineBoard() {
 
   return (
     <div className="space-y-5">
-      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-6">
+      <section className="grid gap-4 md:grid-cols-3 xl:grid-cols-5">
         <Metric label="Total opps" value={metrics.totalOpportunities.toString()} />
         <Metric label="Total value" value={formatCrmMoney(metrics.totalEstimatedValue)} />
-        <Metric label="Weighted value" value={formatCrmMoney(metrics.weightedPipelineValue)} />
         <Metric label="Proposals sent" value={metrics.proposalsSent.toString()} />
         <Metric label="Won" value={metrics.wonOpportunities.toString()} />
         <Metric label="Lost" value={metrics.lostOpportunities.toString()} />

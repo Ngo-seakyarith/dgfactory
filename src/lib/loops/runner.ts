@@ -1,6 +1,8 @@
 import {
   calculatePipelineMetrics,
   formatCrmMoney,
+  isInactiveOpportunityStatus,
+  isWonOpportunityStatus,
   type Client,
   type FollowUpDraft,
   type Opportunity,
@@ -39,8 +41,6 @@ type RunLoopInput = {
   input?: Record<string, unknown>;
 };
 
-const inactiveStatuses = new Set(["Won", "Lost", "Dormant"]);
-
 function daysAgo(days: number) {
   const date = new Date();
   date.setHours(0, 0, 0, 0);
@@ -78,7 +78,6 @@ function opportunitySummary(opportunity: Opportunity, clients: Client[]) {
     client: clientNameFor(opportunity, clients),
     status: opportunity.status,
     estimatedValue: opportunity.estimatedValue,
-    probabilityPercent: opportunity.probabilityPercent,
     nextFollowUpDate: opportunity.nextFollowUpDate,
     updatedAt: opportunity.updatedAt,
   };
@@ -144,7 +143,7 @@ function latestMetricForExperiment(
 }
 
 function isActiveOpportunity(opportunity: Opportunity) {
-  return !inactiveStatuses.has(opportunity.status);
+  return !isInactiveOpportunityStatus(opportunity.status);
 }
 
 function getStuckOpportunities(opportunities: Opportunity[]) {
@@ -164,7 +163,7 @@ async function runWeeklyPipelineReview(): Promise<LoopResult> {
   const metrics = calculatePipelineMetrics(opportunities);
   const active = opportunities.filter(isActiveOpportunity);
   const stuck = getStuckOpportunities(opportunities);
-  const proposalStatuses = new Set(["Proposal Draft", "Proposal Sent", "Negotiation"]);
+  const proposalStatuses = new Set(["Syllabus Sent", "Proposal Sent", "Negotiation"]);
   const proposalValue = opportunities
     .filter((opportunity) => proposalStatuses.has(opportunity.status))
     .reduce((total, opportunity) => total + opportunity.estimatedValue, 0);
@@ -190,8 +189,6 @@ async function runWeeklyPipelineReview(): Promise<LoopResult> {
       ),
       proposalValue,
       proposalValueFormatted: formatCrmMoney(proposalValue),
-      weightedPipelineValue: metrics.weightedPipelineValue,
-      weightedPipelineValueFormatted: formatCrmMoney(metrics.weightedPipelineValue),
       recommendedNextActions: recommendations,
     },
     summary: `${active.length} active opportunities, ${stuck.length} stuck, ${formatCrmMoney(proposalValue)} in proposal-stage value.`,
@@ -249,12 +246,14 @@ async function runMonthlyRevenueSummary(): Promise<LoopResult> {
     listOpportunities(),
     listDeliveryProjects(),
   ]);
-  const won = opportunities.filter((opportunity) => opportunity.status === "Won");
+  const won = opportunities.filter((opportunity) =>
+    isWonOpportunityStatus(opportunity.status),
+  );
   const pendingProposals = opportunities.filter((opportunity) =>
-    ["Proposal Draft", "Proposal Sent", "Negotiation"].includes(opportunity.status),
+    ["Syllabus Sent", "Proposal Sent", "Negotiation"].includes(opportunity.status),
   );
   const deliveryCompleted = deliveryProjects.filter((project) =>
-    ["Delivered", "Completed"].includes(project.deliveryStatus),
+    project.deliveryStatus === "Delivered",
   );
   const estimatedRevenue = won.reduce(
     (total, opportunity) => total + opportunity.estimatedValue,
@@ -341,7 +340,7 @@ async function runDeliveryReadinessCheck(): Promise<LoopResult> {
       !!date &&
       date >= today &&
       date <= upcomingLimit &&
-      !["Completed", "Cancelled"].includes(project.deliveryStatus)
+      !["Delivered", "Lost", "Dormant"].includes(project.deliveryStatus)
     );
   });
 

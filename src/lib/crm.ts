@@ -1,15 +1,37 @@
 export const opportunityStatuses = [
   "Lead",
   "Discovery",
-  "Proposal Draft",
+  "Syllabus Sent",
   "Proposal Sent",
   "Negotiation",
   "Won",
+  "Prepared",
+  "Delivered",
   "Lost",
   "Dormant",
 ] as const;
 
 export type OpportunityStatus = (typeof opportunityStatuses)[number];
+
+export const wonOpportunityStatuses: OpportunityStatus[] = [
+  "Won",
+  "Prepared",
+  "Delivered",
+];
+
+export const inactiveOpportunityStatuses: OpportunityStatus[] = [
+  ...wonOpportunityStatuses,
+  "Lost",
+  "Dormant",
+];
+
+export function isWonOpportunityStatus(status: OpportunityStatus) {
+  return wonOpportunityStatuses.includes(status);
+}
+
+export function isInactiveOpportunityStatus(status: OpportunityStatus) {
+  return inactiveOpportunityStatuses.includes(status);
+}
 
 export type Client = {
   id: string;
@@ -45,7 +67,6 @@ export type Opportunity = {
   trainingNeed: string;
   estimatedValue: number;
   status: OpportunityStatus;
-  probabilityPercent: number;
   expectedCloseDate: string;
   nextFollowUpDate: string;
   notes: string;
@@ -57,7 +78,6 @@ export type Opportunity = {
 export type PipelineMetrics = {
   totalOpportunities: number;
   totalEstimatedValue: number;
-  weightedPipelineValue: number;
   proposalsSent: number;
   wonOpportunities: number;
   lostOpportunities: number;
@@ -113,7 +133,6 @@ export function createEmptyOpportunity(
     trainingNeed: "",
     estimatedValue: 0,
     status: defaultOpportunityStatus,
-    probabilityPercent: 25,
     expectedCloseDate: "",
     nextFollowUpDate: "",
     notes: "",
@@ -151,10 +170,6 @@ export function normalizeOpportunity(value: Partial<Opportunity>): Opportunity {
     trainingNeed: String(value.trainingNeed ?? "").trim(),
     estimatedValue: normalizeNumber(value.estimatedValue),
     status: isOpportunityStatus(value.status) ? value.status : defaultOpportunityStatus,
-    probabilityPercent: Math.min(
-      100,
-      Math.max(0, normalizeNumber(value.probabilityPercent, 25)),
-    ),
     expectedCloseDate: String(value.expectedCloseDate ?? "").trim(),
     nextFollowUpDate: String(value.nextFollowUpDate ?? "").trim(),
     notes: String(value.notes ?? "").trim(),
@@ -174,7 +189,10 @@ export function calculatePipelineMetrics(
 
   const upcomingFollowUps = opportunities
     .filter((opportunity) => {
-      if (!opportunity.nextFollowUpDate || opportunity.status === "Won" || opportunity.status === "Lost") {
+      if (
+        !opportunity.nextFollowUpDate ||
+        isInactiveOpportunityStatus(opportunity.status)
+      ) {
         return false;
       }
 
@@ -189,12 +207,10 @@ export function calculatePipelineMetrics(
       (sum, item) => sum + item.estimatedValue,
       0,
     ),
-    weightedPipelineValue: opportunities.reduce(
-      (sum, item) => sum + item.estimatedValue * (item.probabilityPercent / 100),
-      0,
-    ),
     proposalsSent: opportunities.filter((item) => item.status === "Proposal Sent").length,
-    wonOpportunities: opportunities.filter((item) => item.status === "Won").length,
+    wonOpportunities: opportunities.filter((item) =>
+      isWonOpportunityStatus(item.status),
+    ).length,
     lostOpportunities: opportunities.filter((item) => item.status === "Lost").length,
     upcomingFollowUps,
   };

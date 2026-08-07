@@ -26,9 +26,12 @@ type DeliveryProjectRow = {
   title: string;
   delivery_status:
     | DeliveryStatus
+    | "Syllabus Sent"
     | "Planning"
     | "Materials Preparation"
+    | "Confirmed"
     | "Report Sent"
+    | "Cancelled"
     | null;
   training_date: string | null;
   location: string | null;
@@ -53,19 +56,31 @@ type DeliveryMaterialRow = {
 };
 
 function statusToRow(status: DeliveryStatus): DeliveryProjectRow["delivery_status"] {
-  return status === "Preparing" ? "Planning" : status;
+  return status;
 }
 
 function statusFromRow(status: DeliveryProjectRow["delivery_status"]): DeliveryStatus {
+  if (status === "Syllabus Sent") {
+    return "Syllabus Sent";
+  }
+
   if (status === "Planning" || status === "Materials Preparation") {
-    return "Preparing";
+    return "Prepared";
+  }
+
+  if (status === "Confirmed") {
+    return "Won";
   }
 
   if (status === "Report Sent") {
     return "Delivered";
   }
 
-  return status ?? "Preparing";
+  if (status === "Cancelled") {
+    return "Lost";
+  }
+
+  return status ?? "Syllabus Sent";
 }
 
 type DeliveryTaskRow = {

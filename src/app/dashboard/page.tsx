@@ -8,7 +8,6 @@ import {
   FilePlus2,
   FileText,
   Handshake,
-  LineChart,
   ShieldCheck,
 } from "lucide-react";
 
@@ -42,7 +41,7 @@ export default async function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-px overflow-hidden rounded-lg border border-border bg-border sm:grid-cols-3">
         <Metric
           icon={FileText}
           label="Packages this month"
@@ -54,12 +53,6 @@ export default async function DashboardPage() {
           label="Active opportunities"
           value={String(metrics.activeOpportunities)}
           detail={metrics.pipelineValueFormatted}
-        />
-        <Metric
-          icon={LineChart}
-          label="Weighted pipeline"
-          value={metrics.weightedPipelineValueFormatted}
-          detail="Probability adjusted"
         />
         <Metric
           icon={CalendarCheck}
