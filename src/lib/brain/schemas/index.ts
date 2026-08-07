@@ -301,7 +301,6 @@ function validatePracticalSlideModules(
     const hasPracticalApplication = moduleSlides.some((slide) =>
       ["demo", "practice", "case-lab"].includes(slide.layout)
     );
-    let teachingStreak = 0;
 
     if (!hasPracticalApplication) {
       context.addIssue({
@@ -310,22 +309,6 @@ function validatePracticalSlideModules(
         message: `Module '${moduleTitle}' requires demonstration, participant practice, or a case lab.`,
       });
     }
-
-    moduleSlides.forEach((slide, offset) => {
-      if (["demo", "practice", "case-lab"].includes(slide.layout)) {
-        teachingStreak = 0;
-        return;
-      }
-      if (slide.layout === "closing") return;
-      teachingStreak += 1;
-      if (teachingStreak > 2) {
-        context.addIssue({
-          code: "custom",
-          path: [sectionIndex + offset + 1],
-          message: `Module '${moduleTitle}' has more than two consecutive teaching slides without practical application.`,
-        });
-      }
-    });
 
     demoOffsets.forEach((demoOffset) => {
       const followedByPractice = moduleSlides

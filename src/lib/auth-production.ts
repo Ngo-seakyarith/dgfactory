@@ -1,3 +1,5 @@
+import { createHash } from "node:crypto";
+
 import { createServerClient } from "@supabase/ssr";
 import type { User } from "@supabase/supabase-js";
 
@@ -16,6 +18,13 @@ export type ProductionAuthProfile = {
   fullName: string;
   role: UserRole;
 };
+
+const AUTH_CACHE_TTL_MS = 5_000;
+const AUTH_CACHE_MAX_ENTRIES = 100;
+const requestAuthCache = new Map<
+  string,
+  { expiresAt: number; value: Promise<AuthUser | null> }
+>();
 
 export function isSupabaseAuthConfigured() {
   return Boolean(
@@ -99,10 +108,43 @@ function profileToAuthUser(profile: ProductionAuthProfile): AuthUser {
   };
 }
 
-export async function getAuthenticatedRequestUser(request: Request): Promise<AuthUser | null> {
-  const profile = await getProductionAuthProfile(await getUserFromRequest(request));
+function requestAuthCacheKey(request: Request) {
+  const credential =
+    request.headers.get("authorization") || request.headers.get("cookie") || "";
+  return credential
+    ? createHash("sha256").update(credential).digest("hex")
+    : "";
+}
 
-  return profile ? profileToAuthUser(profile) : null;
+function pruneRequestAuthCache(now: number) {
+  for (const [key, entry] of requestAuthCache) {
+    if (entry.expiresAt <= now) requestAuthCache.delete(key);
+  }
+  while (requestAuthCache.size >= AUTH_CACHE_MAX_ENTRIES) {
+    const oldestKey = requestAuthCache.keys().next().value;
+    if (!oldestKey) break;
+    requestAuthCache.delete(oldestKey);
+  }
+}
+
+export async function getAuthenticatedRequestUser(request: Request): Promise<AuthUser | null> {
+  const cacheKey = requestAuthCacheKey(request);
+  if (!cacheKey) return null;
+
+  const now = Date.now();
+  const cached = requestAuthCache.get(cacheKey);
+  if (cached && cached.expiresAt > now) return cached.value;
+
+  pruneRequestAuthCache(now);
+  const value = getUserFromRequest(request)
+    .then(getProductionAuthProfile)
+    .then((profile) => (profile ? profileToAuthUser(profile) : null));
+  requestAuthCache.set(cacheKey, {
+    expiresAt: now + AUTH_CACHE_TTL_MS,
+    value,
+  });
+
+  return value;
 }
 
 export async function getAuthenticatedCookieUser(
