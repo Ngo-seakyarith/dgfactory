@@ -24,7 +24,10 @@ import {
   normalizePricingInputs,
   formatMoney,
 } from "@/features/training-packages/domain/pricing";
-import type { TrainingPackage } from "@/features/training-packages/domain/training-package";
+import {
+  durationAsModifier,
+  type TrainingPackage,
+} from "@/features/training-packages/domain/training-package";
 import {
   normalizeProposalContent,
   type ProposalContent,
@@ -894,7 +897,7 @@ export async function createDocx(
   const pricingInputs = normalizePricingInputs(pkg.pricingInputs);
   const deterministicFee =
     pkg.pricingOutputs.finalPrice > 0
-      ? `Total professional fee for ${pkg.duration.toLowerCase()} training (${pricingInputs.vatStatus.toLowerCase()}): ${formatMoney(
+      ? `Total professional fee for ${durationAsModifier(pkg.duration)} training (${pricingInputs.vatStatus.toLowerCase()}): ${formatMoney(
           pkg.pricingOutputs.finalPrice,
           pricingInputs.currency,
         )}.`

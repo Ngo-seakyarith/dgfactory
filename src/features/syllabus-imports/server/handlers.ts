@@ -10,6 +10,7 @@ import {
 import { saveAuditLog } from "@/lib/audit";
 import { requireApproved } from "@/lib/route-guards";
 
+import { defaultSyllabusMimeType } from "../domain/file-types";
 import {
   createSyllabusImport,
   deleteSyllabusImport,
@@ -17,7 +18,7 @@ import {
   listSyllabusImports,
   saveSyllabusImport,
 } from "../storage/syllabus-import-storage";
-import { validateSyllabusUpload } from "./parse-docx";
+import { validateSyllabusUpload } from "./parse-syllabus";
 
 const correctionSchema = z.strictObject({
   clientId: z.string().uuid().nullable().optional(),
@@ -55,9 +56,7 @@ export async function createSyllabusImportRequest(request: Request) {
     validatePricing(pricingInputs);
     const created = await createSyllabusImport({
       originalName: name,
-      mimeType:
-        mimeType ||
-        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+      mimeType: mimeType || defaultSyllabusMimeType(name),
       sizeBytes,
       pricingInputs,
       createdBy: auth.user.userId ?? null,

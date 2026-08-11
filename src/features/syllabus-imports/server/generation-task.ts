@@ -32,7 +32,7 @@ import {
   getSyllabusImport,
   saveSyllabusImport,
 } from "../storage/syllabus-import-storage";
-import { parseSyllabusDocx } from "./parse-docx";
+import { parseSyllabusDocument } from "./parse-syllabus";
 
 const defaultIncludedItems = [
   "Pre-training consultation and program customization",
@@ -111,7 +111,11 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     try {
       buffer = await downloadSyllabusImport(value);
       const checksum = createHash("sha256").update(buffer).digest("hex");
-      const document = await parseSyllabusDocx(buffer);
+      const document = await parseSyllabusDocument({
+        buffer,
+        name: value.originalName,
+        mimeType: value.mimeType,
+      });
       const result = await routeBrainTask<
         {
           document: typeof document;
@@ -144,7 +148,7 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     } catch (error) {
       if (error instanceof GenerationInputError) throw error;
       const message = error instanceof Error ? error.message : "The syllabus could not be processed.";
-      if (/DOCX|syllabus|document|content/i.test(message)) {
+      if (/DOCX|PPTX|PDF|PowerPoint|syllabus|document|content|file/i.test(message)) {
         throw new GenerationInputError(message);
       }
       throw error;

@@ -125,10 +125,19 @@ const fullDaySchedule = [
 ].join("\n");
 
 const defaultSchedules: Record<string, string> = {
-  "Half-day": halfDaySchedule,
-  "Full-day": fullDaySchedule,
+  "Half day": halfDaySchedule,
+  "1 day": fullDaySchedule,
+  "1.5 days": `Day 1\n${fullDaySchedule}\n\nDay 2\n${halfDaySchedule}`,
   "2 days": `Day 1\n${fullDaySchedule}\n\nDay 2\n${fullDaySchedule}`,
 };
+
+const durationOptions = ["Half day", "1 day", "1.5 days", "2 days"];
+
+function normalizeDurationLabel(duration: string) {
+  if (duration === "Half-day") return "Half day";
+  if (duration === "Full-day") return "1 day";
+  return duration;
+}
 
 const emptyClientProfile: ClientProfileInput = {
   name: "",
@@ -247,7 +256,7 @@ export function PackageForm({
       ? {
           courseTitle: initialPackage.title,
           audience: initialPackage.audience,
-          duration: initialPackage.duration,
+          duration: normalizeDurationLabel(initialPackage.duration),
           client: initialPackage.client,
           promise: initialPackage.promise,
           context: initialPackage.context,
@@ -354,7 +363,7 @@ export function PackageForm({
     const prefill = {
       courseTitle: searchParams.get("courseTitle") ?? "",
       audience: searchParams.get("audience") ?? "",
-      duration: searchParams.get("duration") ?? "",
+      duration: normalizeDurationLabel(searchParams.get("duration") ?? ""),
       client: searchParams.get("client") ?? "",
       promise: searchParams.get("promise") ?? "",
       context: searchParams.get("context") ?? "",
@@ -734,12 +743,14 @@ export function PackageForm({
                 >
                   <option value="">Select duration</option>
                   {form.duration &&
-                  !["Half-day", "Full-day", "2 days"].includes(form.duration) ? (
+                  !durationOptions.includes(form.duration) ? (
                     <option value={form.duration}>{form.duration}</option>
                   ) : null}
-                  <option value="Half-day">Half-day</option>
-                  <option value="Full-day">Full-day</option>
-                  <option value="2 days">2 days</option>
+                  {durationOptions.map((duration) => (
+                    <option key={duration} value={duration}>
+                      {duration}
+                    </option>
+                  ))}
                 </Select>
               </Field>
               <Field label="Date">
@@ -754,7 +765,7 @@ export function PackageForm({
               description="The selected duration inserts a default schedule. Edit any line as needed."
             >
               <Textarea
-                rows={form.duration === "2 days" ? 18 : 8}
+                rows={form.duration === "1.5 days" || form.duration === "2 days" ? 18 : 8}
                 value={proposalBrief.scheduleTime}
                 onChange={(event) => updateProposalBrief("scheduleTime", event.target.value)}
                 placeholder="Enter the session times and breaks"

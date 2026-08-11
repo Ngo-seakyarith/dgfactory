@@ -242,6 +242,8 @@ values (
   10485760,
   array[
     'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+    'application/pdf',
     'application/octet-stream'
   ]
 )

@@ -47,6 +47,11 @@ import {
 import { requestJson } from "@/lib/api-client";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
+import {
+  defaultSyllabusMimeType,
+  isSupportedSyllabusFileName,
+  syllabusFileAccept,
+} from "../domain/file-types";
 import type {
   SyllabusImportCorrections,
   SyllabusProposalImport,
@@ -178,12 +183,14 @@ export function SyllabusImportWorkspace({
 
   async function generate() {
     setError("");
-    if (!file) return setError("Choose a DOCX syllabus first.");
-    if (file.name.toLowerCase().split(".").pop() !== "docx") {
-      return setError("Only .docx syllabus files are supported.");
+    if (!file) return setError("Choose a syllabus document first.");
+    if (!isSupportedSyllabusFileName(file.name)) {
+      return setError("Choose a DOCX, PPTX, or text-based PDF syllabus file.");
     }
     if (file.size <= 0 || file.size > 10 * 1024 * 1024) {
-      return setError("The syllabus must be a non-empty DOCX file no larger than 10 MB.");
+      return setError(
+        "The syllabus must be a non-empty DOCX, PPTX, or PDF file no larger than 10 MB.",
+      );
     }
     if (pricing.professionalFee <= 0) {
       return setError("Enter a professional fee greater than zero.");
@@ -213,8 +220,7 @@ export function SyllabusImportWorkspace({
         .from("syllabus-proposal-inputs")
         .uploadToSignedUrl(created.path, created.token, file, {
           contentType:
-            file.type ||
-            "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            file.type || defaultSyllabusMimeType(file.name),
         });
       if (upload.error) throw upload.error;
 
@@ -545,7 +551,7 @@ export function SyllabusImportWorkspace({
                 Source syllabus
               </CardTitle>
               <CardDescription>
-                One English DOCX file, up to 10 MB. Text, lists, headings, and tables are analyzed; images are ignored.
+                One English DOCX, PPTX, or text-based PDF file, up to 10 MB. Readable text, lists, tables, and PowerPoint speaker notes are analyzed; images are ignored.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -556,14 +562,14 @@ export function SyllabusImportWorkspace({
                   <Upload className="h-7 w-7 text-muted-foreground" />
                 )}
                 <span className="text-sm font-semibold text-foreground">
-                  {file?.name ?? "Choose syllabus DOCX"}
+                  {file?.name ?? "Choose syllabus document"}
                 </span>
                 <span className="text-xs text-muted-foreground">
                   {file ? `${(file.size / 1024 / 1024).toFixed(2)} MB` : "Click to browse"}
                 </span>
                 <input
                   type="file"
-                  accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+                  accept={syllabusFileAccept}
                   className="sr-only"
                   disabled={Boolean(busy)}
                   onChange={(event) => setFile(event.target.files?.[0] ?? null)}

@@ -12,12 +12,16 @@ export const syllabusImportStatuses = [
 
 export type SyllabusImportStatus = (typeof syllabusImportStatuses)[number];
 
+type SourceDocumentLocation = {
+  location?: string;
+};
+
 export type SourceDocumentBlock =
-  | { type: "heading"; level: number; text: string }
-  | { type: "paragraph"; text: string }
-  | { type: "list"; ordered: boolean; items: string[] }
-  | { type: "table"; rows: string[][] }
-  | { type: "header" | "footer"; text: string };
+  | ({ type: "heading"; level: number; text: string } & SourceDocumentLocation)
+  | ({ type: "paragraph"; text: string } & SourceDocumentLocation)
+  | ({ type: "list"; ordered: boolean; items: string[] } & SourceDocumentLocation)
+  | ({ type: "table"; rows: string[][] } & SourceDocumentLocation)
+  | ({ type: "header" | "footer"; text: string } & SourceDocumentLocation);
 
 export type SyllabusProposalBriefMapping = {
   coverSubtitle: string;

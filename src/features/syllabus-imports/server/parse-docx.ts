@@ -4,38 +4,11 @@ import JSZip from "jszip";
 import mammoth from "mammoth";
 
 import type { SourceDocumentBlock } from "../domain/types";
-
-export const SYLLABUS_FILE_LIMIT_BYTES = 10 * 1024 * 1024;
-export const SYLLABUS_CONTENT_LIMIT = 120_000;
-export const SYLLABUS_BLOCK_LIMIT = 2_000;
-
-const docxMime =
-  "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
-
-function normalizeText(value: string) {
-  return value.replace(/\u00a0/g, " ").replace(/[ \t]+/g, " ").trim();
-}
-
-function maskSensitiveText(value: string) {
-  return value
-    .replace(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi, "[REDACTED EMAIL]")
-    .replace(/(?:\+?\d[\s().-]?){8,16}/g, (match) => {
-      const candidate = match.trim();
-      if (
-        /^\d{1,2}[./-]\d{1,2}[./-]\d{2,4}$/.test(candidate) ||
-        /^\d{4}[./-]\d{1,2}[./-]\d{1,2}$/.test(candidate)
-      ) {
-        return match;
-      }
-      const digits = match.replace(/\D/g, "");
-      return digits.length >= 8 ? "[REDACTED NUMBER]" : match;
-    })
-    .replace(/\b\d{10,20}\b/g, "[REDACTED NUMBER]");
-}
-
-function safeText(value: string) {
-  return maskSensitiveText(normalizeText(value));
-}
+import {
+  assertReadableSyllabusBlocks,
+  safeDocumentText,
+  SYLLABUS_FILE_LIMIT_BYTES,
+} from "./document-parser-utils";
 
 function appendHtmlBlock(
   $: CheerioAPI,
@@ -47,13 +20,13 @@ function appendHtmlBlock(
   const tag = node.name.toLowerCase();
 
   if (/^h[1-6]$/.test(tag)) {
-    const text = safeText(element.text());
+    const text = safeDocumentText(element.text());
     if (text) blocks.push({ type: "heading", level: Number(tag[1]), text });
     return;
   }
 
   if (tag === "p") {
-    const text = safeText(element.text());
+    const text = safeDocumentText(element.text());
     if (text) blocks.push({ type: "paragraph", text });
     return;
   }
@@ -61,7 +34,7 @@ function appendHtmlBlock(
   if (tag === "ul" || tag === "ol") {
     const items = element
       .children("li")
-      .map((_, item) => safeText($(item).clone().children("ul,ol").remove().end().text()))
+      .map((_, item) => safeDocumentText($(item).clone().children("ul,ol").remove().end().text()))
       .get()
       .filter(Boolean);
     if (items.length) blocks.push({ type: "list", ordered: tag === "ol", items });
@@ -76,7 +49,7 @@ function appendHtmlBlock(
     element.find("tr").each((_, row) => {
       const cells = $(row)
         .children("th,td")
-        .map((__, cell) => safeText($(cell).text()))
+        .map((__, cell) => safeDocumentText($(cell).text()))
         .get();
       if (cells.some(Boolean)) rows.push(cells);
     });
@@ -97,7 +70,7 @@ async function headerFooterBlocks(zip: JSZip) {
     const xml = await zip.file(name)?.async("string");
     if (!xml) continue;
     const $ = load(xml, { xmlMode: true }, false);
-    const text = safeText(
+    const text = safeDocumentText(
       $("w\\:t")
         .map((_, node) => $(node).text())
         .get()
@@ -112,43 +85,6 @@ async function headerFooterBlocks(zip: JSZip) {
   }
 
   return blocks;
-}
-
-function contentLength(blocks: SourceDocumentBlock[]) {
-  return blocks.reduce((total, block) => {
-    if ("text" in block) return total + block.text.length;
-    if (block.type === "list") {
-      return total + block.items.reduce((sum, item) => sum + item.length, 0);
-    }
-    return (
-      total +
-      block.rows.reduce(
-        (sum, row) => sum + row.reduce((rowSum, cell) => rowSum + cell.length, 0),
-        0,
-      )
-    );
-  }, 0);
-}
-
-export function validateSyllabusUpload({
-  name,
-  mimeType,
-  sizeBytes,
-}: {
-  name: string;
-  mimeType: string;
-  sizeBytes: number;
-}) {
-  const extension = name.toLowerCase().split(".").pop();
-  if (extension !== "docx") {
-    throw new Error("Only .docx syllabus files are supported.");
-  }
-  if (sizeBytes <= 0 || sizeBytes > SYLLABUS_FILE_LIMIT_BYTES) {
-    throw new Error("The syllabus must be a non-empty DOCX file no larger than 10 MB.");
-  }
-  if (mimeType && ![docxMime, "application/octet-stream"].includes(mimeType)) {
-    throw new Error("The selected file is not a valid DOCX document.");
-  }
 }
 
 export async function parseSyllabusDocx(buffer: Buffer) {
@@ -196,14 +132,10 @@ export async function parseSyllabusDocx(buffer: Buffer) {
     .children()
     .each((_, child) => appendHtmlBlock($, $(child), blocks));
 
-  if (blocks.length === 0) {
-    throw new Error("No readable syllabus text or tables were found in the DOCX.");
-  }
-  if (blocks.length > SYLLABUS_BLOCK_LIMIT || contentLength(blocks) > SYLLABUS_CONTENT_LIMIT) {
-    throw new Error(
-      "The syllabus contains too much content to process safely. Reduce it to the relevant training sections and try again.",
-    );
-  }
+  assertReadableSyllabusBlocks(
+    blocks,
+    "No readable syllabus text or tables were found in the DOCX.",
+  );
 
   return blocks;
 }

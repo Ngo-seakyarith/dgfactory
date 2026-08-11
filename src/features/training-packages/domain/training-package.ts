@@ -33,6 +33,14 @@ export type TrainingPackageInput = {
   proposalBrief?: ProposalBrief;
 };
 
+export function durationAsModifier(duration: string) {
+  const normalized = duration.trim();
+  if (normalized.toLowerCase() === "half day") return "half-day";
+
+  const dayCount = normalized.match(/^(\d+(?:\.\d+)?)\s+days?$/i);
+  return dayCount ? `${dayCount[1]}-day` : normalized;
+}
+
 export type QualityChecklistItem = {
   category: string;
   item: string;
@@ -138,7 +146,7 @@ export function createTrainingOutputTemplate(
     courseTitle: input.courseTitle,
     client: input.client,
     courseOverview: [
-      `DG Academy will deliver a ${input.duration} training experience for ${input.audience}.`,
+      `DG Academy will deliver a ${durationAsModifier(input.duration)} training experience for ${input.audience}.`,
       `The program is designed for ${input.client} and promises to ${input.promise}.`,
     ],
     courseObjectives: [
