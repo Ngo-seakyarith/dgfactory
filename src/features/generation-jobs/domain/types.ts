@@ -1,7 +1,7 @@
 export const generationJobTypes = [
   "training_package",
-  "system_discovery",
-  "system_proposal",
+  "solution_review",
+  "solution_proposal",
   "delivery_material",
   "evaluation_questions",
   "delivery_report",

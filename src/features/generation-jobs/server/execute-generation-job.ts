@@ -1,9 +1,9 @@
 import { getGenerationJob } from "../storage/generation-job-storage";
 import { generateAndSaveTrainingPackage } from "@/features/training-packages/server/generation-task";
 import {
-  generateSystemProposalJob,
-  runSystemDiscoveryJob,
-} from "@/features/intelligent-system-proposals/server/generation-tasks";
+  generateSolutionProposalJob,
+  runSolutionReviewJob,
+} from "@/features/digital-solution-proposals/server/generation-tasks";
 import {
   generateDeliveryMaterialJob,
   generateDeliveryReportJob,
@@ -23,11 +23,11 @@ export async function executeGenerationJob(jobId: string) {
   if (job.jobType === "training_package") {
     return generateAndSaveTrainingPackage(job.resourceId, job.createdByActor);
   }
-  if (job.jobType === "system_discovery") {
-    return runSystemDiscoveryJob(job.resourceId, job.createdByActor);
+  if (job.jobType === "solution_review") {
+    return runSolutionReviewJob(job.resourceId, job.createdByActor);
   }
-  if (job.jobType === "system_proposal") {
-    return generateSystemProposalJob(job.resourceId, job.createdByActor);
+  if (job.jobType === "solution_proposal") {
+    return generateSolutionProposalJob(job.resourceId, job.createdByActor);
   }
   if (job.jobType === "delivery_material") {
     if (!isDeliveryMaterialKey(job.target)) {

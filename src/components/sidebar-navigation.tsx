@@ -56,7 +56,7 @@ const icons: Record<string, LucideIcon> = {
   Improvements: Lightbulb,
   "Training Packages": Archive,
   "Syllabus Imports": FileInput,
-  "System Proposals": FileCog,
+  "Solution Proposals": FileCog,
 };
 
 type SidebarNavigationProps = {

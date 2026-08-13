@@ -92,9 +92,29 @@ create table if not exists public.intelligent_system_proposals (
   client_id uuid references public.clients(id) on delete set null,
   client_name text not null,
   title text not null,
+  solution_type text not null default 'Other' check (
+    solution_type in (
+      'Business Website',
+      'Web Application',
+      'Internal Business System',
+      'Customer Portal',
+      'E-commerce',
+      'Data and Reporting System',
+      'AI-enabled System',
+      'Other'
+    )
+  ),
   brief jsonb not null default '{}'::jsonb,
   status text not null default 'Draft' check (
-    status in ('Draft', 'Analyzing', 'Analysis Ready', 'Generated', 'Failed')
+    status in (
+      'Draft',
+      'Analyzing',
+      'Analysis Ready',
+      'Reviewing',
+      'Review Ready',
+      'Generated',
+      'Failed'
+    )
   ),
   combined_analysis jsonb,
   analyst_review jsonb,
@@ -113,6 +133,8 @@ create index if not exists idx_intelligent_system_proposals_updated_at
   on public.intelligent_system_proposals(updated_at desc);
 create index if not exists idx_intelligent_system_proposals_status
   on public.intelligent_system_proposals(status);
+create index if not exists idx_intelligent_system_proposals_solution_type
+  on public.intelligent_system_proposals(solution_type);
 
 create table if not exists public.intelligent_system_files (
   id uuid primary key default gen_random_uuid(),
@@ -174,6 +196,8 @@ create table if not exists public.generation_jobs (
       'training_package',
       'system_discovery',
       'system_proposal',
+      'solution_review',
+      'solution_proposal',
       'delivery_material',
       'evaluation_questions',
       'delivery_report',
@@ -220,6 +244,24 @@ insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_typ
 values (
   'system-proposal-inputs',
   'system-proposal-inputs',
+  false,
+  10485760,
+  array[
+    'text/csv',
+    'application/csv',
+    'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    'application/octet-stream'
+  ]
+)
+on conflict (id) do update set
+  public = excluded.public,
+  file_size_limit = excluded.file_size_limit,
+  allowed_mime_types = excluded.allowed_mime_types;
+
+insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+values (
+  'solution-proposal-inputs',
+  'solution-proposal-inputs',
   false,
   10485760,
   array[

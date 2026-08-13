@@ -21,7 +21,7 @@ const navItems: SidebarItem[] = [
   { label: "Training Packages", href: "/packages", section: "Training" },
   { label: "Syllabus Imports", href: "/packages/from-syllabus", section: "Training" },
   { label: "Delivery", href: "/delivery", section: "Training" },
-  { label: "System Proposals", href: "/system-proposals", section: "Systems" },
+  { label: "Solution Proposals", href: "/solution-proposals", section: "Systems" },
   { label: "Clients", href: "/clients", section: "Business" },
   { label: "Pipeline", href: "/pipeline", section: "Business" },
   { label: "Knowledge", href: "/knowledge", section: "Reference" },

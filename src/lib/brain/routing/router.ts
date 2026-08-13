@@ -7,7 +7,7 @@ import {
   brainAgents,
   courseArchitectAgent,
   deliveryAgent,
-  dataDiscoveryAgent,
+  solutionReviewAgent,
   evaluationQuestionsAgent,
   facilitatorGuideAgent,
   promptLibraryAgent,
@@ -17,7 +17,7 @@ import {
   fitnessEvaluatorAgent,
   improvementAgent,
   improvementOpportunityAgent,
-  intelligentSystemProposalAgent,
+  digitalSolutionProposalAgent,
   syllabusProposalAgent,
   learningGenomeAgent,
   marketSensingAgent,
@@ -60,8 +60,8 @@ const taskMap: Record<BrainTaskType, BrainAgentDefinition> = {
   expansion_strategy: expansionAgent,
   learning_genome: learningGenomeAgent,
   extinction_recommendation: extinctionAgent,
-  data_discovery: dataDiscoveryAgent,
-  intelligent_system_proposal: intelligentSystemProposalAgent,
+  solution_review: solutionReviewAgent,
+  digital_solution_proposal: digitalSolutionProposalAgent,
   syllabus_to_training_proposal: syllabusProposalAgent,
 };
 

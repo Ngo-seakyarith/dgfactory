@@ -2,13 +2,13 @@ import type { TrainingPackageInput } from "@/features/training-packages";
 import type { ProposalNarrativeBrief } from "@/features/training-packages";
 import {
   adaptiveGrowthRecommendationsOutputSchema,
-  dataDiscoveryOutputSchema,
+  solutionReviewOutputSchema,
   deliveryDraftOutputSchema,
   evaluationQuestionsOutputSchema,
   facilitatorGuideOutputSchema,
   followUpOutputSchema,
   improvementOpportunityOutputSchema,
-  intelligentSystemProposalOutputSchema,
+  digitalSolutionProposalOutputSchema,
   offerReplicationOutputSchema,
   offerMutationOutputSchema,
   proposalAgentOutputSchema,
@@ -46,11 +46,11 @@ import {
   type WorkbookBrainOutput,
 } from "@/features/training-packages/export/material-document-plans";
 import type {
-  DataDiscoveryBrainInput,
-  DataDiscoveryBrainOutput,
-  SystemProposalBrainInput,
-  SystemProposalBrainOutput,
-} from "@/features/intelligent-system-proposals";
+  DigitalSolutionProposalBrainInput,
+  DigitalSolutionProposalBrainOutput,
+  SolutionReviewBrainInput,
+  SolutionReviewBrainOutput,
+} from "@/features/digital-solution-proposals";
 import type {
   SyllabusProposalBrainInput,
   SyllabusProposalBrainOutput,
@@ -81,8 +81,8 @@ export const brainTaskTypes = [
   "expansion_strategy",
   "learning_genome",
   "extinction_recommendation",
-  "data_discovery",
-  "intelligent_system_proposal",
+  "solution_review",
+  "digital_solution_proposal",
   "syllabus_to_training_proposal",
 ] as const;
 
@@ -120,10 +120,10 @@ export type {
 };
 
 export type {
-  DataDiscoveryBrainInput,
-  DataDiscoveryBrainOutput,
-  SystemProposalBrainInput,
-  SystemProposalBrainOutput,
+  DigitalSolutionProposalBrainInput,
+  DigitalSolutionProposalBrainOutput,
+  SolutionReviewBrainInput,
+  SolutionReviewBrainOutput,
 };
 
 export type { SyllabusProposalBrainInput, SyllabusProposalBrainOutput };
@@ -328,41 +328,45 @@ export const proposalAgent: BrainAgentDefinition = {
   outputSchema: proposalAgentOutputSchema,
 };
 
-export const dataDiscoveryAgent: BrainAgentDefinition<
-  DataDiscoveryBrainInput,
-  DataDiscoveryBrainOutput
+export const solutionReviewAgent: BrainAgentDefinition<
+  SolutionReviewBrainInput,
+  SolutionReviewBrainOutput
 > = {
-  taskType: "data_discovery",
-  name: "dataDiscoveryAgent",
-  role: "Senior business data analyst and intelligent-system discovery consultant",
+  taskType: "solution_review",
+  name: "solutionReviewAgent",
+  role: "Senior business analyst and digital solution consultant",
   instructions: [
-    "Analyze only the supplied deterministic dataset profiles and masked samples.",
-    "Never claim to have seen raw rows, never reconstruct redacted values, and never invent metrics or business facts.",
-    "Separate observed evidence from interpretation. Use low confidence when meaning cannot be confirmed from field names and aggregates.",
-    "Identify practical processes, data-quality issues, candidate KPIs, intelligent-system opportunities, risks, and questions that a consultant must validate with the client.",
-    "Keep the output editable, concise, and suitable for review before a proposal is generated.",
+    "Review the supplied client brief and recommend an appropriate digital solution for the stated business problem.",
+    "This task must work from the brief alone. Spreadsheet evidence is optional and may be null.",
+    "When evidenceAnalysis is null, set evidenceBasis to Brief only and leave evidenceFindings empty. Never imply that files or raw data were reviewed.",
+    "When evidenceAnalysis is present, use only its deterministic profiles and masked samples. Never reconstruct redacted values or invent metrics.",
+    "Separate confirmed requirements, evidence, assumptions, risks, and unanswered client questions. Mark each recommended capability as Brief, Evidence, or Assumption.",
+    "Cover users, workflows, interfaces, administration, integrations, security, delivery constraints, and success measures that are relevant to the selected solution type.",
+    "Keep the result concrete and editable so a consultant can correct it before proposal generation.",
   ].join("\n\n"),
   inputSchema: { type: "object" },
-  outputSchema: dataDiscoveryOutputSchema,
+  outputSchema: solutionReviewOutputSchema,
 };
 
-export const intelligentSystemProposalAgent: BrainAgentDefinition<
-  SystemProposalBrainInput,
-  SystemProposalBrainOutput
+export const digitalSolutionProposalAgent: BrainAgentDefinition<
+  DigitalSolutionProposalBrainInput,
+  DigitalSolutionProposalBrainOutput
 > = {
-  taskType: "intelligent_system_proposal",
-  name: "intelligentSystemProposalAgent",
-  role: "Enterprise intelligent-system solution architect and proposal writer",
+  taskType: "digital_solution_proposal",
+  name: "digitalSolutionProposalAgent",
+  role: "Digital solution architect and client proposal writer",
   instructions: [
-    "Create a client-ready DG Academy consulting proposal for an intelligent system.",
-    "Use only the supplied project brief, deterministic analysis, and reviewed analyst findings as evidence.",
+    "Create a client-ready DG Academy proposal for the selected digital solution type, including websites, web applications, internal systems, portals, e-commerce, data systems, and AI-enabled systems.",
+    "Use the supplied project brief and reviewed solution findings. Supporting data evidence is optional and may be null.",
+    "Do not force dashboards, artificial intelligence, data pipelines, or automation into projects that do not need them.",
     "Clearly label assumptions, risks, and items requiring discovery. Do not promise results or claim the final architecture has already been validated.",
-    "Recommend practical modules, workflows, dashboards, AI capabilities, integrations, governance, implementation phases, deliverables, and next steps.",
-    "Use commercial numbers only when they appear in commercialSummary. Never create prices, discounts, taxes, timelines, data volumes, or performance metrics that were not supplied.",
-    "Set coverHeading to Intelligent System Proposal, solutionTitle to the supplied project title, and client to the supplied client name.",
+    "Recommend practical modules, user journeys, interfaces, administration, integrations, governance, implementation phases, deliverables, and next steps.",
+    "Use commercial numbers only when they appear in commercialSummary. Never create prices, discounts, taxes, data volumes, or performance metrics that were not supplied.",
+    "Only include implementation durations supported by the brief or clearly label them as proposed estimates requiring confirmation.",
+    "Set coverHeading to Digital Solution Proposal, solutionTitle to projectTitle, and client to clientName.",
   ].join("\n\n"),
   inputSchema: { type: "object" },
-  outputSchema: intelligentSystemProposalOutputSchema,
+  outputSchema: digitalSolutionProposalOutputSchema,
 };
 
 export const syllabusProposalAgent: BrainAgentDefinition<
@@ -665,8 +669,8 @@ export const brainAgents = [
   chiefBrainAgent,
   courseArchitectAgent,
   proposalAgent,
-  dataDiscoveryAgent,
-  intelligentSystemProposalAgent,
+  solutionReviewAgent,
+  digitalSolutionProposalAgent,
   syllabusProposalAgent,
   pricingNarrativeAgent,
   slideAgent,

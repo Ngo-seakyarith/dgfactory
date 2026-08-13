@@ -1,9 +1,9 @@
 import { z } from "zod";
 
 import type {
-  DataDiscoveryBrainOutput,
-  SystemProposalBrainOutput,
-} from "@/features/intelligent-system-proposals";
+  DigitalSolutionProposalBrainOutput,
+  SolutionReviewBrainOutput,
+} from "@/features/digital-solution-proposals";
 import type { SyllabusProposalBrainOutput } from "@/features/syllabus-imports";
 import { proposalNarrativeSchema } from "@/features/training-packages/domain/proposal-narrative";
 import {
@@ -45,34 +45,39 @@ export const qualityChecklistItemSchema = z.strictObject({
   status: z.enum(["ready", "review"]),
 });
 
-const analystFindingSchema = z.strictObject({
+const evidenceFindingSchema = z.strictObject({
   title: z.string(),
   detail: z.string(),
   evidence: z.string(),
   severity: confidenceSchema,
 });
 
-const systemOpportunitySchema = z.strictObject({
+const recommendedCapabilitySchema = z.strictObject({
   title: z.string(),
   problem: z.string(),
-  evidence: z.string(),
+  rationale: z.string(),
   capability: z.string(),
-  expectedValue: z.string(),
+  userValue: z.string(),
+  basis: z.enum(["Brief", "Evidence", "Assumption"]),
   confidence: confidenceSchema,
 });
 
-export const dataDiscoveryOutputSchema = z.strictObject({
-  analystReview: z.strictObject({
+export const solutionReviewOutputSchema = z.strictObject({
+  solutionReview: z.strictObject({
+    evidenceBasis: z.enum(["Brief only", "Brief and source data"]),
     executiveSummary: z.string(),
-    detectedProcesses: stringArraySchema,
-    dataQualityFindings: z.array(analystFindingSchema),
-    candidateKpis: stringArraySchema,
-    opportunities: z.array(systemOpportunitySchema),
+    confirmedRequirements: stringArraySchema,
+    userGroups: stringArraySchema,
+    keyWorkflows: stringArraySchema,
+    recommendedCapabilities: z.array(recommendedCapabilitySchema),
+    evidenceFindings: z.array(evidenceFindingSchema),
+    technicalConsiderations: stringArraySchema,
+    assumptions: stringArraySchema,
     risks: stringArraySchema,
     questions: stringArraySchema,
     userNotes: z.string(),
   }),
-}) satisfies BrainOutputSchema<DataDiscoveryBrainOutput>;
+}) satisfies BrainOutputSchema<SolutionReviewBrainOutput>;
 
 const systemModuleSchema = z.strictObject({
   name: z.string(),
@@ -89,20 +94,20 @@ const implementationPhaseSchema = z.strictObject({
   deliverables: stringArraySchema,
 });
 
-export const intelligentSystemProposalOutputSchema = z.strictObject({
+export const digitalSolutionProposalOutputSchema = z.strictObject({
   proposalContent: z.strictObject({
     coverHeading: z.string(),
     solutionTitle: z.string(),
     client: z.string(),
     executiveSummary: stringArraySchema,
     clientSituation: stringArraySchema,
-    evidenceFindings: stringArraySchema,
-    objectives: stringArraySchema,
-    recommendedSystem: stringArraySchema,
-    modules: z.array(systemModuleSchema),
-    userWorkflows: stringArraySchema,
-    dashboardsAndAi: stringArraySchema,
-    dataFlowAndIntegrations: stringArraySchema,
+    discoveryFindings: stringArraySchema,
+    projectObjectives: stringArraySchema,
+    recommendedSolution: stringArraySchema,
+    solutionModules: z.array(systemModuleSchema),
+    userJourneys: stringArraySchema,
+    interfacesAndExperiences: stringArraySchema,
+    architectureAndIntegrations: stringArraySchema,
     securityAndGovernance: stringArraySchema,
     implementationPhases: z.array(implementationPhaseSchema),
     deliverables: stringArraySchema,
@@ -111,7 +116,7 @@ export const intelligentSystemProposalOutputSchema = z.strictObject({
     risks: stringArraySchema,
     nextSteps: stringArraySchema,
   }),
-}) satisfies BrainOutputSchema<SystemProposalBrainOutput>;
+}) satisfies BrainOutputSchema<DigitalSolutionProposalBrainOutput>;
 
 export const trainingPackageOutputSchema = z.strictObject({
   proposalNarrative: proposalNarrativeSchema,

@@ -1,8 +1,8 @@
 import type { GenerationJob } from "../domain/types";
 import {
-  getSystemProposal,
-  saveSystemProposal,
-} from "@/features/intelligent-system-proposals/storage/system-proposal-storage";
+  getSolutionProposal,
+  saveSolutionProposal,
+} from "@/features/digital-solution-proposals/storage/solution-proposal-storage";
 import {
   getSyllabusImport,
   saveSyllabusImport,
@@ -21,13 +21,13 @@ export async function markGenerationResourceFailed(job: GenerationJob) {
   }
 
   if (
-    job.jobType !== "system_discovery" &&
-    job.jobType !== "system_proposal"
+    job.jobType !== "solution_review" &&
+    job.jobType !== "solution_proposal"
   ) {
     return;
   }
 
-  const proposal = await getSystemProposal(job.resourceId);
+  const proposal = await getSolutionProposal(job.resourceId);
   if (!proposal || proposal.status === "Generated") return;
-  await saveSystemProposal({ ...proposal, status: "Failed" });
+  await saveSolutionProposal({ ...proposal, status: "Failed" });
 }

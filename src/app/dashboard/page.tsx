@@ -36,7 +36,7 @@ export default async function DashboardPage() {
             <Link href="/packages/new"><FilePlus2 /> New training package</Link>
           </Button>
           <Button asChild variant="outline">
-            <Link href="/system-proposals/new"><FileCog /> New system proposal</Link>
+            <Link href="/solution-proposals/new"><FileCog /> New digital solution proposal</Link>
           </Button>
         </div>
       </section>

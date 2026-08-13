@@ -58,8 +58,8 @@ function outputTypeForTask(taskType: BrainTaskType): OutputEvaluationType {
     expansion_strategy: "full_package",
     learning_genome: "full_package",
     extinction_recommendation: "full_package",
-    data_discovery: "full_package",
-    intelligent_system_proposal: "proposal",
+    solution_review: "full_package",
+    digital_solution_proposal: "proposal",
     syllabus_to_training_proposal: "proposal",
   };
 

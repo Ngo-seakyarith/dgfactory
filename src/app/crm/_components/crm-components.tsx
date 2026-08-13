@@ -53,8 +53,8 @@ import {
 } from "@/lib/crm";
 import type { TrainingPackage } from "@/features/training-packages";
 import type { DeliveryProject } from "@/features/delivery";
-import type { IntelligentSystemProposal } from "@/features/intelligent-system-proposals";
-import { useSystemProposalsQuery } from "@/features/intelligent-system-proposals/queries";
+import type { DigitalSolutionProposal } from "@/features/digital-solution-proposals";
+import { useSolutionProposalsQuery } from "@/features/digital-solution-proposals/queries";
 import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
 import { useDeliveryProjectsQuery } from "@/features/delivery/queries";
 import {
@@ -70,7 +70,7 @@ function useCrmData() {
   const clientsQuery = useClientsQuery();
   const opportunitiesQuery = useOpportunitiesQuery();
   const packagesQuery = useTrainingPackagesQuery();
-  const systemProposalsQuery = useSystemProposalsQuery();
+  const systemProposalsQuery = useSolutionProposalsQuery();
   const queries = [clientsQuery, opportunitiesQuery, packagesQuery, systemProposalsQuery];
   const isLoading = queries.some((query) => query.isPending);
   const isFetching = queries.some((query) => query.isFetching);
@@ -225,13 +225,13 @@ function packagesForClient(client: Client, packages: TrainingPackage[]) {
 function getClientActivity(
   client: Client,
   packages: TrainingPackage[],
-  systemProposals: IntelligentSystemProposal[],
+  systemProposals: DigitalSolutionProposal[],
 ) {
   const clientPackages = packagesForClient(client, packages);
   const clientSystemProposals = systemProposals.filter(
     (proposal) =>
-      proposal.brief.clientId === client.id ||
-      (!proposal.brief.clientId && clientNameKey(proposal.brief.clientName) === clientNameKey(client.name)),
+      proposal.clientId === client.id ||
+      (!proposal.clientId && clientNameKey(proposal.clientName) === clientNameKey(client.name)),
   );
 
   return {
@@ -248,7 +248,7 @@ export function ClientCard({
 }: {
   client: Client;
   packages: TrainingPackage[];
-  systemProposals: IntelligentSystemProposal[];
+  systemProposals: DigitalSolutionProposal[];
 }) {
   const { clientPackages, clientSystemProposals, latestPackage } = getClientActivity(
     client,
@@ -277,7 +277,7 @@ export function ClientCard({
           {clientPackages.length} {clientPackages.length === 1 ? "package" : "packages"}
         </Badge>
         <Badge variant="outline">
-          {clientSystemProposals.length} system {clientSystemProposals.length === 1 ? "proposal" : "proposals"}
+          {clientSystemProposals.length} solution {clientSystemProposals.length === 1 ? "proposal" : "proposals"}
         </Badge>
         {client.email ? <Badge variant="outline">{client.email}</Badge> : null}
         {client.phone ? <Badge variant="outline">{client.phone}</Badge> : null}
@@ -298,7 +298,7 @@ function ClientsTable({
 }: {
   clients: Client[];
   packages: TrainingPackage[];
-  systemProposals: IntelligentSystemProposal[];
+  systemProposals: DigitalSolutionProposal[];
 }) {
   return (
     <div className="max-h-[70vh] overflow-auto rounded-lg border border-border bg-card">
@@ -498,8 +498,8 @@ export function ClientDetailClient({ id }: { id: string }) {
   const clientPackages = client ? packagesForClient(client, packages) : [];
   const clientSystemProposals = systemProposals.filter(
     (proposal) =>
-      proposal.brief.clientId === id ||
-      (client && !proposal.brief.clientId && clientNameKey(proposal.brief.clientName) === clientNameKey(client.name)),
+      proposal.clientId === id ||
+      (client && !proposal.clientId && clientNameKey(proposal.clientName) === clientNameKey(client.name)),
   );
 
   async function deleteClient() {
@@ -601,8 +601,8 @@ export function ClientDetailClient({ id }: { id: string }) {
 
       <Card className="border-white/10 bg-white/[0.04] shadow-executive">
         <CardHeader>
-          <CardTitle>Intelligent System Proposals</CardTitle>
-          <CardDescription>Data assessments and system recommendations prepared for this client.</CardDescription>
+          <CardTitle>Digital Solution Proposals</CardTitle>
+          <CardDescription>Website, application, portal, data, and AI solution proposals prepared for this client.</CardDescription>
         </CardHeader>
         <CardContent>
           {clientSystemProposals.length ? (
@@ -610,20 +610,20 @@ export function ClientDetailClient({ id }: { id: string }) {
               {clientSystemProposals.map((proposal) => (
                 <Link
                   key={proposal.id}
-                  href={`/system-proposals/${proposal.id}`}
+                  href={`/solution-proposals/${proposal.id}`}
                   className="group flex items-start gap-3 rounded-lg border border-white/10 bg-[#07111f]/55 p-4 transition hover:border-teal-300/35 hover:bg-teal-300/10"
                 >
                   <FileText className="mt-0.5 h-4 w-4 shrink-0 text-teal-200" />
                   <div className="min-w-0 flex-1">
-                    <div className="line-clamp-1 font-semibold text-white">{proposal.brief.projectTitle}</div>
+                    <div className="line-clamp-1 font-semibold text-white">{proposal.title}</div>
                     <p className="mt-1 text-sm text-muted-foreground">{proposal.status} · Updated {new Date(proposal.updatedAt).toLocaleDateString()}</p>
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{proposal.brief.businessGoal}</p>
+                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{proposal.brief.projectGoal}</p>
                   </div>
                 </Link>
               ))}
             </div>
           ) : (
-            <EmptyCrmState title="No system proposals for this client" href="/system-proposals/new" label="Create System Proposal" />
+            <EmptyCrmState title="No digital solution proposals for this client" href="/solution-proposals/new" label="Create Solution Proposal" />
           )}
         </CardContent>
       </Card>

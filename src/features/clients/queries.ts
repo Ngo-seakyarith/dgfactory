@@ -78,7 +78,7 @@ export function useDeleteClientMutation() {
       queryClient.removeQueries({ queryKey: clientKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: clientKeys.list() });
       void queryClient.invalidateQueries({ queryKey: ["training-packages"] });
-      void queryClient.invalidateQueries({ queryKey: ["system-proposals"] });
+      void queryClient.invalidateQueries({ queryKey: ["solution-proposals"] });
       void queryClient.invalidateQueries({ queryKey: opportunityKeys.all });
     },
   });
