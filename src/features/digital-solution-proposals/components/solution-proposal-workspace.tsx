@@ -7,7 +7,6 @@ import {
   ClipboardCheck,
   FileText,
   Loader2,
-  Save,
   Sparkles,
   Trash2,
 } from "lucide-react";
@@ -15,6 +14,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
+import { AutosaveIndicator } from "@/components/autosave-indicator";
 import { QueryErrorState } from "@/components/query-error-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +31,7 @@ import {
 } from "@/features/generation-jobs/queries";
 import { requestJson } from "@/lib/api-client";
 import type { ClientProfileInput } from "@/lib/crm";
+import { useAutosave } from "@/hooks/use-autosave";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 
 import { createSolutionProposal } from "../domain/proposal";
@@ -64,10 +65,23 @@ const emptyClientProfile: ClientProfileInput = {
   phone: "",
 };
 
+function profileFromResponse(client: ClientProfileInput & { id: string }) {
+  return {
+    id: client.id,
+    name: client.name,
+    sector: client.sector,
+    contactPerson: client.contactPerson,
+    contactPosition: client.contactPosition,
+    email: client.email,
+    phone: client.phone,
+  };
+}
+
 export function SolutionProposalWorkspace({ id }: { id?: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [resourceId, setResourceId] = useState(id ?? "");
+  const resourceIdRef = useRef(id ?? "");
   const proposalQuery = useSolutionProposalQuery(resourceId || undefined);
   const clientsQuery = useClientsQuery();
   const saveMutation = useSaveSolutionProposalMutation();
@@ -122,6 +136,29 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
     });
   };
   const success = (text: string) => setNotice({ text, error: false });
+  const autosaveValue = { proposal, client: clientProfile };
+  const autosave = useAutosave({
+    value: autosaveValue,
+    enabled:
+      Boolean(proposal.title.trim() && clientProfile.name.trim()) &&
+      !busy &&
+      !activeJob,
+    async onSave(snapshot) {
+      const data = await saveMutation.mutateAsync({
+        id: resourceIdRef.current || undefined,
+        proposal: snapshot.proposal,
+        client: snapshot.client,
+      });
+      setSolutionProposalQueryData(queryClient, data.proposal);
+      if (!resourceIdRef.current) {
+        loadedProposal.current = true;
+        resourceIdRef.current = data.proposal.id;
+        setResourceId(data.proposal.id);
+        router.replace(`/solution-proposals/${data.proposal.id}`);
+      }
+    },
+    onError: fail,
+  });
 
   useEffect(() => {
     if (!proposalQuery.data || loadedProposal.current) return;
@@ -130,9 +167,8 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
     setProposal(loaded);
     const client = clientsQuery.data?.find((item) => item.id === loaded.clientId);
     loadedClientProfile.current = Boolean(client);
-    setClientProfile(
-      client
-        ? {
+    const loadedProfile = client
+      ? {
             id: client.id,
             name: client.name,
             sector: client.sector,
@@ -141,11 +177,12 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
             email: client.email,
             phone: client.phone,
           }
-        : { ...emptyClientProfile, id: loaded.clientId ?? undefined, name: loaded.clientName },
-    );
+      : { ...emptyClientProfile, id: loaded.clientId ?? undefined, name: loaded.clientName };
+    setClientProfile(loadedProfile);
+    autosave.markSaved({ proposal: loaded, client: loadedProfile });
     if (loaded.proposalContent) setStage("proposal");
     else if (loaded.solutionReview) setStage("review");
-  }, [clientsQuery.data, proposalQuery.data]);
+  }, [autosave, clientsQuery.data, proposalQuery.data]);
 
   useEffect(() => {
     if (loadedClientProfile.current || !proposal.clientId) return;
@@ -201,6 +238,7 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
       if (!data) return;
       setProposal(data);
       setSolutionProposalQueryData(queryClient, data);
+      autosave.markSaved({ proposal: data, client: clientProfile });
       setStage(completedType === "solution_review" ? "review" : "proposal");
       success(
         completedType === "solution_review"
@@ -209,27 +247,26 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
       );
       setBusy("");
     });
-  }, [activeJob, proposalJob.data, proposalQuery, queryClient, reviewJob.data]);
+  }, [activeJob, autosave, clientProfile, proposalJob.data, proposalQuery, queryClient, reviewJob.data]);
 
   async function save(message = "Draft saved.") {
+    autosave.cancel();
+    await autosave.waitForPending();
     setBusy("Saving draft...");
     try {
+      const currentResourceId = resourceIdRef.current;
       const data = await saveMutation.mutateAsync({
-        id: resourceId || undefined,
+        id: currentResourceId || undefined,
         proposal,
         client: clientProfile,
       });
       setProposal(data.proposal);
-      setClientProfile({
-        id: data.client.id,
-        name: data.client.name,
-        sector: data.client.sector,
-        contactPerson: data.client.contactPerson,
-        contactPosition: data.client.contactPosition,
-        email: data.client.email,
-        phone: data.client.phone,
-      });
-      if (!resourceId) {
+      const savedClient = profileFromResponse(data.client);
+      setClientProfile(savedClient);
+      autosave.markSaved({ proposal: data.proposal, client: savedClient });
+      if (!currentResourceId) {
+        loadedProposal.current = true;
+        resourceIdRef.current = data.proposal.id;
         setResourceId(data.proposal.id);
         router.replace(`/solution-proposals/${data.proposal.id}`);
       }
@@ -245,16 +282,16 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
 
   async function upload(files: FileList | null) {
     if (!files?.length) return;
-    if (!resourceId) {
-      fail(new Error("Save the project brief before uploading supporting data."));
-      return;
-    }
     if (proposal.files.length + files.length > 5) {
       fail(new Error("A project can contain up to five supporting data files."));
       return;
     }
     setBusy("Uploading and analyzing supporting data...");
     try {
+      const saved = resourceId ? proposal : await save("");
+      if (!saved) return;
+      const proposalId = resourceId || saved.id;
+      setBusy("Uploading and analyzing supporting data...");
       const supabase = createSupabaseBrowserClient();
       if (!supabase) throw new Error("Supabase browser configuration is missing.");
       let latest = proposal;
@@ -263,7 +300,7 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
           file: SolutionSourceFile;
           path: string;
           token: string;
-        }>(`/api/solution-proposals/${resourceId}/files/upload-token`, {
+        }>(`/api/solution-proposals/${proposalId}/files/upload-token`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
@@ -279,18 +316,19 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
           });
         if (error) {
           await fetch(
-            `/api/solution-proposals/${resourceId}/files/${token.file.id}`,
+            `/api/solution-proposals/${proposalId}/files/${token.file.id}`,
             { method: "DELETE" },
           );
           throw error;
         }
         const analyzed = await commandMutation.mutateAsync({
-          url: `/api/solution-proposals/${resourceId}/files/${token.file.id}/analyze`,
+          url: `/api/solution-proposals/${proposalId}/files/${token.file.id}/analyze`,
           init: { method: "POST" },
         });
         if (analyzed.proposal) latest = analyzed.proposal;
       }
       setProposal(latest);
+      autosave.markSaved({ proposal: latest, client: clientProfile });
       success("Supporting data analyzed.");
     } catch (error) {
       fail(error);
@@ -307,7 +345,10 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
         url: `/api/solution-proposals/${resourceId}/files/${fileId}`,
         init: { method: "DELETE" },
       });
-      if (data.proposal) setProposal(data.proposal);
+      if (data.proposal) {
+        setProposal(data.proposal);
+        autosave.markSaved({ proposal: data.proposal, client: clientProfile });
+      }
     } catch (error) {
       fail(error);
     } finally {
@@ -444,9 +485,7 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
         </div>
         <div className="flex items-center gap-2">
           {resourceId ? <Badge variant="teal">{proposal.status}</Badge> : null}
-          <Button variant="outline" onClick={() => void save()} disabled={Boolean(busy)}>
-            <Save className="h-4 w-4" />Save Draft
-          </Button>
+          <AutosaveIndicator status={autosave.status} />
           {resourceId ? (
             <Button variant="destructive" size="icon" title="Delete proposal" onClick={() => void deleteProject()} disabled={Boolean(busy)}>
               <Trash2 className="h-4 w-4" />
@@ -459,7 +498,14 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
         {stages.map((item) => {
           const Icon = item.icon;
           return (
-            <Button key={item.id} variant={stage === item.id ? "secondary" : "ghost"} onClick={() => setStage(item.id)}>
+            <Button
+              key={item.id}
+              variant={stage === item.id ? "secondary" : "ghost"}
+              onClick={() => {
+                void autosave.flush();
+                setStage(item.id);
+              }}
+            >
               <Icon className="h-4 w-4" />{item.label}
             </Button>
           );
@@ -483,7 +529,7 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
           clients={clientsQuery.data ?? []}
           clientProfile={clientProfile}
           busy={Boolean(busy)}
-          canUpload={Boolean(resourceId)}
+          canUpload={Boolean(proposal.title.trim() && clientProfile.name.trim())}
           onProposalChange={setProposal}
           onClientChange={setClientProfile}
           onSelectClient={selectClient}
@@ -497,7 +543,6 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
           busy={Boolean(busy)}
           onChange={setProposal}
           onCreateReview={() => void createReview()}
-          onSave={() => void save("Review saved.")}
         />
       ) : null}
       {stage === "proposal" ? (

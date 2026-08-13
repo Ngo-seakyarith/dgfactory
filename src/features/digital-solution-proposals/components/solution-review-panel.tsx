@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, RefreshCw, Save } from "lucide-react";
+import { AlertTriangle, RefreshCw } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +23,6 @@ type Props = {
   busy: boolean;
   onChange: (proposal: DigitalSolutionProposal) => void;
   onCreateReview: () => void;
-  onSave: () => void;
 };
 
 export function SolutionReviewPanel({
@@ -31,7 +30,6 @@ export function SolutionReviewPanel({
   busy,
   onChange,
   onCreateReview,
-  onSave,
 }: Props) {
   const review = proposal.solutionReview;
   const evidence = proposal.evidenceAnalysis;
@@ -94,14 +92,11 @@ export function SolutionReviewPanel({
 
       {review ? (
         <div className="space-y-5">
-          <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
+          <div className="flex items-center gap-3 border-b border-border pb-3">
             <div className="flex items-center gap-2">
               <h3 className="font-semibold">Editable findings</h3>
               <Badge variant="outline">{review.evidenceBasis}</Badge>
             </div>
-            <Button variant="outline" onClick={onSave} disabled={busy}>
-              <Save className="h-4 w-4" />Save Review
-            </Button>
           </div>
           <Field label="Executive assessment">
             <Textarea

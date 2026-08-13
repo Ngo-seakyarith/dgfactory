@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Check, Clipboard, Loader2, Save, Sparkles } from "lucide-react";
+import { Check, Clipboard, Sparkles } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -27,30 +27,6 @@ export function CopyButton({
     <Button type="button" variant="outline" size="sm" onClick={copy}>
       {copied ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
       {copied ? "Copied" : label}
-    </Button>
-  );
-}
-
-export function SaveButton({
-  disabled,
-  isSaving,
-  onSave,
-}: {
-  disabled?: boolean;
-  isSaving?: boolean;
-  onSave: () => void;
-}) {
-  return (
-    <Button
-      type="button"
-      variant="outline"
-      size="lg"
-      className="w-full sm:w-auto"
-      onClick={onSave}
-      disabled={disabled || isSaving}
-    >
-      {isSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-      Save Package
     </Button>
   );
 }

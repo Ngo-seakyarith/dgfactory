@@ -298,7 +298,7 @@ export function SolutionBriefForm({
         </div>
         <label className="flex min-h-24 cursor-pointer items-center justify-center gap-3 rounded-md border border-dashed border-border bg-muted/30 px-4 text-sm transition hover:border-primary/40">
           <Upload className="h-5 w-5 text-primary" />
-          <span>{canUpload ? "Choose up to five .xlsx or .csv files" : "Save the brief before uploading files"}</span>
+          <span>{canUpload ? "Choose up to five .xlsx or .csv files" : "Enter the client and project title before uploading files"}</span>
           <input
             className="sr-only"
             type="file"

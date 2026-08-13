@@ -6,16 +6,15 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  Check,
   Clipboard,
   Calculator,
   FileText,
   Loader2,
   MessageSquareText,
-  Save,
   Sparkles,
 } from "lucide-react";
 
+import { AutosaveIndicator } from "@/components/autosave-indicator";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -42,6 +41,7 @@ import {
 import { useLatestGenerationJobQuery } from "@/features/generation-jobs/queries";
 import { isActiveGenerationJob } from "@/features/generation-jobs/domain/types";
 import { requestJson } from "@/lib/api-client";
+import { useAutosave } from "@/hooks/use-autosave";
 import { trainingPackageKeys } from "../queries";
 import type { ExportFormat, ExportTarget } from "@/features/training-packages";
 import type { Client, ClientProfileInput } from "@/lib/crm";
@@ -146,6 +146,13 @@ const emptyClientProfile: ClientProfileInput = {
   contactPosition: "",
   email: "",
   phone: "",
+};
+
+type PackageEditorState = {
+  form: TrainingPackageInput;
+  proposalBrief: ProposalBrief;
+  clientProfile: ClientProfileInput;
+  pricingInputs: PricingInputs;
 };
 
 function profileFromClient(client: Client): ClientProfileInput {
@@ -270,6 +277,7 @@ export function PackageForm({
   const clients = clientsQuery.data ?? [];
   const saveMutation = useSaveTrainingPackageMutation();
   const generateMutation = useGenerateTrainingPackageMutation();
+  const packageIdRef = useRef(initialPackage?.id ?? crypto.randomUUID());
   const initialClientResolved = useRef(false);
   const outputRef = useRef<HTMLDivElement>(null);
   const [clientProfile, setClientProfile] = useState<ClientProfileInput>(() => ({
@@ -300,6 +308,39 @@ export function PackageForm({
     jobType: "training_package",
     resourceId: jobResourceId,
     enabled: Boolean(jobResourceId),
+  });
+  const editorState: PackageEditorState = {
+    form,
+    proposalBrief,
+    clientProfile,
+    pricingInputs,
+  };
+  const autosave = useAutosave({
+    value: editorState,
+    enabled:
+      Boolean(form.courseTitle.trim() && form.client.trim()) &&
+      !generateMutation.isPending &&
+      !activeJobId,
+    async onSave(snapshot) {
+      const payload = await saveMutation.mutateAsync({
+        package: buildEditablePackage(snapshot),
+        client: snapshot.clientProfile,
+      });
+      setCurrentPackage(payload.package);
+      queryClient.setQueryData(
+        trainingPackageKeys.detail(payload.package.id),
+        payload.package,
+      );
+      onPackageSaved?.(payload.package);
+      if (!jobResourceId) router.replace(`/packages/${payload.package.id}`);
+    },
+    onError(saveError) {
+      setError(
+        saveError instanceof Error
+          ? saveError.message
+          : "Autosave failed.",
+      );
+    },
   });
 
   useEffect(() => {
@@ -486,6 +527,34 @@ export function PackageForm({
     );
   }
 
+  function buildEditablePackage(snapshot: PackageEditorState) {
+    const input: TrainingPackageInput = {
+      ...snapshot.form,
+      proposalBrief: snapshot.proposalBrief,
+    };
+
+    return buildPackageFromParts({
+      input,
+      outputs:
+        currentPackage?.status === "Generated"
+          ? {
+              syllabus: currentPackage.syllabus,
+              proposal: currentPackage.proposal,
+              proposalContent: currentPackage.proposalContent ?? undefined,
+            }
+          : createTrainingOutputTemplate(input),
+      id: packageIdRef.current,
+      createdAt: initialPackage?.createdAt ?? currentPackage?.createdAt,
+      clientId:
+        snapshot.clientProfile.id ??
+        currentPackage?.clientId ??
+        initialPackage?.clientId,
+      pricingInputs: snapshot.pricingInputs,
+      knowledgeUsed:
+        currentPackage?.knowledgeUsed ?? initialPackage?.knowledgeUsed ?? [],
+    });
+  }
+
   async function persistPackage(packageToSave: TrainingPackage) {
     const payload = await saveMutation.mutateAsync({
       package: packageToSave,
@@ -497,6 +566,8 @@ export function PackageForm({
   }
 
   async function generatePackage() {
+    autosave.cancel();
+    await autosave.waitForPending();
     setError("");
     setNotice("");
     try {
@@ -504,23 +575,7 @@ export function PackageForm({
         throw new Error("Select a trainer before generating the package.");
       }
 
-      const generationInput: TrainingPackageInput = { ...form, proposalBrief };
-      const pkg = buildPackageFromParts({
-        input: generationInput,
-        outputs:
-          currentPackage?.status === "Generated"
-            ? {
-                syllabus: currentPackage.syllabus,
-                proposal: currentPackage.proposal,
-                proposalContent: currentPackage.proposalContent ?? undefined,
-              }
-            : createTrainingOutputTemplate(generationInput),
-        id: initialPackage?.id ?? currentPackage?.id,
-        createdAt: initialPackage?.createdAt ?? currentPackage?.createdAt,
-        clientId: clientProfile.id ?? currentPackage?.clientId ?? initialPackage?.clientId,
-        pricingInputs,
-        knowledgeUsed: currentPackage?.knowledgeUsed ?? initialPackage?.knowledgeUsed ?? [],
-      });
+      const pkg = buildEditablePackage(editorState);
 
       const savedPackage = await persistPackage(pkg);
       setCurrentPackage(savedPackage);
@@ -533,56 +588,6 @@ export function PackageForm({
           ? generationError.message
           : "Generation failed.",
       );
-    }
-  }
-
-  async function savePackage() {
-    setError("");
-    setNotice("");
-
-    try {
-      const isDraft = !currentPackage || currentPackage.status === "Draft";
-      let packageToSave: TrainingPackage;
-
-      if (isDraft) {
-        if (!form.courseTitle.trim() || !form.client.trim()) {
-          throw new Error("Enter the course title and client before saving.");
-        }
-
-        const draftInput: TrainingPackageInput = { ...form, proposalBrief };
-        packageToSave = buildPackageFromParts({
-          input: draftInput,
-          outputs: createTrainingOutputTemplate(draftInput),
-          id: initialPackage?.id ?? currentPackage?.id,
-          createdAt: initialPackage?.createdAt ?? currentPackage?.createdAt,
-          clientId:
-            clientProfile.id ??
-            currentPackage?.clientId ??
-            initialPackage?.clientId,
-          pricingInputs,
-          knowledgeUsed:
-            currentPackage?.knowledgeUsed ?? initialPackage?.knowledgeUsed ?? [],
-        });
-      } else {
-        packageToSave = {
-          ...currentPackage,
-          clientId: clientProfile.id ?? currentPackage.clientId,
-          client: form.client,
-          updatedAt: new Date().toISOString(),
-        };
-      }
-
-      const savedPackage = await persistPackage(packageToSave);
-      setCurrentPackage(savedPackage);
-      onPackageSaved?.(savedPackage);
-      setNotice(
-        savedPackage.status === "Draft"
-          ? "Draft saved in Supabase. You can generate it later."
-          : "Saved in Supabase.",
-      );
-      router.push(`/packages/${savedPackage.id}`);
-    } catch (saveError) {
-      setError(saveError instanceof Error ? saveError.message : "Database save failed.");
     }
   }
 
@@ -879,7 +884,7 @@ export function PackageForm({
             </div>
           ) : null}
 
-          <div className="flex flex-col gap-3 sm:flex-row">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <Button
               type="button"
               variant="gold"
@@ -895,17 +900,7 @@ export function PackageForm({
               )}
               Generate Training Package
             </Button>
-            <Button
-              type="button"
-              variant="outline"
-              size="lg"
-              className="w-full sm:w-auto"
-              onClick={savePackage}
-              disabled={saveMutation.isPending || generateMutation.isPending || Boolean(activeJobId)}
-            >
-              {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save Package
-            </Button>
+            <AutosaveIndicator status={autosave.status} />
           </div>
         </div>
       </div>
@@ -937,7 +932,7 @@ export function PackageForm({
             ) : (
               <EmptyState
                 title="Your production package will appear here."
-                detail="Generate once, review the tabs, then save the package locally or into Supabase when configured."
+                detail="Complete the brief and trainer selection, then generate the package. Your draft saves automatically."
               />
             )}
           </CardContent>
