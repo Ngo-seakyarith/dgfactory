@@ -342,9 +342,16 @@ function proposalBullet(
 }
 
 function proposalSessionChildren(item: string, index: number) {
-  const [headingSource, detailSource] = item.includes("|")
-    ? item.split(/\s*\|\s*/, 2)
-    : [`Session ${index + 1}`, item.replace(/^Session\s+\d+\s*:\s*/i, "")];
+  const inlineBulletParts = item
+    .split(/\s*[•▪●]\s*/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  const hasInlineBullets = inlineBulletParts.length > 1;
+  const [headingSource, detailSource] = hasInlineBullets
+    ? [inlineBulletParts[0], inlineBulletParts.slice(1).join(";")]
+    : item.includes("|")
+      ? item.split(/\s*\|\s*/, 2)
+      : [`Session ${index + 1}`, item.replace(/^Session\s+\d+\s*:\s*/i, "")];
   const heading = headingSource.trim() || `Session ${index + 1}`;
   const details = detailSource
     .split(/;\s*/)
@@ -365,7 +372,7 @@ function proposalSessionChildren(item: string, index: number) {
 
 function proposalContentOutlineChildren(items: string[]) {
   const looksLikeSessionPlan = items.some((item) =>
-    /\||^Session\s+\d+\s*:/i.test(item),
+    /[|•▪●]|^Session\s+\d+\s*:/i.test(item),
   );
 
   if (!looksLikeSessionPlan) {
@@ -379,27 +386,7 @@ function proposalContentOutlineChildren(items: string[]) {
     );
   }
 
-  return items.flatMap((item, index) => {
-    if (/\bbreak\b/i.test(item)) {
-      const parts = item
-        .split(/\s*[|;]\s*/)
-        .map((part) => part.trim())
-        .filter(Boolean);
-      const label = parts.find((part) => /break/i.test(part)) ?? "Break";
-      const detail = parts.filter((part) => part !== label).join(" - ");
-      return [
-        proposalParagraph(`${label}${detail ? ` - ${detail}` : ""}`, {
-          bold: true,
-          italics: true,
-          font: "Arial",
-          size: 22,
-          before: 100,
-          after: 100,
-        }),
-      ];
-    }
-    return proposalSessionChildren(item, index);
-  });
+  return items.flatMap((item, index) => proposalSessionChildren(item, index));
 }
 
 function numberedProposalSection(

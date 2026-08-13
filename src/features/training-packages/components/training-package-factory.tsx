@@ -198,34 +198,6 @@ function TrainerProfilePreview({
           <p className="text-sm text-muted-foreground">Trainer &amp; Speaker</p>
         </div>
         <p className="text-sm leading-6 text-muted-foreground">{trainer.bio}</p>
-        {trainer.experience.length > 0 ? (
-          <div>
-            <h4 className="mb-2 text-sm font-semibold text-foreground">
-              Experience
-            </h4>
-            <ul className="space-y-1.5 pl-5 text-sm leading-6 text-muted-foreground">
-              {trainer.experience.map((item) => (
-                <li key={item} className="list-disc">
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
-        {trainer.qualifications.length > 0 ? (
-          <div>
-            <h4 className="mb-2 text-sm font-semibold text-foreground">
-              Qualifications
-            </h4>
-            <ul className="space-y-1.5 pl-5 text-sm leading-6 text-muted-foreground">
-              {trainer.qualifications.map((item) => (
-                <li key={item} className="list-disc">
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        ) : null}
       </div>
     </div>
   );

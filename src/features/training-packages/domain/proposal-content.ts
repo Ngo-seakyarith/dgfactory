@@ -4,7 +4,6 @@ import {
   type ProposalBrief,
 } from "./proposal-brief";
 import type { ProposalNarrative } from "./proposal-narrative";
-import { normalizeContentOutlineItems } from "./proposal-content-outline";
 
 export type ProposalSchedule = {
   duration: string;
@@ -359,8 +358,9 @@ export function proposalContentFromNarrative(
       narrative.expectedLearningOutcomes,
       fallback.expectedLearningOutcomes,
     ),
-    contentOutlines: normalizeContentOutlineItems(
-      cleanItems(narrative.contentOutlines, fallback.contentOutlines),
+    contentOutlines: cleanItems(
+      narrative.contentOutlines,
+      fallback.contentOutlines,
     ),
     whoShouldAttend: cleanItems(
       narrative.whoShouldAttend,
@@ -393,7 +393,6 @@ export function normalizeProposalContent(
   const trainer = (record.trainer ?? {}) as Partial<ProposalTrainer>;
   const fee = (record.professionalFee ?? {}) as Partial<ProposalProfessionalFee>;
   const signatory = (record.signatory ?? {}) as Partial<ProposalSignatory>;
-
   return {
     generationStatus:
       record.generationStatus === "Draft" ? "Draft" : "Generated",
@@ -413,9 +412,7 @@ export function normalizeProposalContent(
       record.expectedLearningOutcomes,
       fallback.expectedLearningOutcomes,
     ),
-    contentOutlines: normalizeContentOutlineItems(
-      cleanItems(record.contentOutlines, fallback.contentOutlines),
-    ),
+    contentOutlines: cleanItems(record.contentOutlines, fallback.contentOutlines),
     whoShouldAttend: cleanItems(record.whoShouldAttend, fallback.whoShouldAttend),
     trainingMethodology: cleanItems(
       record.trainingMethodology,
