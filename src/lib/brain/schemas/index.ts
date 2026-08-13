@@ -80,41 +80,45 @@ export const solutionReviewOutputSchema = z.strictObject({
 }) satisfies BrainOutputSchema<SolutionReviewBrainOutput>;
 
 const systemModuleSchema = z.strictObject({
-  name: z.string(),
-  purpose: z.string(),
-  inputs: stringArraySchema,
-  outputs: stringArraySchema,
-  userValue: z.string(),
+  name: requiredTextSchema.max(100),
+  purpose: requiredTextSchema.max(320),
+  inputs: z.array(requiredTextSchema.max(180)).min(1).max(4),
+  outputs: z.array(requiredTextSchema.max(180)).min(1).max(4),
+  userValue: requiredTextSchema.max(240),
 });
 
 const implementationPhaseSchema = z.strictObject({
-  name: z.string(),
-  duration: z.string(),
-  activities: stringArraySchema,
-  deliverables: stringArraySchema,
+  name: requiredTextSchema.max(100),
+  duration: requiredTextSchema.max(80),
+  activities: z.array(requiredTextSchema.max(200)).min(1).max(4),
+  deliverables: z.array(requiredTextSchema.max(200)).min(1).max(3),
 });
+
+const proposalPointSchema = requiredTextSchema.max(320);
+const proposalPointsSchema = z.array(proposalPointSchema).min(1).max(5);
+const optionalProposalPointsSchema = z.array(proposalPointSchema).max(5);
 
 export const digitalSolutionProposalOutputSchema = z.strictObject({
   proposalContent: z.strictObject({
-    coverHeading: z.string(),
-    solutionTitle: z.string(),
-    client: z.string(),
-    executiveSummary: stringArraySchema,
-    clientSituation: stringArraySchema,
-    discoveryFindings: stringArraySchema,
-    projectObjectives: stringArraySchema,
-    recommendedSolution: stringArraySchema,
-    solutionModules: z.array(systemModuleSchema),
-    userJourneys: stringArraySchema,
-    interfacesAndExperiences: stringArraySchema,
-    architectureAndIntegrations: stringArraySchema,
-    securityAndGovernance: stringArraySchema,
-    implementationPhases: z.array(implementationPhaseSchema),
-    deliverables: stringArraySchema,
-    clientResponsibilities: stringArraySchema,
-    assumptions: stringArraySchema,
-    risks: stringArraySchema,
-    nextSteps: stringArraySchema,
+    coverHeading: requiredTextSchema.max(80),
+    solutionTitle: requiredTextSchema.max(160),
+    client: requiredTextSchema.max(160),
+    executiveSummary: z.array(proposalPointSchema).min(2).max(4),
+    clientSituation: proposalPointsSchema,
+    discoveryFindings: optionalProposalPointsSchema,
+    projectObjectives: proposalPointsSchema,
+    recommendedSolution: proposalPointsSchema,
+    solutionModules: z.array(systemModuleSchema).min(3).max(6),
+    userJourneys: proposalPointsSchema,
+    interfacesAndExperiences: proposalPointsSchema,
+    architectureAndIntegrations: proposalPointsSchema,
+    securityAndGovernance: proposalPointsSchema,
+    implementationPhases: z.array(implementationPhaseSchema).min(2).max(4),
+    deliverables: proposalPointsSchema,
+    clientResponsibilities: proposalPointsSchema,
+    assumptions: optionalProposalPointsSchema,
+    risks: optionalProposalPointsSchema,
+    nextSteps: z.array(proposalPointSchema).min(2).max(4),
   }),
 }) satisfies BrainOutputSchema<DigitalSolutionProposalBrainOutput>;
 

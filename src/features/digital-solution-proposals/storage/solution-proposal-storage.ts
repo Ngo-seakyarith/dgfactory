@@ -3,6 +3,7 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   emptySolutionCommercialInputs,
   emptySolutionProposalBrief,
+  normalizeSolutionCommercialInputs,
 } from "../domain/proposal";
 import type {
   CombinedDatasetAnalysis,
@@ -144,7 +145,9 @@ function proposalFromRow(
     evidenceAnalysis: row.combined_analysis,
     solutionReview: row.analyst_review,
     proposalContent: row.proposal_content,
-    commercialInputs: row.commercial_inputs ?? emptySolutionCommercialInputs,
+    commercialInputs: normalizeSolutionCommercialInputs(
+      row.commercial_inputs ?? emptySolutionCommercialInputs,
+    ),
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

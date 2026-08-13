@@ -42,6 +42,41 @@ export const emptySolutionCommercialInputs: SolutionCommercialInputs = {
   proposalValidity: "30 days",
 };
 
+export function normalizeSolutionCommercialInputs(
+  value: Partial<SolutionCommercialInputs> | null | undefined,
+): SolutionCommercialInputs {
+  const rawCurrency = String(value?.currency ?? "USD").trim();
+  const amountEnteredAsCurrency = /^\d+(?:\.\d+)?$/.test(rawCurrency)
+    ? Number(rawCurrency)
+    : 0;
+  const lineItems = Array.isArray(value?.lineItems)
+    ? value.lineItems
+        .map((item) => ({
+          id: String(item?.id || crypto.randomUUID()),
+          description: String(item?.description ?? "").trim(),
+          amount: Number(item?.amount) || 0,
+        }))
+        .filter((item) => item.description || item.amount > 0)
+    : [];
+
+  if (amountEnteredAsCurrency > 0 && !lineItems.length) {
+    lineItems.push({
+      id: "professional-fee",
+      description: "Professional fee",
+      amount: amountEnteredAsCurrency,
+    });
+  }
+
+  return {
+    currency: amountEnteredAsCurrency > 0 ? "USD" : rawCurrency || "USD",
+    lineItems,
+    vatStatus:
+      value?.vatStatus === "Including VAT" ? "Including VAT" : "Excluding VAT",
+    paymentTerms: String(value?.paymentTerms ?? ""),
+    proposalValidity: String(value?.proposalValidity ?? "30 days"),
+  };
+}
+
 export function calculateSolutionCommercialTotal(inputs: SolutionCommercialInputs) {
   return inputs.lineItems.reduce(
     (total, item) => total + (Number.isFinite(item.amount) ? item.amount : 0),

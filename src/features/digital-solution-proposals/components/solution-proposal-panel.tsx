@@ -1,6 +1,6 @@
 "use client";
 
-import { Clipboard, Download, Plus, Sparkles, Trash2 } from "lucide-react";
+import { Clipboard, Download, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
 import { Field } from "@/components/ui/field";
@@ -37,12 +37,27 @@ export function SolutionProposalPanel({
       )
     : "";
   const total = calculateSolutionCommercialTotal(proposal.commercialInputs);
+  const professionalFee = proposal.commercialInputs.lineItems[0]?.amount ?? 0;
   const updateCommercial = (
     patch: Partial<DigitalSolutionProposal["commercialInputs"]>,
   ) => {
     onChange({
       ...proposal,
       commercialInputs: { ...proposal.commercialInputs, ...patch },
+    });
+  };
+  const updateProfessionalFee = (amount: number) => {
+    updateCommercial({
+      lineItems:
+        amount > 0
+          ? [
+              {
+                id: proposal.commercialInputs.lineItems[0]?.id ?? "professional-fee",
+                description: "Professional fee",
+                amount,
+              },
+            ]
+          : [],
     });
   };
 
@@ -75,9 +90,22 @@ export function SolutionProposalPanel({
       <details className="rounded-md border border-border">
         <summary className="cursor-pointer p-4 font-semibold">Commercial Pricing (Optional)</summary>
         <div className="space-y-4 border-t border-border p-4">
-          <div className="grid gap-4 sm:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <Field label="Professional fee">
+              <Input
+                type="number"
+                min="0"
+                value={professionalFee || ""}
+                placeholder="Enter client price"
+                onChange={(event) => updateProfessionalFee(Number(event.target.value))}
+              />
+            </Field>
             <Field label="Currency">
-              <Input value={proposal.commercialInputs.currency} onChange={(event) => updateCommercial({ currency: event.target.value.toUpperCase() })} />
+              <Input
+                value={proposal.commercialInputs.currency}
+                onChange={(event) => updateCommercial({ currency: event.target.value.toUpperCase() })}
+                placeholder="USD"
+              />
             </Field>
             <Field label="Tax wording">
               <Select value={proposal.commercialInputs.vatStatus} onChange={(event) => updateCommercial({ vatStatus: event.target.value as DigitalSolutionProposal["commercialInputs"]["vatStatus"] })}>
@@ -89,20 +117,8 @@ export function SolutionProposalPanel({
               <Input value={proposal.commercialInputs.proposalValidity} onChange={(event) => updateCommercial({ proposalValidity: event.target.value })} />
             </Field>
           </div>
-          {proposal.commercialInputs.lineItems.map((item, index) => (
-            <div key={item.id} className="grid gap-2 sm:grid-cols-[1fr_180px_40px]">
-              <Input value={item.description} placeholder="Discovery and solution design" onChange={(event) => updateCommercial({ lineItems: proposal.commercialInputs.lineItems.map((current, currentIndex) => currentIndex === index ? { ...current, description: event.target.value } : current) })} />
-              <Input type="number" min="0" value={item.amount || ""} placeholder="Amount" onChange={(event) => updateCommercial({ lineItems: proposal.commercialInputs.lineItems.map((current, currentIndex) => currentIndex === index ? { ...current, amount: Number(event.target.value) } : current) })} />
-              <Button variant="ghost" size="icon" title="Remove line item" onClick={() => updateCommercial({ lineItems: proposal.commercialInputs.lineItems.filter((_, currentIndex) => currentIndex !== index) })}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
-          ))}
-          <Button variant="outline" onClick={() => updateCommercial({ lineItems: [...proposal.commercialInputs.lineItems, { id: crypto.randomUUID(), description: "", amount: 0 }] })}>
-            <Plus className="h-4 w-4" />Add line item
-          </Button>
-          {proposal.commercialInputs.lineItems.length ? (
-            <p className="font-semibold">Calculated total: {proposal.commercialInputs.currency} {total.toFixed(2)}</p>
+          {total > 0 ? (
+            <p className="font-semibold">Proposal price: {proposal.commercialInputs.currency} {total.toFixed(2)} ({proposal.commercialInputs.vatStatus.toLowerCase()})</p>
           ) : null}
           <Field label="Payment terms">
             <Textarea value={proposal.commercialInputs.paymentTerms} onChange={(event) => updateCommercial({ paymentTerms: event.target.value })} />
