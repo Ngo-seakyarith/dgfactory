@@ -290,7 +290,7 @@ function proposalRun(
     text,
     bold: options.bold,
     italics: options.italics,
-    font: options.font ?? "Calibri",
+    font: options.font ?? "Arial",
     size: options.size ?? 24,
   });
 }
@@ -329,7 +329,7 @@ function proposalParagraph(
 
 function proposalBullet(
   text: string,
-  font = "Calibri",
+  font = "Arial",
   size = 24,
   after = 70,
 ) {
@@ -354,7 +354,7 @@ function proposalSessionChildren(item: string, index: number) {
   return [
     proposalParagraph(heading, {
       bold: true,
-      font: "Calibri Light",
+      font: "Arial",
       size: 26,
       before: 160,
       after: 80,
@@ -371,7 +371,7 @@ function proposalContentOutlineChildren(items: string[]) {
   if (!looksLikeSessionPlan) {
     return items.map((item) =>
       proposalParagraph(item, {
-        font: "Calibri",
+        font: "Arial",
         size: 24,
         before: 0,
         after: 80,
@@ -379,7 +379,27 @@ function proposalContentOutlineChildren(items: string[]) {
     );
   }
 
-  return items.flatMap((item, index) => proposalSessionChildren(item, index));
+  return items.flatMap((item, index) => {
+    if (/\bbreak\b/i.test(item)) {
+      const parts = item
+        .split(/\s*[|;]\s*/)
+        .map((part) => part.trim())
+        .filter(Boolean);
+      const label = parts.find((part) => /break/i.test(part)) ?? "Break";
+      const detail = parts.filter((part) => part !== label).join(" - ");
+      return [
+        proposalParagraph(`${label}${detail ? ` - ${detail}` : ""}`, {
+          bold: true,
+          italics: true,
+          font: "Arial",
+          size: 22,
+          before: 100,
+          after: 100,
+        }),
+      ];
+    }
+    return proposalSessionChildren(item, index);
+  });
 }
 
 function numberedProposalSection(
@@ -518,22 +538,6 @@ function proposalTrainerChildren(
         after: index === trainer.bio.length - 1 ? 0 : 180,
       }),
     ),
-    ...(trainer.experience.length > 0
-      ? [
-          proposalHeading("Experience", 260, 120),
-          ...trainer.experience.map((item) =>
-            proposalBullet(item, "Arial", 22, 70),
-          ),
-        ]
-      : []),
-    ...(trainer.qualifications.length > 0
-      ? [
-          proposalHeading("Qualifications", 260, 120),
-          ...trainer.qualifications.map((item) =>
-            proposalBullet(item, "Arial", 22, 70),
-          ),
-        ]
-      : []),
   ];
 }
 
@@ -721,7 +725,7 @@ function proposalDocxChildren(
             after: 140,
           }),
           ...content.professionalFee.included.map((item) =>
-            proposalBullet(item, "Calibri", 22, 40),
+            proposalBullet(item, "Arial", 22, 40),
           ),
           proposalParagraph(totalFee, {
             bold: true,
@@ -734,7 +738,7 @@ function proposalDocxChildren(
             { size: 22, after: 140 },
           ),
           ...content.professionalFee.clientResponsibilities.map((item) =>
-            proposalBullet(item, "Calibri", 22, 40),
+            proposalBullet(item, "Arial", 22, 40),
           ),
           new Paragraph({
             children: [
@@ -751,7 +755,7 @@ function proposalDocxChildren(
               ]
             : []),
           proposalParagraph("Acknowledgement and Acceptance", {
-            font: "Calibri Light",
+            font: "Arial",
             size: 32,
             before: 20,
             after: 120,

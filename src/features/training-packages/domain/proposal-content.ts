@@ -4,6 +4,7 @@ import {
   type ProposalBrief,
 } from "./proposal-brief";
 import type { ProposalNarrative } from "./proposal-narrative";
+import { normalizeContentOutlineItems } from "./proposal-content-outline";
 
 export type ProposalSchedule = {
   duration: string;
@@ -110,12 +111,6 @@ function trainerMarkdown(trainer: ProposalTrainer) {
     trainer.title,
     "",
     trainer.bio.join("\n\n"),
-    ...(trainer.experience.length > 0
-      ? ["", "#### Experience", "", markdownBullets(trainer.experience)]
-      : []),
-    ...(trainer.qualifications.length > 0
-      ? ["", "#### Qualifications", "", markdownBullets(trainer.qualifications)]
-      : []),
   ]
     .join("\n")
     .replace(/\n{3,}/g, "\n\n")
@@ -364,9 +359,8 @@ export function proposalContentFromNarrative(
       narrative.expectedLearningOutcomes,
       fallback.expectedLearningOutcomes,
     ),
-    contentOutlines: cleanItems(
-      narrative.contentOutlines,
-      fallback.contentOutlines,
+    contentOutlines: normalizeContentOutlineItems(
+      cleanItems(narrative.contentOutlines, fallback.contentOutlines),
     ),
     whoShouldAttend: cleanItems(
       narrative.whoShouldAttend,
@@ -419,7 +413,9 @@ export function normalizeProposalContent(
       record.expectedLearningOutcomes,
       fallback.expectedLearningOutcomes,
     ),
-    contentOutlines: cleanItems(record.contentOutlines, fallback.contentOutlines),
+    contentOutlines: normalizeContentOutlineItems(
+      cleanItems(record.contentOutlines, fallback.contentOutlines),
+    ),
     whoShouldAttend: cleanItems(record.whoShouldAttend, fallback.whoShouldAttend),
     trainingMethodology: cleanItems(
       record.trainingMethodology,
