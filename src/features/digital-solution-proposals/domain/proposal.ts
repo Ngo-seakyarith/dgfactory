@@ -10,8 +10,7 @@ import type {
 
 export const emptySolutionProposalBrief: SolutionProposalBrief = {
   businessBackground: "",
-  currentProblem: "",
-  currentProcess: "",
+  currentWorkflowAndChallenges: "",
   projectGoal: "",
   desiredOutcomes: "",
   targetUsers: "",

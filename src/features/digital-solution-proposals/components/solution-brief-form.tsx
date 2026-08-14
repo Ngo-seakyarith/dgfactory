@@ -162,21 +162,16 @@ export function SolutionBriefForm({
             placeholder="What the organization does and why this project matters now"
           />
         </Field>
+        <Field label="Current workflow and business challenges">
+          <Textarea
+            value={proposal.brief.currentWorkflowAndChallenges}
+            onChange={(event) =>
+              updateBrief("currentWorkflowAndChallenges", event.target.value)
+            }
+            placeholder="How the work is handled today and the main problems that need solving"
+          />
+        </Field>
         <div className="grid gap-4 md:grid-cols-2">
-          <Field label="Current problem">
-            <Textarea
-              value={proposal.brief.currentProblem}
-              onChange={(event) => updateBrief("currentProblem", event.target.value)}
-              placeholder="The business problem the solution must address"
-            />
-          </Field>
-          <Field label="Current process">
-            <Textarea
-              value={proposal.brief.currentProcess}
-              onChange={(event) => updateBrief("currentProcess", event.target.value)}
-              placeholder="How people complete this work today"
-            />
-          </Field>
           <Field label="Project goal">
             <Textarea
               value={proposal.brief.projectGoal}

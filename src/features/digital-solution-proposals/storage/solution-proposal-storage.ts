@@ -65,11 +65,19 @@ function normalizeStatus(status: string): SolutionProposalStatus {
 function normalizeBrief(value: ProposalRow["brief"]): SolutionProposalBrief {
   const text = (key: keyof SolutionProposalBrief, fallback = "") =>
     String(value[key] ?? fallback);
+  const legacyWorkflowAndChallenges = Array.from(
+    new Set(
+      [value.currentProcess, value.currentProblem]
+        .map((item) => String(item ?? "").trim())
+        .filter(Boolean),
+    ),
+  ).join("\n\n");
   return {
     ...emptySolutionProposalBrief,
     businessBackground: text("businessBackground"),
-    currentProblem: String(value.currentProblem ?? value.currentProcess ?? ""),
-    currentProcess: text("currentProcess"),
+    currentWorkflowAndChallenges: String(
+      value.currentWorkflowAndChallenges ?? legacyWorkflowAndChallenges,
+    ),
     projectGoal: String(value.projectGoal ?? value.businessGoal ?? ""),
     desiredOutcomes: text("desiredOutcomes"),
     targetUsers: text("targetUsers"),

@@ -40,7 +40,10 @@ function validateBrief(proposal: DigitalSolutionProposal) {
   const missing = [
     ["client", proposal.clientName],
     ["project title", proposal.title],
-    ["current problem", proposal.brief.currentProblem],
+    [
+      "current workflow and business challenges",
+      proposal.brief.currentWorkflowAndChallenges,
+    ],
     ["project goal", proposal.brief.projectGoal],
   ]
     .filter(([, value]) => !String(value ?? "").trim())

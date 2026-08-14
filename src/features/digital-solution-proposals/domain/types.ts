@@ -133,8 +133,7 @@ export type SolutionReview = {
 
 export type SolutionProposalBrief = {
   businessBackground: string;
-  currentProblem: string;
-  currentProcess: string;
+  currentWorkflowAndChallenges: string;
   projectGoal: string;
   desiredOutcomes: string;
   targetUsers: string;
