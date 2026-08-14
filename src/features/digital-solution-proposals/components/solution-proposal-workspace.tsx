@@ -549,7 +549,6 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
         <SolutionProposalPanel
           proposal={proposal}
           busy={Boolean(busy)}
-          onChange={setProposal}
           onGenerate={() => void generate()}
           onExport={() => void exportDocx()}
         />

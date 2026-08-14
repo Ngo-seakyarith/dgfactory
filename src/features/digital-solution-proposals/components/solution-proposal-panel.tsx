@@ -3,22 +3,14 @@
 import { Clipboard, Download, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { Field } from "@/components/ui/field";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
 import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
 
-import {
-  calculateSolutionCommercialTotal,
-  solutionProposalContentToMarkdown,
-} from "../domain/proposal";
+import { solutionProposalContentToMarkdown } from "../domain/proposal";
 import type { DigitalSolutionProposal } from "../domain/types";
 
 type Props = {
   proposal: DigitalSolutionProposal;
   busy: boolean;
-  onChange: (proposal: DigitalSolutionProposal) => void;
   onGenerate: () => void;
   onExport: () => void;
 };
@@ -26,7 +18,6 @@ type Props = {
 export function SolutionProposalPanel({
   proposal,
   busy,
-  onChange,
   onGenerate,
   onExport,
 }: Props) {
@@ -36,31 +27,6 @@ export function SolutionProposalPanel({
         proposal.commercialInputs,
       )
     : "";
-  const total = calculateSolutionCommercialTotal(proposal.commercialInputs);
-  const professionalFee = proposal.commercialInputs.lineItems[0]?.amount ?? 0;
-  const updateCommercial = (
-    patch: Partial<DigitalSolutionProposal["commercialInputs"]>,
-  ) => {
-    onChange({
-      ...proposal,
-      commercialInputs: { ...proposal.commercialInputs, ...patch },
-    });
-  };
-  const updateProfessionalFee = (amount: number) => {
-    updateCommercial({
-      lineItems:
-        amount > 0
-          ? [
-              {
-                id: proposal.commercialInputs.lineItems[0]?.id ?? "professional-fee",
-                description: "Professional fee",
-                amount,
-              },
-            ]
-          : [],
-    });
-  };
-
   return (
     <section className="space-y-6 border-t border-border pt-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -86,54 +52,6 @@ export function SolutionProposalPanel({
           ) : null}
         </div>
       </div>
-
-      <details className="rounded-md border border-border">
-        <summary className="cursor-pointer p-4 font-semibold">Commercial Pricing (Optional)</summary>
-        <div className="space-y-4 border-t border-border p-4">
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Field label="Professional fee">
-              <Input
-                type="number"
-                min="0"
-                value={professionalFee || ""}
-                placeholder="Enter client price"
-                onChange={(event) => updateProfessionalFee(Number(event.target.value))}
-              />
-            </Field>
-            <Field label="Currency">
-              <Input
-                value={proposal.commercialInputs.currency}
-                onChange={(event) => updateCommercial({ currency: event.target.value.toUpperCase() })}
-                placeholder="USD"
-              />
-            </Field>
-            <Field label="Tax wording">
-              <Select value={proposal.commercialInputs.vatStatus} onChange={(event) => updateCommercial({ vatStatus: event.target.value as DigitalSolutionProposal["commercialInputs"]["vatStatus"] })}>
-                <option>Excluding VAT</option>
-                <option>Including VAT</option>
-              </Select>
-            </Field>
-            <Field label="Proposal validity">
-              <Input value={proposal.commercialInputs.proposalValidity} onChange={(event) => updateCommercial({ proposalValidity: event.target.value })} />
-            </Field>
-          </div>
-          {total > 0 ? (
-            <p className="font-semibold">Proposal price: {proposal.commercialInputs.currency} {total.toFixed(2)} ({proposal.commercialInputs.vatStatus.toLowerCase()})</p>
-          ) : null}
-          <Field label="Payment terms">
-            <Textarea value={proposal.commercialInputs.paymentTerms} onChange={(event) => updateCommercial({ paymentTerms: event.target.value })} />
-          </Field>
-          <Field label="Hosting and recurring costs">
-            <Textarea
-              value={proposal.commercialInputs.hostingAndRecurringCosts}
-              onChange={(event) =>
-                updateCommercial({ hostingAndRecurringCosts: event.target.value })
-              }
-              placeholder="Domain, hosting platform, recurring costs, ownership, and payment responsibility"
-            />
-          </Field>
-        </div>
-      </details>
 
       {proposal.proposalContent ? (
         <div className="overflow-hidden rounded-md border border-border bg-card">

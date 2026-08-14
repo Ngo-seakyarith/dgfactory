@@ -9,6 +9,7 @@ import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import type { Client, ClientProfileInput } from "@/lib/crm";
 
+import { calculateSolutionCommercialTotal } from "../domain/proposal";
 import { solutionTypes, type DigitalSolutionProposal } from "../domain/types";
 
 type Props = {
@@ -36,6 +37,8 @@ export function SolutionBriefForm({
   onUpload,
   onRemoveFile,
 }: Props) {
+  const total = calculateSolutionCommercialTotal(proposal.commercialInputs);
+  const professionalFee = proposal.commercialInputs.lineItems[0]?.amount ?? 0;
   const updateBrief = (
     key: keyof DigitalSolutionProposal["brief"],
     value: string,
@@ -43,6 +46,30 @@ export function SolutionBriefForm({
     onProposalChange({
       ...proposal,
       brief: { ...proposal.brief, [key]: value },
+    });
+  };
+  const updateCommercial = (
+    patch: Partial<DigitalSolutionProposal["commercialInputs"]>,
+  ) => {
+    onProposalChange({
+      ...proposal,
+      commercialInputs: { ...proposal.commercialInputs, ...patch },
+    });
+  };
+  const updateProfessionalFee = (amount: number) => {
+    updateCommercial({
+      lineItems:
+        amount > 0
+          ? [
+              {
+                id:
+                  proposal.commercialInputs.lineItems[0]?.id ??
+                  "professional-fee",
+                description: "Professional fee",
+                amount,
+              },
+            ]
+          : [],
     });
   };
   const updateClient = (key: keyof ClientProfileInput, value: string) => {
@@ -280,6 +307,84 @@ export function SolutionBriefForm({
           </Field>
         </div>
       </details>
+
+      <section className="space-y-4 border-t border-border pt-5">
+        <div>
+          <h2 className="text-lg font-semibold">Commercial Setup</h2>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Add the client price, payment terms, and recurring service costs.
+          </p>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <Field label="Professional fee">
+            <Input
+              type="number"
+              min="0"
+              value={professionalFee || ""}
+              placeholder="Enter client price"
+              onChange={(event) =>
+                updateProfessionalFee(Number(event.target.value))
+              }
+            />
+          </Field>
+          <Field label="Currency">
+            <Input
+              value={proposal.commercialInputs.currency}
+              onChange={(event) =>
+                updateCommercial({ currency: event.target.value.toUpperCase() })
+              }
+              placeholder="USD"
+            />
+          </Field>
+          <Field label="Tax wording">
+            <Select
+              value={proposal.commercialInputs.vatStatus}
+              onChange={(event) =>
+                updateCommercial({
+                  vatStatus: event.target
+                    .value as DigitalSolutionProposal["commercialInputs"]["vatStatus"],
+                })
+              }
+            >
+              <option>Excluding VAT</option>
+              <option>Including VAT</option>
+            </Select>
+          </Field>
+          <Field label="Proposal validity">
+            <Input
+              value={proposal.commercialInputs.proposalValidity}
+              onChange={(event) =>
+                updateCommercial({ proposalValidity: event.target.value })
+              }
+            />
+          </Field>
+        </div>
+        {total > 0 ? (
+          <p className="font-semibold">
+            Proposal price: {proposal.commercialInputs.currency}{" "}
+            {total.toFixed(2)} ({proposal.commercialInputs.vatStatus.toLowerCase()})
+          </p>
+        ) : null}
+        <div className="grid gap-4 md:grid-cols-2">
+          <Field label="Payment terms">
+            <Textarea
+              value={proposal.commercialInputs.paymentTerms}
+              onChange={(event) =>
+                updateCommercial({ paymentTerms: event.target.value })
+              }
+            />
+          </Field>
+          <Field label="Hosting and recurring costs">
+            <Textarea
+              value={proposal.commercialInputs.hostingAndRecurringCosts}
+              onChange={(event) =>
+                updateCommercial({ hostingAndRecurringCosts: event.target.value })
+              }
+              placeholder="Domain, hosting platform, recurring costs, ownership, and payment responsibility"
+            />
+          </Field>
+        </div>
+      </section>
 
       <section className="space-y-4 border-t border-border pt-5">
         <div>

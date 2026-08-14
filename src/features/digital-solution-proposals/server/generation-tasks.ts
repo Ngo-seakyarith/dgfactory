@@ -36,6 +36,7 @@ export async function runSolutionReviewJob(id: string, actor: string) {
       projectTitle: string;
       solutionType: typeof proposal.solutionType;
       brief: typeof proposal.brief;
+      commercialInputs: typeof proposal.commercialInputs;
       evidenceAnalysis: ReturnType<typeof safeEvidenceForBrain>;
     },
     SolutionReviewBrainOutput
@@ -46,6 +47,7 @@ export async function runSolutionReviewJob(id: string, actor: string) {
       projectTitle: proposal.title,
       solutionType: proposal.solutionType,
       brief: proposal.brief,
+      commercialInputs: proposal.commercialInputs,
       evidenceAnalysis: safeEvidenceForBrain(proposal.evidenceAnalysis),
     },
     retries: 1,

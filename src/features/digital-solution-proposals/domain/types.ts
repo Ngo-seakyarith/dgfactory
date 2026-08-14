@@ -245,6 +245,7 @@ export type SolutionReviewBrainInput = {
   projectTitle: string;
   solutionType: SolutionType;
   brief: SolutionProposalBrief;
+  commercialInputs: SolutionCommercialInputs;
   evidenceAnalysis: CombinedDatasetAnalysis | null;
 };
 
@@ -252,7 +253,10 @@ export type SolutionReviewBrainOutput = {
   solutionReview: SolutionReview;
 };
 
-export type DigitalSolutionProposalBrainInput = SolutionReviewBrainInput & {
+export type DigitalSolutionProposalBrainInput = Omit<
+  SolutionReviewBrainInput,
+  "commercialInputs"
+> & {
   solutionReview: SolutionReview;
   commercialSummary: string;
 };
