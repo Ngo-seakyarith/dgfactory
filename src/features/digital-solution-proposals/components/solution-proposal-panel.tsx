@@ -123,6 +123,15 @@ export function SolutionProposalPanel({
           <Field label="Payment terms">
             <Textarea value={proposal.commercialInputs.paymentTerms} onChange={(event) => updateCommercial({ paymentTerms: event.target.value })} />
           </Field>
+          <Field label="Hosting and recurring costs">
+            <Textarea
+              value={proposal.commercialInputs.hostingAndRecurringCosts}
+              onChange={(event) =>
+                updateCommercial({ hostingAndRecurringCosts: event.target.value })
+              }
+              placeholder="Domain, hosting platform, recurring costs, ownership, and payment responsibility"
+            />
+          </Field>
         </div>
       </details>
 

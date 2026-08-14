@@ -19,10 +19,7 @@ import {
 } from "docx";
 
 import type { DigitalSolutionProposal } from "../domain/types";
-import {
-  calculateSolutionCommercialTotal,
-  formatSolutionCommercialSummary,
-} from "../domain/proposal";
+import { formatSolutionCommercialSummary } from "../domain/proposal";
 
 function text(value: string, options: { bold?: boolean; color?: string; size?: number } = {}) {
   return new TextRun({
@@ -229,10 +226,13 @@ export async function exportSolutionProposalDocx(proposal: DigitalSolutionPropos
   children.push(...section("Assumptions", content.assumptions, number++));
   children.push(...section("Risks and Items to Validate", content.risks, number++));
 
-  if (calculateSolutionCommercialTotal(proposal.commercialInputs) > 0) {
+  const commercialSummary = formatSolutionCommercialSummary(
+    proposal.commercialInputs,
+  );
+  if (commercialSummary !== "No commercial pricing was supplied.") {
     children.push(
-      heading(`${number++}. Professional Fee`),
-      ...formatSolutionCommercialSummary(proposal.commercialInputs)
+      heading(`${number++}. Commercial Terms`),
+      ...commercialSummary
         .split("\n")
         .filter(Boolean)
         .map(bullet),

@@ -266,9 +266,6 @@ export function SolutionBriefForm({
           <Field label="Security and compliance">
             <Textarea value={proposal.brief.securityRequirements} onChange={(event) => updateBrief("securityRequirements", event.target.value)} placeholder="Sensitive data, access control, audit, retention, or policy needs" />
           </Field>
-          <Field label="Domain and hosting">
-            <Textarea value={proposal.brief.domainAndHosting} onChange={(event) => updateBrief("domainAndHosting", event.target.value)} placeholder="Existing domain, preferred hosting, ownership, and environment" />
-          </Field>
           <Field label="Timeline">
             <Textarea value={proposal.brief.timeline} onChange={(event) => updateBrief("timeline", event.target.value)} placeholder="Target launch date, phases, or deadline" />
           </Field>

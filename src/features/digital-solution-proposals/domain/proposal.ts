@@ -24,7 +24,6 @@ export const emptySolutionProposalBrief: SolutionProposalBrief = {
   deviceRequirements: "",
   integrations: "",
   securityRequirements: "",
-  domainAndHosting: "",
   timeline: "",
   budgetConstraints: "",
   trainingAndMaintenance: "",
@@ -37,6 +36,7 @@ export const emptySolutionCommercialInputs: SolutionCommercialInputs = {
   currency: "USD",
   lineItems: [],
   vatStatus: "Excluding VAT",
+  hostingAndRecurringCosts: "",
   paymentTerms: "",
   proposalValidity: "30 days",
 };
@@ -71,6 +71,7 @@ export function normalizeSolutionCommercialInputs(
     lineItems,
     vatStatus:
       value?.vatStatus === "Including VAT" ? "Including VAT" : "Excluding VAT",
+    hostingAndRecurringCosts: String(value?.hostingAndRecurringCosts ?? ""),
     paymentTerms: String(value?.paymentTerms ?? ""),
     proposalValidity: String(value?.proposalValidity ?? "30 days"),
   };
@@ -87,7 +88,11 @@ export function formatSolutionCommercialSummary(inputs: SolutionCommercialInputs
   const validItems = inputs.lineItems.filter(
     (item) => item.description.trim() && item.amount > 0,
   );
-  if (!validItems.length) return "No commercial pricing was supplied.";
+  const hostingAndRecurringCosts = inputs.hostingAndRecurringCosts.trim();
+  const paymentTerms = inputs.paymentTerms.trim();
+  if (!validItems.length && !hostingAndRecurringCosts && !paymentTerms) {
+    return "No commercial pricing was supplied.";
+  }
 
   const total = calculateSolutionCommercialTotal(inputs);
   return [
@@ -95,8 +100,13 @@ export function formatSolutionCommercialSummary(inputs: SolutionCommercialInputs
       (item) =>
         `${item.description.trim()}: ${inputs.currency} ${item.amount.toFixed(2)}`,
     ),
-    `Total: ${inputs.currency} ${total.toFixed(2)} (${inputs.vatStatus.toLowerCase()})`,
-    inputs.paymentTerms ? `Payment terms: ${inputs.paymentTerms}` : "",
+    validItems.length
+      ? `Total: ${inputs.currency} ${total.toFixed(2)} (${inputs.vatStatus.toLowerCase()})`
+      : "",
+    hostingAndRecurringCosts
+      ? `Hosting and recurring costs: ${hostingAndRecurringCosts}`
+      : "",
+    paymentTerms ? `Payment terms: ${paymentTerms}` : "",
     inputs.proposalValidity ? `Proposal validity: ${inputs.proposalValidity}` : "",
   ]
     .filter(Boolean)
@@ -165,7 +175,7 @@ export function solutionProposalContentToMarkdown(
     section("Assumptions", content.assumptions),
     section("Risks and Items to Validate", content.risks),
     commercial !== "No commercial pricing was supplied."
-      ? section("Professional Fee", commercial)
+      ? section("Commercial Terms", commercial)
       : "",
     section("Recommended Next Steps", content.nextSteps),
   ]

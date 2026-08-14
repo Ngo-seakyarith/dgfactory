@@ -91,7 +91,6 @@ function normalizeBrief(value: ProposalRow["brief"]): SolutionProposalBrief {
     deviceRequirements: text("deviceRequirements"),
     integrations: text("integrations"),
     securityRequirements: text("securityRequirements"),
-    domainAndHosting: text("domainAndHosting"),
     timeline: text("timeline"),
     budgetConstraints: text("budgetConstraints"),
     trainingAndMaintenance: text("trainingAndMaintenance"),
@@ -153,9 +152,12 @@ function proposalFromRow(
     evidenceAnalysis: row.combined_analysis,
     solutionReview: row.analyst_review,
     proposalContent: row.proposal_content,
-    commercialInputs: normalizeSolutionCommercialInputs(
-      row.commercial_inputs ?? emptySolutionCommercialInputs,
-    ),
+    commercialInputs: normalizeSolutionCommercialInputs({
+      ...(row.commercial_inputs ?? emptySolutionCommercialInputs),
+      hostingAndRecurringCosts:
+        row.commercial_inputs?.hostingAndRecurringCosts ||
+        String(row.brief?.domainAndHosting ?? ""),
+    }),
     createdBy: row.created_by,
     createdAt: row.created_at,
     updatedAt: row.updated_at,

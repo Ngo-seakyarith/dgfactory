@@ -147,7 +147,6 @@ export type SolutionProposalBrief = {
   deviceRequirements: string;
   integrations: string;
   securityRequirements: string;
-  domainAndHosting: string;
   timeline: string;
   budgetConstraints: string;
   trainingAndMaintenance: string;
@@ -166,6 +165,7 @@ export type SolutionCommercialInputs = {
   currency: string;
   lineItems: SolutionCommercialLineItem[];
   vatStatus: "Including VAT" | "Excluding VAT";
+  hostingAndRecurringCosts: string;
   paymentTerms: string;
   proposalValidity: string;
 };
