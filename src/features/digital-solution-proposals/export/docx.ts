@@ -2,29 +2,29 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import {
-  AlignmentType,
-  BorderStyle,
-  Document,
-  Footer,
-  HeadingLevel,
-  ImageRun,
-  Packer,
-  PageBreak,
   Paragraph,
-  Table,
-  TableCell,
-  TableRow,
+  PatchType,
   TextRun,
-  WidthType,
+  patchDocument,
 } from "docx";
 
-import type { DigitalSolutionProposal } from "../domain/types";
-import { formatSolutionCommercialSummary } from "../domain/proposal";
+import {
+  composeSolutionProposalDocument,
+} from "../domain/proposal";
+import type {
+  DigitalSolutionProposal,
+  SolutionProposalBlock,
+  SolutionProposalSection,
+} from "../domain/types";
 
-function text(value: string, options: { bold?: boolean; color?: string; size?: number } = {}) {
+function text(
+  value: string,
+  options: { bold?: boolean; color?: string; size?: number; italics?: boolean } = {},
+) {
   return new TextRun({
     text: value,
     bold: options.bold,
+    italics: options.italics,
     color: options.color,
     size: options.size ?? 22,
     font: "Arial",
@@ -32,100 +32,86 @@ function text(value: string, options: { bold?: boolean; color?: string; size?: n
 }
 
 function paragraph(value: string, after = 140) {
-  return new Paragraph({ children: [text(value)], spacing: { after } });
+  return new Paragraph({
+    children: [text(value)],
+    spacing: { after, line: 320 },
+  });
 }
 
 function bullet(value: string) {
   return new Paragraph({
     children: [text(value)],
     bullet: { level: 0 },
-    spacing: { after: 90 },
+    spacing: { after: 90, line: 300 },
   });
 }
 
-function heading(value: string) {
+function numbered(value: string, index: number) {
   return new Paragraph({
-    children: [text(value, { bold: true, color: "000000", size: 30 })],
-    heading: HeadingLevel.HEADING_1,
+    children: [text(`${index + 1}. `, { bold: true }), text(value)],
+    indent: { left: 360, hanging: 260 },
+    spacing: { after: 90, line: 300 },
+  });
+}
+
+function subsection(value: string) {
+  return new Paragraph({
+    children: [text(value, { bold: true, color: "0070C0", size: 25 })],
     keepNext: true,
-    spacing: { before: 260, after: 160 },
+    spacing: { before: 180, after: 100 },
   });
 }
 
-function footer() {
-  const footerText = (value: string, color = "595959") =>
-    new TextRun({ text: value, color, font: "Calibri Light", size: 22 });
-  const footerSymbol = (value: string, color: string, font = "Segoe UI Symbol") =>
-    new TextRun({ text: value, color, font, size: 24, position: "-1pt" });
-  const footerLink = (value: string) =>
-    new TextRun({
-      text: value,
-      color: "0070C0",
-      font: "Calibri Light",
-      size: 22,
-      underline: {},
-    });
-  const noBorder = { style: BorderStyle.NIL, size: 0, color: "FFFFFF" };
-  const contactCell = (children: TextRun[], alignment: (typeof AlignmentType)[keyof typeof AlignmentType]) =>
-    new TableCell({
-      children: [new Paragraph({ children, alignment, spacing: { after: 0 } })],
-      borders: { top: noBorder, bottom: noBorder, left: noBorder, right: noBorder },
-      margins: { top: 0, bottom: 0, left: 0, right: 0 },
-    });
-
-  return new Footer({
-    children: [
-      new Paragraph({
-        children: [
-          footerText(
-            "Address: 9th Floor, PPIU Building Street 169, Sangkat Veal Vong, Khan 7 Makara, Phnom Penh, Cambodia.",
-            "404040",
-          ),
-        ],
-        alignment: AlignmentType.CENTER,
-        border: { top: { style: BorderStyle.SINGLE, color: "4472C4", size: 8, space: 8 } },
-        indent: { left: -600, right: -600 },
-        spacing: { after: 100 },
-      }),
-      new Table({
-        width: { size: 9360, type: WidthType.DXA },
-        columnWidths: [3120, 3120, 3120],
-        borders: {
-          top: noBorder,
-          bottom: noBorder,
-          left: noBorder,
-          right: noBorder,
-          insideHorizontal: noBorder,
-          insideVertical: noBorder,
-        },
-        rows: [
-          new TableRow({
-            children: [
-              contactCell(
-                [footerSymbol("\u260E", "E4C36A"), footerText("099 200 805")],
-                AlignmentType.LEFT,
-              ),
-              contactCell(
-                [footerSymbol("\u2709", "009FE3"), footerLink("contact@dgdemy.org")],
-                AlignmentType.CENTER,
-              ),
-              contactCell(
-                [
-                  footerSymbol("\uD83C\uDF10", "009FE3", "Segoe UI Emoji"),
-                  footerLink("www.thedgacademy.org"),
-                ],
-                AlignmentType.RIGHT,
-              ),
-            ],
+function blockChildren(block: SolutionProposalBlock) {
+  if (block.type === "paragraph") return [paragraph(block.text)];
+  if (block.type === "bullet_list") return block.items.map(bullet);
+  if (block.type === "numbered_list") {
+    return block.items.map((item, index) => numbered(item, index));
+  }
+  if (block.type === "capabilities") {
+    return block.items.flatMap((item) => [
+      subsection(item.name),
+      paragraph(item.description),
+      ...(item.value
+        ? [
+            new Paragraph({
+              children: [text("Client value: ", { bold: true }), text(item.value)],
+              spacing: { after: 140, line: 300 },
+            }),
+          ]
+        : []),
+    ]);
+  }
+  return block.items.flatMap((phase, index) => [
+    subsection(`Phase ${index + 1}: ${phase.name}`),
+    ...(phase.duration
+      ? [
+          new Paragraph({
+            children: [text("Duration: ", { bold: true }), text(phase.duration)],
+            spacing: { after: 100 },
           }),
-        ],
-      }),
-    ],
-  });
+        ]
+      : []),
+    ...phase.activities.map(bullet),
+    ...phase.deliverables.map(
+      (item) =>
+        new Paragraph({
+          children: [text("Deliverable: ", { bold: true }), text(item)],
+          spacing: { after: 90, line: 300 },
+        }),
+    ),
+  ]);
 }
 
-function section(title: string, items: string[], number: number) {
-  return [heading(`${number}. ${title}`), ...items.filter(Boolean).map(bullet)];
+function sectionChildren(section: SolutionProposalSection, index: number) {
+  return [
+    new Paragraph({
+      children: [text(`${index + 1}. ${section.title}`, { bold: true, size: 30 })],
+      keepNext: true,
+      spacing: { before: index === 0 ? 0 : 260, after: 160 },
+    }),
+    ...section.blocks.flatMap(blockChildren),
+  ];
 }
 
 function safeFilename(value: string) {
@@ -137,154 +123,45 @@ function safeFilename(value: string) {
 }
 
 export async function exportSolutionProposalDocx(proposal: DigitalSolutionProposal) {
-  const content = proposal.proposalContent;
-  if (!content) throw new Error("Generate the digital solution proposal before exporting.");
-  const [logoData, signatureData] = await Promise.all([
-    readFile(join(process.cwd(), "public", "app-logo.png")),
-    readFile(join(process.cwd(), "public", "signature-hin-sopheap.png")).catch(() => null),
-  ]);
-  const children: Array<Paragraph> = [
-    new Paragraph({
-      children: [
-        new ImageRun({
-          type: "png",
-          data: logoData,
-          transformation: { width: 132, height: 132 },
-          altText: { title: "DG Academy", description: "DG Academy logo", name: "DG Academy" },
-        }),
-      ],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 520 },
-    }),
-    new Paragraph({
-      children: [text(content.coverHeading, { size: 30 })],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 300 },
-    }),
-    new Paragraph({
-      children: [text("On", { size: 28 })],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 180 },
-    }),
-    new Paragraph({
-      children: [text(`\u201C${content.solutionTitle}\u201D`, { bold: true, color: "0070C0", size: 58 })],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 520, line: 760 },
-    }),
-    new Paragraph({
-      children: [text("for", { bold: true, color: "0070C0", size: 34 })],
-      alignment: AlignmentType.CENTER,
-      spacing: { after: 280 },
-    }),
-    new Paragraph({
-      children: [text(content.client, { bold: true, color: "0070C0", size: 44 })],
-      alignment: AlignmentType.CENTER,
-    }),
-    new Paragraph({ children: [new PageBreak()] }),
-  ];
-  let number = 1;
-  children.push(...section("Executive Summary", content.executiveSummary, number++));
-  children.push(...section("Client Situation", content.clientSituation, number++));
-  if (content.discoveryFindings.length) {
-    children.push(...section("Discovery Findings", content.discoveryFindings, number++));
+  const document = composeSolutionProposalDocument(proposal);
+  if (!document) {
+    throw new Error("Generate the digital solution proposal before exporting.");
   }
-  children.push(...section("Project Objectives", content.projectObjectives, number++));
-  children.push(...section("Recommended Digital Solution", content.recommendedSolution, number++));
-  children.push(heading(`${number++}. Solution Modules`));
-  content.solutionModules.forEach((module, index) => {
-    children.push(
-      new Paragraph({
-        children: [text(`${index + 1}. ${module.name}`, { bold: true, color: "0070C0", size: 25 })],
-        keepNext: true,
-        spacing: { before: 160, after: 100 },
-      }),
-      paragraph(module.purpose),
-      ...module.inputs.map((item) => bullet(`Input: ${item}`)),
-      ...module.outputs.map((item) => bullet(`Output: ${item}`)),
-      paragraph(`User value: ${module.userValue}`),
-    );
-  });
-  children.push(...section("User Journeys", content.userJourneys, number++));
-  children.push(...section("Interfaces and User Experience", content.interfacesAndExperiences, number++));
-  children.push(...section("Architecture and Integrations", content.architectureAndIntegrations, number++));
-  children.push(...section("Security and Governance", content.securityAndGovernance, number++));
-  children.push(heading(`${number++}. Implementation Approach`));
-  content.implementationPhases.forEach((phase, index) => {
-    children.push(
-      new Paragraph({
-        children: [text(`Phase ${index + 1}: ${phase.name}`, { bold: true, color: "0070C0", size: 25 })],
-        keepNext: true,
-        spacing: { before: 160, after: 100 },
-      }),
-      paragraph(`Duration: ${phase.duration}`),
-      ...phase.activities.map((item) => bullet(item)),
-      ...phase.deliverables.map((item) => bullet(`Deliverable: ${item}`)),
-    );
-  });
-  children.push(...section("Project Deliverables", content.deliverables, number++));
-  children.push(...section("Client Responsibilities", content.clientResponsibilities, number++));
-  children.push(...section("Assumptions", content.assumptions, number++));
-  children.push(...section("Risks and Items to Validate", content.risks, number++));
-
-  const commercialSummary = formatSolutionCommercialSummary(
-    proposal.commercialInputs,
+  const template = await readFile(
+    join(
+      process.cwd(),
+      "public",
+      "document-templates",
+      "digital-solution-proposal.docx",
+    ),
   );
-  if (commercialSummary !== "No commercial pricing was supplied.") {
-    children.push(
-      heading(`${number++}. Commercial Terms`),
-      ...commercialSummary
-        .split("\n")
-        .filter(Boolean)
-        .map(bullet),
-    );
-  }
-  children.push(...section("Recommended Next Steps", content.nextSteps, number++));
-  children.push(
-    heading(`${number}. Authorized by DG Academy`),
-    paragraph("Mr. Hin Sopheap"),
-    paragraph("Executive Director"),
-  );
-  if (signatureData) {
-    children.push(
-      new Paragraph({
-        children: [
-          new ImageRun({
-            type: "png",
-            data: signatureData,
-            transformation: { width: 150, height: 70 },
-            altText: {
-              title: "Hin Sopheap signature",
-              description: "Authorized DG Academy signatory",
-              name: "Hin Sopheap signature",
-            },
-          }),
-        ],
-        spacing: { before: 100 },
-      }),
-    );
-  }
-
-  const document = new Document({
-    styles: {
-      default: {
-        document: { run: { font: "Arial", size: 22 } },
+  const body = document.sections.flatMap(sectionChildren);
+  const buffer = await patchDocument({
+    outputType: "nodebuffer",
+    data: template,
+    keepOriginalStyles: true,
+    patches: {
+      cover_heading: {
+        type: PatchType.PARAGRAPH,
+        children: [text(document.coverHeading, { size: 30 })],
+      },
+      solution_title: {
+        type: PatchType.PARAGRAPH,
+        children: [text(`\u201C${document.solutionTitle}\u201D`, { bold: true, color: "0070C0", size: 58 })],
+      },
+      client_name: {
+        type: PatchType.PARAGRAPH,
+        children: [text(document.client, { bold: true, color: "0070C0", size: 44 })],
+      },
+      proposal_body: {
+        type: PatchType.DOCUMENT,
+        children: body,
       },
     },
-    sections: [
-      {
-        properties: {
-          page: {
-            margin: { top: 720, right: 900, bottom: 1180, left: 900 },
-          },
-        },
-        footers: { default: footer() },
-        children,
-      },
-    ],
   });
 
   return {
-    buffer: await Packer.toBuffer(document),
-    filename: `${safeFilename(content.client)}-${safeFilename(content.solutionTitle)}-proposal.docx`,
+    buffer,
+    filename: `${safeFilename(document.client)}-${safeFilename(document.solutionTitle)}-proposal.docx`,
   };
 }

@@ -170,7 +170,7 @@ export type SolutionCommercialInputs = {
   proposalValidity: string;
 };
 
-export type SolutionModule = {
+export type LegacySolutionModule = {
   name: string;
   purpose: string;
   inputs: string[];
@@ -185,7 +185,7 @@ export type SolutionImplementationPhase = {
   deliverables: string[];
 };
 
-export type DigitalSolutionProposalContent = {
+export type LegacyDigitalSolutionProposalContent = {
   coverHeading: string;
   solutionTitle: string;
   client: string;
@@ -194,7 +194,7 @@ export type DigitalSolutionProposalContent = {
   discoveryFindings: string[];
   projectObjectives: string[];
   recommendedSolution: string[];
-  solutionModules: SolutionModule[];
+  solutionModules: LegacySolutionModule[];
   userJourneys: string[];
   interfacesAndExperiences: string[];
   architectureAndIntegrations: string[];
@@ -205,6 +205,80 @@ export type DigitalSolutionProposalContent = {
   assumptions: string[];
   risks: string[];
   nextSteps: string[];
+};
+
+export const solutionProposalSectionKeys = [
+  "executive_summary",
+  "client_situation",
+  "project_objectives",
+  "recommended_solution",
+  "solution_scope",
+  "user_experience",
+  "architecture_integrations",
+  "security_governance",
+  "implementation",
+  "deliverables",
+  "client_responsibilities",
+  "assumptions_risks",
+  "commercial_terms",
+  "next_steps",
+] as const;
+
+export type SolutionProposalSectionKey =
+  (typeof solutionProposalSectionKeys)[number];
+
+export type SolutionProposalParagraphBlock = {
+  type: "paragraph";
+  text: string;
+};
+
+export type SolutionProposalBulletListBlock = {
+  type: "bullet_list";
+  items: string[];
+};
+
+export type SolutionProposalNumberedListBlock = {
+  type: "numbered_list";
+  items: string[];
+};
+
+export type SolutionProposalCapabilityBlock = {
+  type: "capabilities";
+  items: Array<{
+    name: string;
+    description: string;
+    value: string;
+  }>;
+};
+
+export type SolutionProposalPhaseBlock = {
+  type: "implementation_phases";
+  items: SolutionImplementationPhase[];
+};
+
+export type SolutionProposalBlock =
+  | SolutionProposalParagraphBlock
+  | SolutionProposalBulletListBlock
+  | SolutionProposalNumberedListBlock
+  | SolutionProposalCapabilityBlock
+  | SolutionProposalPhaseBlock;
+
+export type SolutionProposalSection = {
+  key: SolutionProposalSectionKey;
+  title: string;
+  blocks: SolutionProposalBlock[];
+};
+
+export type DigitalSolutionProposalContent = {
+  version: 2;
+  sections: SolutionProposalSection[];
+};
+
+export type SolutionProposalDocument = {
+  coverHeading: string;
+  solutionTitle: string;
+  client: string;
+  sections: SolutionProposalSection[];
 };
 
 export type SolutionSourceFile = {
@@ -258,7 +332,6 @@ export type DigitalSolutionProposalBrainInput = Omit<
   "commercialInputs"
 > & {
   solutionReview: SolutionReview;
-  commercialSummary: string;
 };
 
 export type DigitalSolutionProposalBrainOutput = {

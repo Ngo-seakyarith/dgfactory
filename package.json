@@ -5,6 +5,8 @@
   "scripts": {
     "dev": "next dev",
     "build": "node node_modules/next/dist/bin/next build",
+    "generate:document-templates": "bun scripts/generate-digital-solution-template.ts",
+    "verify:digital-solution-docx": "bun scripts/verify-digital-solution-document.ts",
     "start": "next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"

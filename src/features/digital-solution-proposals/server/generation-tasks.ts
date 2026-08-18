@@ -4,7 +4,6 @@ import { routeBrainTask } from "@/lib/brain/routing/router";
 
 import { combineDatasetProfiles } from "../domain/analysis";
 import {
-  formatSolutionCommercialSummary,
   normalizeSolutionReview,
   safeEvidenceForBrain,
 } from "../domain/proposal";
@@ -85,7 +84,6 @@ export async function generateSolutionProposalJob(id: string, actor: string) {
       brief: typeof proposal.brief;
       evidenceAnalysis: ReturnType<typeof safeEvidenceForBrain>;
       solutionReview: NonNullable<typeof proposal.solutionReview>;
-      commercialSummary: string;
     },
     DigitalSolutionProposalBrainOutput
   >({
@@ -97,17 +95,11 @@ export async function generateSolutionProposalJob(id: string, actor: string) {
       brief: proposal.brief,
       evidenceAnalysis: safeEvidenceForBrain(proposal.evidenceAnalysis),
       solutionReview: proposal.solutionReview,
-      commercialSummary: formatSolutionCommercialSummary(proposal.commercialInputs),
     },
     retries: 1,
   });
 
-  proposal.proposalContent = {
-    ...result.output.proposalContent,
-    coverHeading: "Digital Solution Proposal",
-    solutionTitle: proposal.title,
-    client: proposal.clientName,
-  };
+  proposal.proposalContent = result.output.proposalContent;
   proposal.status = "Generated";
   await saveSolutionProposal(proposal);
   await saveAuditLog({

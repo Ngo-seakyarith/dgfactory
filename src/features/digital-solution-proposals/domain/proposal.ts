@@ -2,11 +2,17 @@ import type {
   CombinedDatasetAnalysis,
   DigitalSolutionProposal,
   DigitalSolutionProposalContent,
+  LegacyDigitalSolutionProposalContent,
   SolutionCommercialInputs,
+  SolutionProposalBlock,
   SolutionProposalBrief,
+  SolutionProposalDocument,
+  SolutionProposalSection,
+  SolutionProposalSectionKey,
   SolutionReview,
   SolutionType,
 } from "./types";
+import { solutionProposalSectionKeys } from "./types";
 
 export const emptySolutionProposalBrief: SolutionProposalBrief = {
   businessBackground: "",
@@ -84,103 +90,302 @@ export function calculateSolutionCommercialTotal(inputs: SolutionCommercialInput
   );
 }
 
-export function formatSolutionCommercialSummary(inputs: SolutionCommercialInputs) {
-  const validItems = inputs.lineItems.filter(
+const legacySectionTitles: Record<
+  Exclude<SolutionProposalSectionKey, "commercial_terms">,
+  string
+> = {
+  executive_summary: "Executive Summary",
+  client_situation: "Client Situation",
+  project_objectives: "Project Objectives",
+  recommended_solution: "Recommended Digital Solution",
+  solution_scope: "Solution Scope",
+  user_experience: "User Experience",
+  architecture_integrations: "Architecture and Integrations",
+  security_governance: "Security and Governance",
+  implementation: "Implementation Approach",
+  deliverables: "Project Deliverables",
+  client_responsibilities: "Client Responsibilities",
+  assumptions_risks: "Assumptions, Risks, and Items to Validate",
+  next_steps: "Recommended Next Steps",
+};
+
+function textItems(value: unknown) {
+  return Array.isArray(value)
+    ? value.map((item) => String(item ?? "").trim()).filter(Boolean)
+    : [];
+}
+
+function bulletSection(
+  key: Exclude<SolutionProposalSectionKey, "commercial_terms">,
+  items: unknown,
+): SolutionProposalSection | null {
+  const values = textItems(items);
+  return values.length
+    ? {
+        key,
+        title: legacySectionTitles[key],
+        blocks: [{ type: "bullet_list", items: values }],
+      }
+    : null;
+}
+
+function normalizeBlock(value: unknown): SolutionProposalBlock | null {
+  if (!value || typeof value !== "object") return null;
+  const block = value as Record<string, unknown>;
+  if (block.type === "paragraph") {
+    const text = String(block.text ?? "").trim();
+    return text ? { type: "paragraph", text } : null;
+  }
+  if (block.type === "bullet_list" || block.type === "numbered_list") {
+    const items = textItems(block.items);
+    return items.length ? { type: block.type, items } : null;
+  }
+  if (block.type === "capabilities" && Array.isArray(block.items)) {
+    const items = block.items.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const capability = item as Record<string, unknown>;
+      const name = String(capability.name ?? "").trim();
+      const description = String(capability.description ?? "").trim();
+      const valueText = String(capability.value ?? "").trim();
+      return name && description
+        ? [{ name, description, value: valueText }]
+        : [];
+    });
+    return items.length ? { type: "capabilities", items } : null;
+  }
+  if (block.type === "implementation_phases" && Array.isArray(block.items)) {
+    const items = block.items.flatMap((item) => {
+      if (!item || typeof item !== "object") return [];
+      const phase = item as Record<string, unknown>;
+      const name = String(phase.name ?? "").trim();
+      if (!name) return [];
+      return [
+        {
+          name,
+          duration: String(phase.duration ?? "").trim(),
+          activities: textItems(phase.activities),
+          deliverables: textItems(phase.deliverables),
+        },
+      ];
+    });
+    return items.length ? { type: "implementation_phases", items } : null;
+  }
+  return null;
+}
+
+function normalizeVersionTwoContent(
+  value: Record<string, unknown>,
+): DigitalSolutionProposalContent | null {
+  if (value.version !== 2 || !Array.isArray(value.sections)) return null;
+  const validKeys = new Set<string>([
+    ...Object.keys(legacySectionTitles),
+    "commercial_terms",
+  ]);
+  const sections = value.sections.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const section = item as Record<string, unknown>;
+    const key = String(section.key ?? "") as SolutionProposalSectionKey;
+    const title = String(section.title ?? "").trim();
+    const blocks = Array.isArray(section.blocks)
+      ? section.blocks.map(normalizeBlock).filter((block): block is SolutionProposalBlock => Boolean(block))
+      : [];
+    return validKeys.has(key) && title && blocks.length
+      ? [{ key, title, blocks }]
+      : [];
+  });
+  return sections.length ? { version: 2, sections } : null;
+}
+
+function convertLegacyContent(
+  value: LegacyDigitalSolutionProposalContent,
+): DigitalSolutionProposalContent | null {
+  const sections: Array<SolutionProposalSection | null> = [
+    bulletSection("executive_summary", value.executiveSummary),
+    bulletSection("client_situation", [
+      ...textItems(value.clientSituation),
+      ...textItems(value.discoveryFindings),
+    ]),
+    bulletSection("project_objectives", value.projectObjectives),
+    bulletSection("recommended_solution", value.recommendedSolution),
+    Array.isArray(value.solutionModules) && value.solutionModules.length
+      ? {
+          key: "solution_scope",
+          title: legacySectionTitles.solution_scope,
+          blocks: [
+            {
+              type: "capabilities",
+              items: value.solutionModules.map((module) => ({
+                name: String(module.name ?? "").trim(),
+                description: [
+                  String(module.purpose ?? "").trim(),
+                  textItems(module.inputs).length
+                    ? `Inputs: ${textItems(module.inputs).join(", ")}.`
+                    : "",
+                  textItems(module.outputs).length
+                    ? `Outputs: ${textItems(module.outputs).join(", ")}.`
+                    : "",
+                ]
+                  .filter(Boolean)
+                  .join(" "),
+                value: String(module.userValue ?? "").trim(),
+              })),
+            },
+          ],
+        }
+      : null,
+    bulletSection("user_experience", [
+      ...textItems(value.userJourneys),
+      ...textItems(value.interfacesAndExperiences),
+    ]),
+    bulletSection("architecture_integrations", value.architectureAndIntegrations),
+    bulletSection("security_governance", value.securityAndGovernance),
+    Array.isArray(value.implementationPhases) && value.implementationPhases.length
+      ? {
+          key: "implementation",
+          title: legacySectionTitles.implementation,
+          blocks: [{ type: "implementation_phases", items: value.implementationPhases }],
+        }
+      : null,
+    bulletSection("deliverables", value.deliverables),
+    bulletSection("client_responsibilities", value.clientResponsibilities),
+    bulletSection("assumptions_risks", [
+      ...textItems(value.assumptions),
+      ...textItems(value.risks),
+    ]),
+    bulletSection("next_steps", value.nextSteps),
+  ];
+  const normalized = sections.filter(
+    (section): section is SolutionProposalSection => Boolean(section),
+  );
+  return normalized.length ? { version: 2, sections: normalized } : null;
+}
+
+export function normalizeDigitalSolutionProposalContent(
+  value: unknown,
+): DigitalSolutionProposalContent | null {
+  if (!value || typeof value !== "object") return null;
+  const record = value as Record<string, unknown>;
+  return (
+    normalizeVersionTwoContent(record) ??
+    convertLegacyContent(record as unknown as LegacyDigitalSolutionProposalContent)
+  );
+}
+
+function commercialSection(
+  inputs: SolutionCommercialInputs,
+): SolutionProposalSection | null {
+  const lineItems = inputs.lineItems.filter(
     (item) => item.description.trim() && item.amount > 0,
   );
-  const hostingAndRecurringCosts = inputs.hostingAndRecurringCosts.trim();
+  const recurringCosts = inputs.hostingAndRecurringCosts
+    .split(/\r?\n/)
+    .map((item) => item.replace(/^[-*\u2022]\s*/, "").trim())
+    .filter(Boolean);
   const paymentTerms = inputs.paymentTerms.trim();
-  if (!validItems.length && !hostingAndRecurringCosts && !paymentTerms) {
-    return "No commercial pricing was supplied.";
-  }
-
+  if (!lineItems.length && !recurringCosts.length && !paymentTerms) return null;
   const total = calculateSolutionCommercialTotal(inputs);
-  return [
-    ...validItems.map(
+  const items = [
+    ...lineItems.map(
       (item) =>
         `${item.description.trim()}: ${inputs.currency} ${item.amount.toFixed(2)}`,
     ),
-    validItems.length
+    lineItems.length
       ? `Total: ${inputs.currency} ${total.toFixed(2)} (${inputs.vatStatus.toLowerCase()})`
       : "",
-    hostingAndRecurringCosts
-      ? `Hosting and recurring costs: ${hostingAndRecurringCosts}`
-      : "",
+    ...recurringCosts,
     paymentTerms ? `Payment terms: ${paymentTerms}` : "",
-    inputs.proposalValidity ? `Proposal validity: ${inputs.proposalValidity}` : "",
-  ]
-    .filter(Boolean)
-    .join("\n");
+    inputs.proposalValidity.trim()
+      ? `Proposal validity: ${inputs.proposalValidity.trim()}`
+      : "",
+  ].filter(Boolean);
+  return items.length
+    ? {
+        key: "commercial_terms",
+        title: "Commercial Terms",
+        blocks: [{ type: "bullet_list", items }],
+      }
+    : null;
 }
 
-function bullets(items: string[]) {
-  return items.map((item) => `- ${item}`).join("\n");
+export function composeSolutionProposalDocument(
+  proposal: DigitalSolutionProposal,
+): SolutionProposalDocument | null {
+  const content = normalizeDigitalSolutionProposalContent(proposal.proposalContent);
+  if (!content) return null;
+  const commercial = commercialSection(proposal.commercialInputs);
+  const sections = content.sections.filter(
+    (section) => section.key !== "commercial_terms",
+  );
+  if (commercial) sections.push(commercial);
+  const sectionOrder = new Map(
+    solutionProposalSectionKeys.map((key, index) => [key, index]),
+  );
+  sections.sort(
+    (left, right) =>
+      (sectionOrder.get(left.key) ?? Number.MAX_SAFE_INTEGER) -
+      (sectionOrder.get(right.key) ?? Number.MAX_SAFE_INTEGER),
+  );
+  return {
+    coverHeading: "Digital Solution Proposal",
+    solutionTitle: proposal.title,
+    client: proposal.clientName,
+    sections,
+  };
 }
 
-function section(title: string, body: string | string[]) {
-  const value = Array.isArray(body) ? bullets(body) : body;
-  return value.trim() ? `## ${title}\n\n${value.trim()}` : "";
-}
-
-export function solutionProposalContentToMarkdown(
-  content: DigitalSolutionProposalContent,
-  commercialInputs: SolutionCommercialInputs,
-) {
-  const modules = content.solutionModules
-    .map((module, index) =>
-      [
-        `### ${index + 1}. ${module.name}`,
-        module.purpose,
-        module.inputs.length ? `**Inputs:** ${module.inputs.join(", ")}` : "",
-        module.outputs.length ? `**Outputs:** ${module.outputs.join(", ")}` : "",
-        module.userValue ? `**User value:** ${module.userValue}` : "",
-      ]
-        .filter(Boolean)
-        .join("\n\n"),
-    )
-    .join("\n\n");
-  const phases = content.implementationPhases
+function blockToMarkdown(block: SolutionProposalBlock) {
+  if (block.type === "paragraph") return block.text;
+  if (block.type === "bullet_list") {
+    return block.items.map((item) => `- ${item}`).join("\n");
+  }
+  if (block.type === "numbered_list") {
+    return block.items.map((item, index) => `${index + 1}. ${item}`).join("\n");
+  }
+  if (block.type === "capabilities") {
+    return block.items
+      .map((item) =>
+        [
+          `### ${item.name}`,
+          item.description,
+          item.value ? `**Client value:** ${item.value}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n\n"),
+      )
+      .join("\n\n");
+  }
+  return block.items
     .map((phase, index) =>
       [
         `### Phase ${index + 1}: ${phase.name}`,
         phase.duration ? `**Duration:** ${phase.duration}` : "",
-        phase.activities.length ? `**Activities**\n${bullets(phase.activities)}` : "",
+        phase.activities.length
+          ? `**Activities**\n${phase.activities.map((item) => `- ${item}`).join("\n")}`
+          : "",
         phase.deliverables.length
-          ? `**Deliverables**\n${bullets(phase.deliverables)}`
+          ? `**Deliverables**\n${phase.deliverables.map((item) => `- ${item}`).join("\n")}`
           : "",
       ]
         .filter(Boolean)
         .join("\n\n"),
     )
     .join("\n\n");
-  const commercial = formatSolutionCommercialSummary(commercialInputs);
+}
 
+export function solutionProposalDocumentToMarkdown(
+  document: SolutionProposalDocument,
+) {
   return [
-    `# ${content.coverHeading}`,
-    `## ${content.solutionTitle}`,
-    `**Prepared for:** ${content.client}`,
-    section("Executive Summary", content.executiveSummary),
-    section("Client Situation", content.clientSituation),
-    section("Discovery Findings", content.discoveryFindings),
-    section("Project Objectives", content.projectObjectives),
-    section("Recommended Digital Solution", content.recommendedSolution),
-    section("Solution Modules", modules),
-    section("User Journeys", content.userJourneys),
-    section("Interfaces and User Experience", content.interfacesAndExperiences),
-    section("Architecture and Integrations", content.architectureAndIntegrations),
-    section("Security and Governance", content.securityAndGovernance),
-    section("Implementation Approach", phases),
-    section("Project Deliverables", content.deliverables),
-    section("Client Responsibilities", content.clientResponsibilities),
-    section("Assumptions", content.assumptions),
-    section("Risks and Items to Validate", content.risks),
-    commercial !== "No commercial pricing was supplied."
-      ? section("Commercial Terms", commercial)
-      : "",
-    section("Recommended Next Steps", content.nextSteps),
-  ]
-    .filter(Boolean)
-    .join("\n\n");
+    `# ${document.coverHeading}`,
+    `## ${document.solutionTitle}`,
+    `**Prepared for:** ${document.client}`,
+    ...document.sections.map((section) =>
+      [
+        `## ${section.title}`,
+        ...section.blocks.map(blockToMarkdown),
+      ].join("\n\n"),
+    ),
+  ].join("\n\n");
 }
 
 export function createSolutionProposal(

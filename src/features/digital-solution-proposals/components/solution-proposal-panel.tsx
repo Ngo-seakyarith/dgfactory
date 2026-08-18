@@ -3,10 +3,13 @@
 import { Clipboard, Download, Sparkles } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
-import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
 
-import { solutionProposalContentToMarkdown } from "../domain/proposal";
+import {
+  composeSolutionProposalDocument,
+  solutionProposalDocumentToMarkdown,
+} from "../domain/proposal";
 import type { DigitalSolutionProposal } from "../domain/types";
+import { SolutionProposalPreview } from "./solution-proposal-preview";
 
 type Props = {
   proposal: DigitalSolutionProposal;
@@ -21,12 +24,8 @@ export function SolutionProposalPanel({
   onGenerate,
   onExport,
 }: Props) {
-  const markdown = proposal.proposalContent
-    ? solutionProposalContentToMarkdown(
-        proposal.proposalContent,
-        proposal.commercialInputs,
-      )
-    : "";
+  const document = composeSolutionProposalDocument(proposal);
+  const markdown = document ? solutionProposalDocumentToMarkdown(document) : "";
   return (
     <section className="space-y-6 border-t border-border pt-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
@@ -53,7 +52,7 @@ export function SolutionProposalPanel({
         </div>
       </div>
 
-      {proposal.proposalContent ? (
+      {document ? (
         <div className="overflow-hidden rounded-md border border-border bg-card">
           <div className="flex items-center justify-between gap-3 border-b border-border p-4">
             <div>
@@ -64,7 +63,7 @@ export function SolutionProposalPanel({
               <Clipboard className="h-4 w-4" />Copy Proposal
             </Button>
           </div>
-          <MarkdownPreview value={markdown} />
+          <SolutionProposalPreview document={document} />
         </div>
       ) : (
         <div className="rounded-md border border-dashed border-border p-10 text-center text-sm text-muted-foreground">

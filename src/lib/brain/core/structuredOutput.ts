@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import OpenAI, { type APIError } from "openai";
 
 import {
   brainSchemaToJsonSchema,
@@ -40,6 +40,65 @@ function normalizeJsonSchema(schema: BrainOutputSchema) {
     strict: true,
     schema: brainSchemaToJsonSchema(schema),
   };
+}
+
+function providerErrorMessage(error: APIError) {
+  const body = error.error as {
+    message?: unknown;
+    metadata?: {
+      error_type?: unknown;
+      provider_code?: unknown;
+      raw?: unknown;
+    };
+  } | undefined;
+  const metadata = body?.metadata;
+  let rawMessage = "";
+
+  if (typeof metadata?.raw === "string") {
+    try {
+      const raw = JSON.parse(metadata.raw) as {
+        error?: { message?: unknown };
+        message?: unknown;
+      };
+      const message = raw.error?.message ?? raw.message;
+      rawMessage = typeof message === "string" ? message : "";
+    } catch {
+      rawMessage = metadata.raw;
+    }
+  } else if (metadata?.raw && typeof metadata.raw === "object") {
+    const raw = metadata.raw as {
+      error?: { message?: unknown };
+      message?: unknown;
+    };
+    const message = raw.error?.message ?? raw.message;
+    rawMessage = typeof message === "string" ? message : "";
+  }
+
+  const message = rawMessage ||
+    (typeof body?.message === "string" ? body.message : error.message);
+  const errorType = typeof metadata?.error_type === "string"
+    ? ` ${metadata.error_type}`
+    : "";
+  const providerCode = typeof metadata?.provider_code === "string"
+    ? `/${metadata.provider_code}`
+    : "";
+
+  return `OpenRouter request failed (${error.status ?? "unknown"}${errorType}${providerCode}): ${message}`;
+}
+
+function normalizeOpenRouterError(error: unknown) {
+  if (!(error instanceof OpenAI.APIError)) return error;
+  return new Error(providerErrorMessage(error), { cause: error });
+}
+
+function shouldRetryOpenRouterError(error: unknown) {
+  if (!(error instanceof OpenAI.APIError) || error.status === undefined) {
+    return true;
+  }
+  return error.status === 408 ||
+    error.status === 409 ||
+    error.status === 429 ||
+    error.status >= 500;
 }
 
 async function callOpenRouter<TInput>({
@@ -147,7 +206,8 @@ export async function generateStructuredOutput<TInput, TOutput>({
         model: requestedModel,
       };
     } catch (error) {
-      lastError = error;
+      lastError = normalizeOpenRouterError(error);
+      if (!shouldRetryOpenRouterError(error)) break;
     }
   }
 

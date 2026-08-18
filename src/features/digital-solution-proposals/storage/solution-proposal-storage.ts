@@ -3,13 +3,13 @@ import { getSupabaseServerClient } from "@/lib/supabase/server";
 import {
   emptySolutionCommercialInputs,
   emptySolutionProposalBrief,
+  normalizeDigitalSolutionProposalContent,
   normalizeSolutionCommercialInputs,
 } from "../domain/proposal";
 import type {
   CombinedDatasetAnalysis,
   DatasetProfile,
   DigitalSolutionProposal,
-  DigitalSolutionProposalContent,
   SolutionCommercialInputs,
   SolutionProposalBrief,
   SolutionProposalStatus,
@@ -31,7 +31,7 @@ type ProposalRow = {
   status: string;
   combined_analysis: CombinedDatasetAnalysis | null;
   analyst_review: SolutionReview | null;
-  proposal_content: DigitalSolutionProposalContent | null;
+  proposal_content: unknown;
   commercial_inputs: SolutionCommercialInputs;
   created_by: string | null;
   created_at: string;
@@ -151,7 +151,7 @@ function proposalFromRow(
     files,
     evidenceAnalysis: row.combined_analysis,
     solutionReview: row.analyst_review,
-    proposalContent: row.proposal_content,
+    proposalContent: normalizeDigitalSolutionProposalContent(row.proposal_content),
     commercialInputs: normalizeSolutionCommercialInputs({
       ...(row.commercial_inputs ?? emptySolutionCommercialInputs),
       hostingAndRecurringCosts:

@@ -35,7 +35,11 @@ Each saved training package is linked to one CRM opportunity through `opportunit
 
 The workflow is Project Brief, Solution Review, then Proposal. Solution Review works from the brief alone. Excel and CSV uploads are optional supporting evidence for data-heavy projects and remain private in the `solution-proposal-inputs` Supabase Storage bucket. The Brain Layer receives only deterministic profiles and masked samples, never complete raw rows.
 
-Background tasks use `solution_review` and `solution_proposal`. Generated content is saved in the existing proposal table and exported through the branded DOCX renderer. Existing `/system-proposals` browser links redirect to the renamed feature.
+Background tasks use `solution_review` and `solution_proposal`. The proposal task returns strict, Zod-validated semantic JSON rather than Markdown, HTML, or Word XML. Paragraphs, lists, capabilities, and implementation phases form one document model shared by the browser preview, copy action, and DOCX export. Commercial terms, cover details, DG Academy branding, and the authorized signatory are added deterministically after generation, so the model cannot invent them.
+
+The DOCX exporter patches semantic Word paragraphs into `public/document-templates/digital-solution-proposal.docx`. This keeps the document editable in Microsoft Word while the template owns branding, cover layout, footer, and signature. Existing fixed-shape proposal JSON is normalized to the current document model when loaded, so no database migration is required. Regenerate the checked-in template with `bun run generate:document-templates` and run the focused export check with `bun run verify:digital-solution-docx`.
+
+Existing `/system-proposals` browser links redirect to the renamed feature.
 
 ## Proposal From Syllabus
 

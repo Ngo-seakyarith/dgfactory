@@ -79,46 +79,98 @@ export const solutionReviewOutputSchema = z.strictObject({
   }),
 }) satisfies BrainOutputSchema<SolutionReviewBrainOutput>;
 
-const systemModuleSchema = z.strictObject({
-  name: requiredTextSchema.max(100),
-  purpose: requiredTextSchema.max(320),
-  inputs: z.array(requiredTextSchema.max(180)).min(1).max(4),
-  outputs: z.array(requiredTextSchema.max(180)).min(1).max(4),
-  userValue: requiredTextSchema.max(240),
-});
-
 const implementationPhaseSchema = z.strictObject({
-  name: requiredTextSchema.max(100),
-  duration: requiredTextSchema.max(80),
-  activities: z.array(requiredTextSchema.max(200)).min(1).max(4),
-  deliverables: z.array(requiredTextSchema.max(200)).min(1).max(3),
+  name: requiredTextSchema.max(100).describe("A concise client-facing phase name."),
+  duration: z.string().trim().max(80).describe("A supplied or clearly proposed duration; use an empty string when unknown."),
+  activities: z.array(requiredTextSchema.max(240)).min(1).max(5).describe("The distinct work performed during this phase."),
+  deliverables: z.array(requiredTextSchema.max(240)).min(1).max(4).describe("The tangible outputs delivered by this phase."),
 });
 
-const proposalPointSchema = requiredTextSchema.max(320);
-const proposalPointsSchema = z.array(proposalPointSchema).min(1).max(5);
-const optionalProposalPointsSchema = z.array(proposalPointSchema).max(5);
+// OpenAI strict structured outputs support nested anyOf, but not oneOf.
+// z.union emits anyOf while z.discriminatedUnion emits oneOf.
+const proposalBlockSchema = z.union([
+  z.strictObject({
+    type: z.literal("paragraph"),
+    text: requiredTextSchema.max(1400).describe("Connected client-facing prose that explains one argument or recommendation."),
+  }),
+  z.strictObject({
+    type: z.literal("bullet_list"),
+    items: z.array(requiredTextSchema.max(360)).min(1).max(8).describe("Parallel items that are easier to scan as bullets than prose."),
+  }),
+  z.strictObject({
+    type: z.literal("numbered_list"),
+    items: z.array(requiredTextSchema.max(360)).min(1).max(8).describe("Ordered steps whose sequence matters."),
+  }),
+  z.strictObject({
+    type: z.literal("capabilities"),
+    items: z.array(z.strictObject({
+      name: requiredTextSchema.max(100).describe("The capability name."),
+      description: requiredTextSchema.max(500).describe("What the capability does and how it fits the proposed solution."),
+      value: z.string().trim().max(300).describe("The practical value for the client; use an empty string when it would repeat the description."),
+    })).min(1).max(8),
+  }),
+  z.strictObject({
+    type: z.literal("implementation_phases"),
+    items: z.array(implementationPhaseSchema).min(1).max(6),
+  }),
+]);
+
+const generatedProposalSectionKeySchema = z.enum([
+  "executive_summary",
+  "client_situation",
+  "project_objectives",
+  "recommended_solution",
+  "solution_scope",
+  "user_experience",
+  "architecture_integrations",
+  "security_governance",
+  "implementation",
+  "deliverables",
+  "client_responsibilities",
+  "assumptions_risks",
+  "next_steps",
+]);
+
+const requiredGeneratedProposalSections = [
+  "executive_summary",
+  "client_situation",
+  "project_objectives",
+  "recommended_solution",
+  "implementation",
+  "deliverables",
+  "next_steps",
+] as const;
+
+const generatedProposalSectionsSchema = z.array(z.strictObject({
+  key: generatedProposalSectionKeySchema.describe("The semantic purpose of this section."),
+  title: requiredTextSchema.max(100).describe("A concise client-facing section heading."),
+  blocks: z.array(proposalBlockSchema).min(1).max(4).describe("Ordered semantic content blocks for this section."),
+})).min(5).max(13).superRefine((sections, context) => {
+  const seen = new Set<string>();
+  sections.forEach((section, index) => {
+    if (seen.has(section.key)) {
+      context.addIssue({
+        code: "custom",
+        path: [index, "key"],
+        message: `Duplicate proposal section: ${section.key}`,
+      });
+    }
+    seen.add(section.key);
+  });
+  for (const key of requiredGeneratedProposalSections) {
+    if (!seen.has(key)) {
+      context.addIssue({
+        code: "custom",
+        message: `Missing required proposal section: ${key}`,
+      });
+    }
+  }
+});
 
 export const digitalSolutionProposalOutputSchema = z.strictObject({
   proposalContent: z.strictObject({
-    coverHeading: requiredTextSchema.max(80),
-    solutionTitle: requiredTextSchema.max(160),
-    client: requiredTextSchema.max(160),
-    executiveSummary: z.array(proposalPointSchema).min(2).max(4),
-    clientSituation: proposalPointsSchema,
-    discoveryFindings: optionalProposalPointsSchema,
-    projectObjectives: proposalPointsSchema,
-    recommendedSolution: proposalPointsSchema,
-    solutionModules: z.array(systemModuleSchema).min(3).max(6),
-    userJourneys: proposalPointsSchema,
-    interfacesAndExperiences: proposalPointsSchema,
-    architectureAndIntegrations: proposalPointsSchema,
-    securityAndGovernance: proposalPointsSchema,
-    implementationPhases: z.array(implementationPhaseSchema).min(2).max(4),
-    deliverables: proposalPointsSchema,
-    clientResponsibilities: proposalPointsSchema,
-    assumptions: optionalProposalPointsSchema,
-    risks: optionalProposalPointsSchema,
-    nextSteps: z.array(proposalPointSchema).min(2).max(4),
+    version: z.literal(2),
+    sections: generatedProposalSectionsSchema.describe("Only useful, non-duplicative sections, ordered as they should appear in the proposal."),
   }),
 }) satisfies BrainOutputSchema<DigitalSolutionProposalBrainOutput>;
 
