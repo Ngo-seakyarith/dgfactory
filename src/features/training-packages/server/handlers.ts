@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
-import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import { requireApproved } from "@/lib/route-guards";
 import { resolvePackageClient } from "@/lib/crm-storage";
 import {
@@ -365,5 +364,3 @@ export async function exportTrainingPackageRequest(request: Request) {
     );
   }
 }
-
-export type { KnowledgeSourceNote };

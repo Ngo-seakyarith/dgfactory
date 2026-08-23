@@ -1,8 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { scopeAppData, withAppScope } from "@/lib/request-scope";
-import type {
-  KnowledgeSourceNote,
-} from "@/lib/knowledge";
 import type { TrainingPackage } from "@/features/training-packages";
 import {
   normalizeProposalBrief,
@@ -34,7 +31,6 @@ type PackageRow = {
   proposal_content: ProposalContent;
   proposal_brief?: Partial<ProposalBrief> | null;
   pricing_inputs?: Partial<PricingInputs> | null;
-  knowledge_used?: KnowledgeSourceNote[] | null;
   created_at: string;
   updated_at: string;
 };
@@ -62,7 +58,6 @@ function toRow(pkg: TrainingPackage) {
     proposal_content: proposalContent,
     proposal_brief: pkg.proposalBrief,
     pricing_inputs: pkg.pricingInputs,
-    knowledge_used: pkg.knowledgeUsed ?? [],
     created_at: pkg.createdAt,
     updated_at: pkg.updatedAt,
   };
@@ -100,10 +95,8 @@ function fromRow(row: PackageRow): TrainingPackage {
     deckOutline: "",
     workbook: "",
     followUpEmail: "",
-    qualityChecklist: [],
     pricingInputs,
     pricingOutputs,
-    knowledgeUsed: Array.isArray(row.knowledge_used) ? row.knowledge_used : [],
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };

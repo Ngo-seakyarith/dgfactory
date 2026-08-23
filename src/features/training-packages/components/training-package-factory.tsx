@@ -31,10 +31,6 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   buildPackageFromParts,
   createTrainingOutputTemplate,
-  fullPackageToMarkdown,
-  outputToText,
-  packageOutputSections,
-  type PackageOutputKey,
   type TrainingPackage,
   type TrainingPackageInput,
 } from "@/features/training-packages";
@@ -64,15 +60,6 @@ import {
   type TrainerCatalogEntry,
 } from "@/features/training-packages";
 import {
-  outputEvaluationTypes,
-  reviewerTypes,
-  type EvaluateOutputResult,
-  type OutputEvaluation,
-  type OutputEvaluationType,
-  type PromptImprovementSuggestion,
-  type ReviewerType,
-} from "@/lib/evaluations";
-import {
   calculatePricing,
   clientPricingParagraph,
   defaultPricingInputs,
@@ -86,17 +73,6 @@ import { CommercialSetup } from "./commercial-setup";
 import { OutputTabs } from "./output-tabs";
 import { EmptyState } from "./shared";
 
-type QaReviewOutput = {
-  score: number;
-  strengths: string[];
-  weaknesses: string[];
-  missingSections: string[];
-  risks: string[];
-  recommendedImprovements: string[];
-  clientReadiness: "low" | "medium" | "high";
-};
-
-type OutputTabKey = PackageOutputKey | "qaReview" | "feedback";
 const defaultInput: TrainingPackageInput = {
   courseTitle: "",
   audience: "",
@@ -401,7 +377,7 @@ export function PackageForm({
           name: prefill.client,
         }));
       }
-      setNotice("Prefilled from Adaptive Growth offer variant.");
+      setNotice("Package details prefilled.");
     }
   }, [searchParams]);
 
@@ -522,8 +498,6 @@ export function PackageForm({
         currentPackage?.clientId ??
         initialPackage?.clientId,
       pricingInputs: snapshot.pricingInputs,
-      knowledgeUsed:
-        currentPackage?.knowledgeUsed ?? initialPackage?.knowledgeUsed ?? [],
     });
   }
 

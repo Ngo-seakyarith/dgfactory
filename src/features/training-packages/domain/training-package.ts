@@ -6,7 +6,6 @@ import {
   type PricingInputs,
   type PricingOutputs,
 } from "./pricing";
-import type { KnowledgeSourceNote } from "@/lib/knowledge";
 import {
   defaultBillingArrangement,
   defaultPaymentInstructions,
@@ -41,12 +40,6 @@ export function durationAsModifier(duration: string) {
   return dayCount ? `${dayCount[1]}-day` : normalized;
 }
 
-export type QualityChecklistItem = {
-  category: string;
-  item: string;
-  status: "ready" | "review";
-};
-
 export type TrainingPackageOutputs = {
   syllabus: string;
   proposal: string;
@@ -73,8 +66,6 @@ export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle" | "propos
     facilitatorGuide?: string;
     promptLibrary?: string;
     followUpEmail: string;
-    qualityChecklist: QualityChecklistItem[];
-    knowledgeUsed?: KnowledgeSourceNote[];
     createdAt: string;
     updatedAt: string;
   };
@@ -302,23 +293,6 @@ export function normalizeTrainingOutputs(
   };
 }
 
-export function qualityChecklistToMarkdown(
-  checklist: QualityChecklistItem[] | string,
-) {
-  if (typeof checklist === "string") {
-    return checklist;
-  }
-
-  return [
-    "# Quality Checklist",
-    "",
-    ...checklist.map(
-      (item) =>
-        `- [${item.status === "ready" ? "x" : " "}] **${item.category}:** ${item.item}`,
-    ),
-  ].join("\n");
-}
-
 export function outputToText(
   pkg: TrainingPackage,
   key: PackageOutputKey,
@@ -348,7 +322,6 @@ export function buildPackageFromParts({
   id = crypto.randomUUID(),
   createdAt = new Date().toISOString(),
   pricingInputs = defaultPricingInputs,
-  knowledgeUsed = [],
   clientId = null,
 }: {
   input: TrainingPackageInput;
@@ -356,7 +329,6 @@ export function buildPackageFromParts({
   id?: string;
   createdAt?: string;
   pricingInputs?: PricingInputs;
-  knowledgeUsed?: KnowledgeSourceNote[];
   clientId?: string | null;
 }): TrainingPackage {
   const normalizedPricingInputs = normalizePricingInputs(pricingInputs);
@@ -386,10 +358,8 @@ export function buildPackageFromParts({
     deckOutline: "",
     workbook: "",
     followUpEmail: "",
-    qualityChecklist: [],
     pricingInputs: normalizedPricingInputs,
     pricingOutputs,
-    knowledgeUsed,
     id,
     createdAt,
     updatedAt: new Date().toISOString(),

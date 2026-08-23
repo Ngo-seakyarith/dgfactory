@@ -4,11 +4,6 @@ import type {
   ProposalAgentOutput,
 } from "@/lib/brain/agents";
 import { routeBrainTask } from "@/lib/brain/routing/router";
-import {
-  formatKnowledgeForBrain,
-  retrieveKnowledge,
-} from "@/lib/knowledge/retrieve";
-import { knowledgeSourceNotesFromResults } from "@/lib/knowledge";
 import { ensureDeliveryProjectForPackage } from "@/features/delivery/storage/delivery-storage";
 import {
   ensureOpportunityForPackage,
@@ -60,38 +55,8 @@ export async function generateAndSaveTrainingPackage(
     );
   }
 
-  const briefValues = Object.entries(input.proposalBrief ?? {})
-    .filter(
-      ([key]) =>
-        ![
-          "trainerImageUrl",
-          "trainerBio",
-          "trainerExperience",
-          "trainerQualifications",
-          "secondTrainerImageUrl",
-          "secondTrainerBio",
-          "secondTrainerExperience",
-          "secondTrainerQualifications",
-        ].includes(key),
-    )
-    .map(([, value]) => value);
-  const knowledgeResults = await retrieveKnowledge({
-    query: [
-      input.courseTitle,
-      input.audience,
-      input.client,
-      input.promise,
-      input.context,
-      ...briefValues,
-    ].join(" "),
-    filters: { visibility: "Any" },
-    limit: 6,
-  });
   const brainInput: CoursePackageBrainInput = {
     ...input,
-    context: [input.context, formatKnowledgeForBrain(knowledgeResults)]
-      .filter(Boolean)
-      .join("\n\n"),
     proposalBrief: proposalNarrativeBriefFrom(input.proposalBrief),
   };
   const result = await routeBrainTask<CoursePackageBrainInput, ProposalAgentOutput>({
@@ -107,7 +72,6 @@ export async function generateAndSaveTrainingPackage(
     createdAt: current.createdAt,
     clientId: current.clientId,
     pricingInputs: current.pricingInputs,
-    knowledgeUsed: knowledgeSourceNotesFromResults(knowledgeResults),
   });
   const saved = await saveTrainingPackage(generated);
   const opportunity = await ensureOpportunityForPackage(saved.package, actor).catch(

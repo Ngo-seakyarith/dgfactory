@@ -3,11 +3,9 @@
 import { useState } from "react";
 import { Check, Clipboard, Sparkles } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { DetailLoadingSkeleton } from "@/components/page-loading-skeleton";
 import { Card, CardContent } from "@/components/ui/card";
-import type { TrainingPackage } from "@/features/training-packages";
 export function CopyButton({
   value,
   label = "Copy",
@@ -28,31 +26,6 @@ export function CopyButton({
       {copied ? <Check className="h-4 w-4" /> : <Clipboard className="h-4 w-4" />}
       {copied ? "Copied" : label}
     </Button>
-  );
-}
-
-export function QualityChecklist({
-  checklist,
-}: {
-  checklist: TrainingPackage["qualityChecklist"];
-}) {
-  return (
-    <div className="grid gap-2">
-      {checklist.map((item, index) => (
-        <div
-          key={`${item.category}-${index}`}
-          className="rounded-lg border border-white/10 bg-[#07111f]/55 p-3"
-        >
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-sm font-semibold text-white">{item.category}</span>
-            <span className={item.status === "ready" ? "text-xs text-teal-100" : "text-xs text-[#f7d889]"}>
-              {item.status === "ready" ? "Ready" : "Review"}
-            </span>
-          </div>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">{item.item}</p>
-        </div>
-      ))}
-    </div>
   );
 }
 

@@ -1,5 +1,4 @@
 import { PipelineBoard } from "@/app/crm/_components/crm-components";
-import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 
 export default function PipelinePage() {
   return (
@@ -12,10 +11,6 @@ export default function PipelinePage() {
         </p>
       </div>
       <PipelineBoard />
-      <PilotFeedbackButton
-        relatedPage="/pipeline"
-        relatedFeature="Pipeline board"
-      />
     </div>
   );
 }

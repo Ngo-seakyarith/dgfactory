@@ -5,9 +5,6 @@ import {
 } from "@/lib/crm";
 import { listOpportunities } from "@/lib/crm-storage";
 import { listDeliveryProjects } from "@/features/delivery/storage/delivery-storage";
-import { getQualityDashboardMetrics } from "@/lib/evaluation-storage";
-import { listLoopRuns } from "@/lib/loops/storage";
-import { listApprovalRequests } from "@/lib/approvals";
 import { listTrainingPackages } from "@/features/training-packages/storage/training-storage";
 
 function startOfMonth() {
@@ -27,20 +24,10 @@ function parseDate(value: string) {
 }
 
 export async function getDashboardMetrics() {
-  const [
-    opportunities,
-    packages,
-    deliveryProjects,
-    qualityMetrics,
-    pendingApprovals,
-    loopRuns,
-  ] = await Promise.all([
+  const [opportunities, packages, deliveryProjects] = await Promise.all([
     listOpportunities(),
     listTrainingPackages(),
     listDeliveryProjects(),
-    getQualityDashboardMetrics(),
-    listApprovalRequests({ status: "Pending" }),
-    listLoopRuns(),
   ]);
   const pipeline = calculatePipelineMetrics(opportunities);
   const activeOpportunities = opportunities.filter(
@@ -74,26 +61,13 @@ export async function getDashboardMetrics() {
       !isInactiveOpportunityStatus(opportunity.status)
     );
   });
-  const latestLoopRecommendations = loopRuns
-    .flatMap((run) =>
-      run.recommendations.map((recommendation) => ({
-        loopType: run.loopType,
-        recommendation,
-        createdAt: run.createdAt,
-      })),
-    )
-    .slice(0, 6);
-
   return {
     activeOpportunities: activeOpportunities.length,
     pipelineValue: pipeline.totalEstimatedValue,
     pipelineValueFormatted: formatCrmMoney(pipeline.totalEstimatedValue),
     packagesCreatedThisMonth: packagesCreatedThisMonth.length,
     upcomingDeliveryProjects: upcomingDeliveryProjects.length,
-    averageQaScore: qualityMetrics.averageQaScore,
-    pendingApprovals: pendingApprovals.length,
     pendingFollowUps: pendingFollowUps.length,
-    latestLoopRecommendations,
     activeOpportunityList: activeOpportunities.slice(0, 5),
     upcomingDeliveryList: upcomingDeliveryProjects.slice(0, 5),
     pendingFollowUpList: pendingFollowUps.slice(0, 5),

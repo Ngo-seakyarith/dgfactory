@@ -151,8 +151,6 @@ async function callOpenRouter<TInput>({
 
   return {
     output: JSON.parse(raw) as unknown,
-    promptSource: prompt.source,
-    templateVersion: prompt.templateVersion,
   };
 }
 
@@ -188,13 +186,8 @@ export async function generateStructuredOutput<TInput, TOutput>({
       const validation = schema.safeParse(generated.output);
 
       if (!validation.success) {
-        const promptSource = generated.promptSource === "template"
-          ? `active template v${generated.templateVersion}`
-          : generated.promptSource === "code_schema_mismatch"
-            ? `code prompt because active template v${generated.templateVersion} has a stale schema`
-            : "code prompt";
         throw new Error(
-          `Schema validation failed using ${promptSource}: ${formatBrainSchemaErrors(validation.error).join("; ")}`,
+          `Schema validation failed: ${formatBrainSchemaErrors(validation.error).join("; ")}`,
         );
       }
 

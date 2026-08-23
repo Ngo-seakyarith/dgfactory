@@ -281,7 +281,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     input,
     outputs,
     pricingInputs: value.pricingInputs,
-    knowledgeUsed: [],
   });
   const saved = await saveTrainingPackage(trainingPackage);
   const opportunity = await ensureOpportunityForPackage(saved.package, actor).catch(

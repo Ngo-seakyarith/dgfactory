@@ -39,12 +39,6 @@ const requiredTextSchema = z.string().trim().min(1);
 const requiredTextArraySchema = z.array(requiredTextSchema).min(1);
 const confidenceSchema = z.enum(["low", "medium", "high"]);
 
-export const qualityChecklistItemSchema = z.strictObject({
-  category: z.string(),
-  item: z.string(),
-  status: z.enum(["ready", "review"]),
-});
-
 const evidenceFindingSchema = z.strictObject({
   title: z.string(),
   detail: z.string(),
@@ -208,12 +202,6 @@ export const syllabusProposalOutputSchema = z.strictObject({
     proposalNarrative: proposalNarrativeSchema,
   }),
 }) satisfies BrainOutputSchema<SyllabusProposalBrainOutput>;
-
-export const proposalAgentOutputSchema = trainingPackageOutputSchema;
-
-export const textOutputSchema = z.strictObject({
-  content: z.string(),
-});
 
 const slideDeckVisualItemSchema = z.strictObject({
   icon: z.enum(slideDeckIconKeys),
@@ -538,133 +526,9 @@ export const deliveryDraftOutputSchema = z.strictObject({
   suggestedNextStep: z.string(),
 });
 
-export const qaReviewOutputSchema = z.strictObject({
-  score: z.number().int().min(1).max(100),
-  strengths: stringArraySchema,
-  weaknesses: stringArraySchema,
-  missingSections: stringArraySchema,
-  risks: stringArraySchema,
-  recommendedImprovements: stringArraySchema,
-  clientReadiness: confidenceSchema,
-});
-
-export const suggestedPromptChangeSchema = z.strictObject({
-  targetAgent: z.string(),
-  currentPromptSummary: z.string(),
-  suggestedChange: z.string(),
-  reason: z.string(),
-});
-
-export const outputEvaluationResultSchema = z.strictObject({
-  score: z.number().int().min(1).max(100),
-  strengths: stringArraySchema,
-  weaknesses: stringArraySchema,
-  risks: stringArraySchema,
-  improvementSuggestions: stringArraySchema,
-  suggestedPromptChanges: z.array(suggestedPromptChangeSchema),
-});
-
-export const offerMutationVariantSchema = z.strictObject({
-  title: z.string(),
-  target_audience: z.string(),
-  sector: z.string(),
-  format: z.string(),
-  duration: z.string(),
-  promise: z.string(),
-  pain_point: z.string(),
-  why_now: z.string(),
-  test_method: z.string(),
-  suggested_price_range: z.string(),
-  expected_buying_trigger: z.string(),
-  risk: z.string(),
-  confidence_score: z.number().int().min(1).max(100),
-});
-
-export const offerMutationOutputSchema = z.strictObject({
-  variants: z.array(offerMutationVariantSchema),
-  recommended_top_3: stringArraySchema,
-  rationale: z.string(),
-});
-
-export const replicationGenomeItemSchema = z.strictObject({
-  title: z.string(),
-  type: z.string(),
-  content: z.string(),
-  confidence_score: z.number().int().min(1).max(100),
-});
-
-export const offerReplicationOutputSchema = z.strictObject({
-  replication_summary: z.string(),
-  reusable_training_template: z.string(),
-  proposal_template: z.string(),
-  pricing_note: z.string(),
-  sales_message: z.string(),
-  delivery_checklist: stringArraySchema,
-  learning_genome_items: z.array(replicationGenomeItemSchema),
-  recommended_expansion_paths: stringArraySchema,
-});
-
-export const improvementOpportunityOutputSchema = z.strictObject({
-  title: z.string(),
-  description: z.string(),
-  category: z.string(),
-  priority: z.number().int().min(1).max(5),
-  rationale: z.string(),
-  suggested_files_modules: stringArraySchema,
-  acceptance_criteria: stringArraySchema,
-  codex_prompt: z.string(),
-});
-
-export const adaptiveGrowthRecommendationsOutputSchema = z.strictObject({
-  what_to_test_next: stringArraySchema,
-  what_to_kill: stringArraySchema,
-  what_to_scale: stringArraySchema,
-  what_to_replicate: stringArraySchema,
-  what_to_learn: stringArraySchema,
-  what_codex_should_improve_next: stringArraySchema,
-  uncertainty_notes: stringArraySchema,
-});
-
-export const masterAgentOutputSchema = z.strictObject({
-  workflow: z.enum([
-    "create_training_package",
-    "generate_proposal",
-    "generate_pricing_narrative",
-    "create_offer_variants",
-    "evaluate_offer_fitness",
-    "replicate_winning_offer",
-    "run_adaptive_loop",
-    "create_codex_improvement_task",
-    "run_qa_review",
-    "create_follow_up_draft",
-    "create_delivery_report",
-  ]),
-  specialistAgents: stringArraySchema,
-  deterministicTools: stringArraySchema,
-  requiresApproval: z.boolean(),
-  riskLevel: z.enum(["Low", "Medium", "High"]),
-  nextStep: z.string(),
-});
-
 export type CoursePackageBrainOutput = z.infer<
   typeof trainingPackageOutputSchema
 >;
-export type TextAgentOutput = z.infer<typeof textOutputSchema>;
-export type QaReviewOutput = z.infer<typeof qaReviewOutputSchema>;
 export type EvaluationQuestionsBrainOutput = z.infer<
   typeof evaluationQuestionsOutputSchema
->;
-export type OfferMutationVariant = z.infer<typeof offerMutationVariantSchema>;
-export type OfferMutationOutput = z.infer<typeof offerMutationOutputSchema>;
-export type ReplicationGenomeItemDraft = z.infer<
-  typeof replicationGenomeItemSchema
->;
-export type OfferReplicationOutput = z.infer<
-  typeof offerReplicationOutputSchema
->;
-export type ImprovementOpportunityOutput = z.infer<
-  typeof improvementOpportunityOutputSchema
->;
-export type AdaptiveGrowthRecommendationsOutput = z.infer<
-  typeof adaptiveGrowthRecommendationsOutputSchema
 >;

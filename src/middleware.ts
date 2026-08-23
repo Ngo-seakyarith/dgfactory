@@ -3,7 +3,6 @@ import { NextResponse, type NextRequest } from "next/server";
 const publicPrefixes = [
   "/login",
   "/auth/callback",
-  "/client-portal",
   "/evaluate",
   "/api/evaluate",
   "/api/auth",

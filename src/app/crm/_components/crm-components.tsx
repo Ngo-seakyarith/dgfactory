@@ -35,7 +35,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { QueryErrorState } from "@/components/query-error-state";
 import { DetailLoadingSkeleton } from "@/components/page-loading-skeleton";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ClientPortalManager } from "@/app/client-portal/_components/client-portal-components";
 import {
   calculatePipelineMetrics,
   clientNameKey,
@@ -627,12 +626,6 @@ export function ClientDetailClient({ id }: { id: string }) {
           )}
         </CardContent>
       </Card>
-
-      <ClientPortalManager
-        client={client}
-        opportunities={clientOpportunities}
-        packages={packages}
-      />
 
       <Card className="border-white/10 bg-white/[0.04] shadow-executive">
         <CardHeader>

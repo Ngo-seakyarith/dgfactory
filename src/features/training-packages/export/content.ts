@@ -1,6 +1,5 @@
 import {
   fullPackageToMarkdown,
-  qualityChecklistToMarkdown,
   type TrainingPackage,
 } from "@/features/training-packages/domain/training-package";
 import {

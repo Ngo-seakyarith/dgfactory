@@ -24,16 +24,6 @@ const navItems: SidebarItem[] = [
   { label: "Solution Proposals", href: "/solution-proposals", section: "Systems" },
   { label: "Clients", href: "/clients", section: "Business" },
   { label: "Pipeline", href: "/pipeline", section: "Business" },
-  { label: "Knowledge", href: "/knowledge", section: "Reference" },
-  { label: "Product", href: "/product", section: "Development" },
-  { label: "ROI", href: "/roi-calculator", section: "Development" },
-  { label: "Adaptive Growth", href: "/adaptive-growth/dashboard", section: "Development" },
-  { label: "Pilot", href: "/pilot", section: "Control" },
-  { label: "Quality", href: "/quality", section: "Control" },
-  { label: "Evals", href: "/evals", section: "Control" },
-  { label: "Approvals", href: "/approvals", section: "Control" },
-  { label: "Loops", href: "/loops", section: "Control" },
-  { label: "Improvements", href: "/improvements", section: "Control" },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -42,9 +32,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const user = await getAuthenticatedCookieUser(cookieStore.toString());
   setRequestAuthUser(user);
   const pathname = headerStore.get("x-dg-pathname") ?? "";
-  const isClientPortal = pathname.startsWith("/client-portal");
   const isPublicForm = pathname.startsWith("/evaluate");
-  const isPublicPage = isClientPortal || isPublicForm;
+  const isPublicPage = isPublicForm;
   const isAccessStatusPage =
     pathname.startsWith("/login") ||
     pathname.startsWith("/unauthorized");
@@ -57,12 +46,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     redirect("/unauthorized");
   }
 
-  const resolvedNavItems = user && hasAppAccess(user.role)
-    ? [
-        ...navItems,
-        { label: "Prompts", href: "/admin/prompts", section: "Control" },
-      ]
-    : [];
+  const resolvedNavItems = user && hasAppAccess(user.role) ? navItems : [];
 
   return (
     <html lang="en" className="dark">

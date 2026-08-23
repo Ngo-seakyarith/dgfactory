@@ -32,7 +32,6 @@ import {
   LoadingState,
   PackageForm,
 } from "@/features/training-packages/components";
-import { PilotFeedbackButton } from "@/app/pilot/_components/pilot-feedback-button";
 import type { TrainingPackage } from "@/features/training-packages/domain/training-package";
 import {
   trainingPackageKeys,
@@ -41,7 +40,6 @@ import {
   useTrainingPackagesQuery,
 } from "@/features/training-packages/queries";
 import { PackageOpportunityPanel } from "@/app/crm/_components/crm-components";
-import { AdaptiveGrowthPackageLinkPanel } from "@/app/adaptive-growth/_components/adaptive-growth-components";
 
 export function TrainingDashboardClient() {
   const packagesQuery = useTrainingPackagesQuery();
@@ -259,14 +257,6 @@ export function PackageDetailClient({ id }: { id: string }) {
       </div>
 
       <PackageOpportunityPanel pkg={pkg} />
-
-      <AdaptiveGrowthPackageLinkPanel pkg={pkg} />
-
-      <PilotFeedbackButton
-        relatedPage={`/packages/${pkg.id}`}
-        relatedFeature="Package detail"
-        relatedPackageId={pkg.id}
-      />
 
     </div>
   );

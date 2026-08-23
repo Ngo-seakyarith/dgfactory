@@ -3,19 +3,15 @@ import {
   Activity,
   ArrowRight,
   CalendarCheck,
-  ClipboardList,
   FileCog,
   FilePlus2,
   FileText,
   Handshake,
-  ShieldCheck,
 } from "lucide-react";
 
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getDashboardMetrics } from "@/lib/dashboard";
-import { loopTypeLabel } from "@/lib/loops/types";
 
 export default async function DashboardPage() {
   const metrics = await getDashboardMetrics();
@@ -62,7 +58,7 @@ export default async function DashboardPage() {
         />
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1.2fr_0.8fr]">
+      <section>
         <Card>
           <CardHeader className="border-b border-border">
             <div className="flex items-center justify-between gap-4">
@@ -78,29 +74,6 @@ export default async function DashboardPage() {
           <CardContent className="divide-y divide-border p-0">
             <AttentionRow icon={Activity} label="Follow-ups due soon" value={metrics.pendingFollowUps} href="/pipeline" />
             <AttentionRow icon={CalendarCheck} label="Upcoming training deliveries" value={metrics.upcomingDeliveryProjects} href="/delivery" />
-            <AttentionRow icon={ClipboardList} label="Pending approvals" value={metrics.pendingApprovals} href="/approvals" />
-            <AttentionRow icon={ShieldCheck} label="Average QA score" value={metrics.averageQaScore || 0} href="/quality" suffix="/100" />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="border-b border-border">
-            <div className="data-label">Latest signals</div>
-            <CardTitle className="mt-2 text-lg">Loop recommendations</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 p-4">
-            {metrics.latestLoopRecommendations.length ? (
-              metrics.latestLoopRecommendations.slice(0, 4).map((item) => (
-                <div key={`${item.createdAt}-${item.recommendation}`} className="border-l-2 border-[#20867d] bg-muted/45 px-3 py-2.5">
-                  <Badge variant="teal">{loopTypeLabel(item.loopType)}</Badge>
-                  <p className="mt-2 text-sm leading-6 text-foreground">{item.recommendation}</p>
-                </div>
-              ))
-            ) : (
-              <div className="border border-dashed border-border p-6 text-sm leading-6 text-muted-foreground">
-                No recommendations yet. Run a review when you need an updated operational signal.
-              </div>
-            )}
           </CardContent>
         </Card>
       </section>

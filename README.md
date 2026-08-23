@@ -1,6 +1,6 @@
 # DG Academy Training Factory
 
-Standalone Next.js application for creating DG Academy training packages, digital solution proposals, and delivery projects.
+Standalone Next.js application for creating DG Academy training packages, importing external syllabuses, preparing delivery, managing clients and pipeline work, and producing digital solution proposals.
 
 ## Development
 
@@ -21,7 +21,9 @@ bun run build
 
 ## Database
 
-Supabase is required for persisted production behavior. The bootstrap schema is in `schema.sql`, and incremental production migrations are stored in `supabase/migrations`.
+Supabase is required for persisted production behavior. The authoritative schema snapshot is [`schema.sql`](schema.sql), with a browser-friendly mirror in [`database-schema-visual.html`](database-schema-visual.html).
+
+The retained database surface is deliberately small: profiles, clients, training packages, syllabus imports, digital solution proposals and files, opportunities, delivery projects and tasks, delivery materials, evaluation forms and responses, generation jobs, and audit logs.
 
 Delivery material content is normalized in `public.delivery_materials`, with one row per delivery project and material type. The composite primary key `(delivery_project_id, material_type)` allows Slides, Workbook, Facilitator Guide, and Prompt Library jobs to save independently. `public.generation_jobs` remains the source of generation status.
 
@@ -46,3 +48,20 @@ Existing `/system-proposals` browser links redirect to the renamed feature.
 `/packages/from-syllabus` accepts one English `.docx`, `.pptx`, or text-based `.pdf` syllabus up to 10 MB. The server normalizes Word headings, paragraphs, lists, tables, headers, and footers; PowerPoint slide text, tables, and speaker notes; and readable PDF page text into the same source-block contract before the existing background generation job runs.
 
 Images are ignored. Legacy Office files, macro-enabled files, encrypted documents, corrupted files, scanned PDFs, and image-only PDFs are rejected with a readable error. Uploaded source files remain private in the `syllabus-proposal-inputs` Supabase Storage bucket and follow the existing import cleanup lifecycle.
+
+## Brain Layer
+
+All AI generation routes through `src/lib/brain`. Agent instructions and strict Zod output schemas are version-controlled with the application; the runtime does not resolve prompts from database tables. Deterministic code remains responsible for pricing, client matching, trainer profiles, document structure, branding, and exports.
+
+Long-running package, syllabus-import, solution-proposal, delivery-material, evaluation-question, and delivery-report generation uses `public.generation_jobs`. Jobs persist progress and errors independently of the browser page so users can navigate away and return without cancelling work.
+
+## Product Routes
+
+- `/dashboard` provides package, pipeline, follow-up, and delivery summaries.
+- `/packages` and `/packages/from-syllabus` manage training packages and external syllabus imports.
+- `/delivery` manages preparation, materials, pre/post-training evaluation forms, responses, and reports.
+- `/solution-proposals` manages digital solution discovery and proposals.
+- `/clients` and `/pipeline` manage client and opportunity records.
+- `/evaluate/[token]` is the public, token-protected participant evaluation route.
+
+Authentication uses Google sign-in through Supabase. A profile remains `Pending` until an internal operator changes its access state to `Approved`; only approved users can access internal product routes.

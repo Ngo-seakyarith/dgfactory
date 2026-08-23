@@ -100,7 +100,6 @@ function exportPackageForDelivery(
     facilitatorGuide: project.materials.facilitatorGuide,
     promptLibrary: project.materials.promptLibrary,
     followUpEmail: "",
-    qualityChecklist: [],
     pricingInputs: defaultPricingInputs,
     pricingOutputs: calculatePricing(defaultPricingInputs),
     createdAt: project.createdAt,
