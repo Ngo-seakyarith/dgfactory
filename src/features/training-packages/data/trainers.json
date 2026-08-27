@@ -306,5 +306,25 @@
     "bio": "Mr. Yean Horm is an accomplished business leader with extensive experience in sales, distribution management, brand expansion, and international business development. Over the past two decades, he has played a pivotal role in growing international brands, spearheading operations, and implementing strategic business plans across multiple markets in Southeast Asia. With a strong background in leadership and strategic growth, Mr. Horm has successfully set up and managed large-scale distribution networks for global brands such as British American Tobacco (BAT), Philip Morris, and Japan Tobacco International (JTI). His expertise lies in route-to-market strategies, brand portfolio management, sales team development, and consumer-centric market expansion. Throughout his career, he has led large, cross-functional teams and managed multi-million-dollar operations, contributing to the exponential growth of international brands in Cambodia, Laos, Nepal, and Bangladesh. His ability to transform businesses from the ground up, coupled with his hands-on leadership approach, has positioned him as a trusted expert in business development and market penetration. Mr. Horm's international experience spans across Southeast Asia, including Cambodia, Laos, Thailand, Nepal, and Bangladesh, where he has worked closely with global principals to develop and execute strategic business plans. His leadership in restructuring sales and marketing operations has consistently driven market share growth and improved operational performance.",
     "experience": [],
     "qualifications": []
+  },
+  {
+    "name": "Mr. Teh Siew Yee",
+    "image": "https://ik.imagekit.io/9u9rdfh7t/thedgacademy/Trainer%20Photo/Mr.%20Teh%20Siew%20Yee.jpg",
+    "bio": "Mr. Teh Siew Yee is a trainer and consultant for Artificial Intelligence (AI) and Data Science. He has over 25 years of experience advising global organisations—including Standard Chartered Bank, TikTok, UBS, and SIA Engineering Company—on enterprise data strategy, digital transformation, and end-to-end AI implementation. Prior to his consultancy and training journey, Siew Yee held senior leadership roles across the full data value chain—spanning data architecture, data engineering, analytics, and data science—with a regional and global remit across Asia Pacific. His leadership portfolio includes the design and execution of enterprise-wide data strategies, building and scaling high-performing data teams from the ground up, and launching robust talent development programmes that included C-suite engagement and organisation-wide capability building. Siew Yee has trained and mentored thousands of learners—from aspiring data professionals to boardroom executives—in various areas of AI and data analytics.",
+    "experience": [
+      "Trainer and consultant for Artificial Intelligence (AI) and Data Science",
+      "Over 25 years advising global organisations on enterprise data strategy, digital transformation, and end-to-end AI implementation",
+      "Advised Standard Chartered Bank, TikTok, UBS, and SIA Engineering Company",
+      "Senior leadership roles across data architecture, data engineering, analytics, and data science with a regional and global remit across Asia Pacific",
+      "Designed and executed enterprise-wide data strategies",
+      "Built and scaled high-performing data teams from the ground up",
+      "Launched talent development programmes with C-suite engagement and organisation-wide capability building",
+      "Trained and mentored thousands of learners, from aspiring data professionals to boardroom executives"
+    ],
+    "qualifications": [
+      "Master of IT in Business (Artificial Intelligence) from Singapore Management University",
+      "Master of Science (Marketing) from National University of Ireland",
+      "Bachelor of Engineering (Electrical) from Nanyang Technological University, Singapore"
+    ]
   }
 ]
