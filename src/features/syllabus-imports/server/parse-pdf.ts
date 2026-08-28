@@ -8,9 +8,11 @@ import {
 
 type PdfTextItem = {
   str: string;
-  transform: number[];
+  x: number;
+  y: number;
   width: number;
   height: number;
+  fontSize: number;
   hasEOL?: boolean;
 };
 
@@ -18,16 +20,6 @@ type PdfLine = {
   text: string;
   fontSize: number;
 };
-
-function isPdfTextItem(value: unknown): value is PdfTextItem {
-  return Boolean(
-    value &&
-      typeof value === "object" &&
-      "str" in value &&
-      typeof (value as PdfTextItem).str === "string" &&
-      Array.isArray((value as PdfTextItem).transform),
-  );
-}
 
 function median(values: number[]) {
   if (!values.length) return 0;
@@ -57,11 +49,10 @@ function pageLines(items: PdfTextItem[]) {
   for (const item of items) {
     const text = item.str.replace(/\u00a0/g, " ");
     if (!text.trim() && !item.hasEOL) continue;
-    const x = Number(item.transform[4] ?? 0);
-    const y = Number(item.transform[5] ?? 0);
+    const x = Number(item.x ?? 0);
+    const y = Number(item.y ?? 0);
     const fontSize = Math.max(
-      Math.abs(Number(item.transform[0] ?? 0)),
-      Math.abs(Number(item.transform[3] ?? 0)),
+      Number(item.fontSize ?? 0),
       Number(item.height ?? 0),
       1,
     );
@@ -131,21 +122,23 @@ export async function parseSyllabusPdf(buffer: Buffer) {
     throw new Error("The file is not a valid PDF document.");
   }
 
-  let loadingTask: { destroy: () => Promise<void> } | null = null;
+  let document: Awaited<
+    ReturnType<(typeof import("unpdf"))["getDocumentProxy"]>
+  > | null = null;
   try {
-    const { getDocument } = await import("pdfjs-dist/legacy/build/pdf.mjs");
-    const task = getDocument({
-      data: new Uint8Array(buffer),
-      useSystemFonts: true,
+    const { extractTextItems, getDocumentProxy } = await import("unpdf");
+    document = await getDocumentProxy(new Uint8Array(buffer), {
+      maxImageSize: 16_777_216,
     });
-    loadingTask = task;
-    const document = await task.promise;
+    const extracted = await extractTextItems(document);
     const blocks: SourceDocumentBlock[] = [];
-    for (let pageNumber = 1; pageNumber <= document.numPages; pageNumber += 1) {
-      const page = await document.getPage(pageNumber);
-      const content = await page.getTextContent();
-      const items = content.items.filter(isPdfTextItem) as PdfTextItem[];
-      blocks.push(...blocksFromLines(pageLines(items), pageNumber));
+    for (let pageIndex = 0; pageIndex < extracted.items.length; pageIndex += 1) {
+      blocks.push(
+        ...blocksFromLines(
+          pageLines(extracted.items[pageIndex] as PdfTextItem[]),
+          pageIndex + 1,
+        ),
+      );
     }
 
     assertReadableSyllabusBlocks(
@@ -166,8 +159,11 @@ export async function parseSyllabusPdf(buffer: Buffer) {
     if (/No readable|too little|not a valid|not supported|too much content/i.test(message)) {
       throw error;
     }
-    throw new Error("The PDF is corrupted or could not be read.");
+    console.error("[syllabus-imports] PDF parsing failed", error);
+    throw new Error(
+      "The PDF could not be read. Confirm that it opens normally and try again.",
+    );
   } finally {
-    await loadingTask?.destroy().catch(() => undefined);
+    await document?.cleanup().catch(() => undefined);
   }
 }
