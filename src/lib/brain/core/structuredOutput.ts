@@ -15,6 +15,12 @@ import {
 } from "@/lib/brain/core/modelConfig";
 import { getOpenRouterClient } from "@/lib/brain/core/openRouterClient";
 import { resolveAgentPrompt } from "@/lib/brain/core/promptResolver";
+import {
+  classifyAiError,
+  emptyAiUsage,
+  extractOpenRouterUsage,
+  recordAiUsageEvent,
+} from "@/lib/brain/core/usageTelemetry";
 
 type GenerateStructuredOutputOptions<TInput, TOutput> = {
   agent: BrainAgentDefinition<TInput, TOutput>;
@@ -142,16 +148,7 @@ async function callOpenRouter<TInput>({
     reasoning: { effort: typeof brainReasoningEffort };
   };
   const completion = await client.chat.completions.create(request);
-
-  const raw = completion.choices[0]?.message.content;
-
-  if (!raw) {
-    throw new Error("OpenRouter returned an empty Brain Layer response.");
-  }
-
-  return {
-    output: JSON.parse(raw) as unknown,
-  };
+  return { raw: completion.choices[0]?.message.content, completion };
 }
 
 export async function generateStructuredOutput<TInput, TOutput>({
@@ -162,9 +159,24 @@ export async function generateStructuredOutput<TInput, TOutput>({
 }: GenerateStructuredOutputOptions<TInput, TOutput>): Promise<BrainResult<TOutput>> {
   const client = getOpenRouterClient();
   const requestedModel = getBrainModel();
+  const operationId = crypto.randomUUID();
 
   if (!client) {
     const error = new Error("OPENROUTER_API_KEY is required for Brain Layer generation.");
+    const now = new Date();
+    await recordAiUsageEvent({
+      operationId,
+      feature: agent.taskType,
+      modelId: requestedModel,
+      provider: "openrouter",
+      status: "ERROR",
+      attemptNumber: 1,
+      usage: emptyAiUsage(),
+      latencyMs: 0,
+      errorType: classifyAiError(error),
+      startedAt: now,
+      completedAt: now,
+    });
     recordBrainModelError(error);
     throw error;
   }
@@ -174,6 +186,10 @@ export async function generateStructuredOutput<TInput, TOutput>({
 
   while (attempts <= retries) {
     attempts += 1;
+    const startedAt = new Date();
+    let usage = emptyAiUsage();
+    let responseModel = requestedModel;
+    let provider = "openrouter";
 
     try {
       const generated = await callOpenRouter({
@@ -183,7 +199,16 @@ export async function generateStructuredOutput<TInput, TOutput>({
         model: requestedModel,
         schema,
       });
-      const validation = schema.safeParse(generated.output);
+      usage = extractOpenRouterUsage(generated.completion);
+      responseModel = generated.completion.model || requestedModel;
+      const responseProvider = (generated.completion as { provider?: unknown }).provider;
+      if (typeof responseProvider === "string" && responseProvider.trim()) {
+        provider = responseProvider.trim();
+      }
+      if (!generated.raw) {
+        throw new Error("OpenRouter returned an empty Brain Layer response.");
+      }
+      const validation = schema.safeParse(JSON.parse(generated.raw) as unknown);
 
       if (!validation.success) {
         throw new Error(
@@ -192,6 +217,19 @@ export async function generateStructuredOutput<TInput, TOutput>({
       }
 
       recordBrainModelSuccess();
+      const completedAt = new Date();
+      await recordAiUsageEvent({
+        operationId,
+        feature: agent.taskType,
+        modelId: responseModel,
+        provider,
+        status: "SUCCESS",
+        attemptNumber: attempts,
+        usage,
+        latencyMs: completedAt.getTime() - startedAt.getTime(),
+        startedAt,
+        completedAt,
+      });
 
       return {
         output: validation.data,
@@ -199,6 +237,20 @@ export async function generateStructuredOutput<TInput, TOutput>({
         model: requestedModel,
       };
     } catch (error) {
+      const completedAt = new Date();
+      await recordAiUsageEvent({
+        operationId,
+        feature: agent.taskType,
+        modelId: responseModel,
+        provider,
+        status: "ERROR",
+        attemptNumber: attempts,
+        usage,
+        latencyMs: completedAt.getTime() - startedAt.getTime(),
+        errorType: classifyAiError(error),
+        startedAt,
+        completedAt,
+      });
       lastError = normalizeOpenRouterError(error);
       if (!shouldRetryOpenRouterError(error)) break;
     }
