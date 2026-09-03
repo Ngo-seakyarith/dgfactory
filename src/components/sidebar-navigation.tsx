@@ -261,7 +261,7 @@ export function SidebarNavigation({
 
       <aside
         className={cn(
-          "sticky top-2 z-30 m-2 mr-0 hidden h-[calc(100vh-1rem)] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#1b201e] shadow-2xl shadow-black/40 transition-[width] duration-200 ease-out lg:flex",
+          "sticky top-2 z-30 m-2 mr-0 hidden h-[calc(100vh-1rem)] shrink-0 flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#141816] shadow-2xl shadow-black/25 transition-[width] duration-200 ease-out lg:flex",
           isCollapsed ? "w-[76px] cursor-pointer" : "w-[272px]",
         )}
         onClick={expandRail}

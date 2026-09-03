@@ -59,9 +59,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <div className="mx-auto max-w-7xl">{children}</div>
               </main>
             ) : (
-              // A deeper ground than the panel, so the floating rail reads as raised
-              // rather than as a rounded notch cut out of the same colour.
-              <div className="min-h-screen bg-[#0e1211] lg:flex">
+              // The workspace ground runs behind the rail too, so the dark panel
+              // floats on the light field rather than on a dark frame.
+              <div className="min-h-screen bg-[#f2f4f1] lg:flex">
                 <SidebarNavigation
                   items={resolvedNavItems}
                   isAuthenticated={Boolean(user?.userId)}
