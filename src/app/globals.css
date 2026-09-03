@@ -84,6 +84,21 @@ textarea {
   background: rgba(244, 119, 46, 0.28);
 }
 
+/* Page shell. The cap grows by whatever the collapsed rail handed back, so the
+   reclaimed width lands in the content instead of the centring margins. */
+.app-shell {
+  margin-inline: auto;
+  max-width: calc(1480px + var(--rail-reclaimed, 0px));
+  transition: max-width 200ms ease-out;
+}
+
+@media (min-width: 1024px) {
+  html[data-rail="collapsed"] {
+    /* the 272px rail minus its 76px collapsed width */
+    --rail-reclaimed: 196px;
+  }
+}
+
 .app-workspace {
   color-scheme: light;
   --background: 120 8% 95%;

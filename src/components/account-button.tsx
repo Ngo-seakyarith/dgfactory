@@ -10,9 +10,10 @@ import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 type AccountButtonProps = {
   isAuthenticated: boolean;
   className?: string;
+  hideLabel?: boolean;
 };
 
-export function AccountButton({ isAuthenticated, className }: AccountButtonProps) {
+export function AccountButton({ isAuthenticated, className, hideLabel = false }: AccountButtonProps) {
   const queryClient = useQueryClient();
   const [isLoading, setIsLoading] = useState(false);
 
@@ -57,6 +58,8 @@ export function AccountButton({ isAuthenticated, className }: AccountButtonProps
       onClick={isAuthenticated ? signOut : signIn}
       disabled={isLoading}
       className={className}
+      title={isAuthenticated ? "Sign out" : "Sign in"}
+      aria-label={hideLabel ? (isAuthenticated ? "Sign out" : "Sign in") : undefined}
     >
       {isLoading ? (
         <Loader2 className="h-4 w-4 animate-spin" />
@@ -65,7 +68,7 @@ export function AccountButton({ isAuthenticated, className }: AccountButtonProps
       ) : (
         <LogIn className="h-4 w-4" />
       )}
-      {isAuthenticated ? "Sign out" : "Sign in"}
+      {hideLabel ? null : isAuthenticated ? "Sign out" : "Sign in"}
     </Button>
   );
 }

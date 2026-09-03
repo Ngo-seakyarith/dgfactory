@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 
 import "./globals.css";
 import { AppProviders } from "@/app/providers";
-import { SidebarNavigation, type SidebarItem } from "@/components/sidebar-navigation";
+import { COLLAPSED_COOKIE, SidebarNavigation, type SidebarItem } from "@/components/sidebar-navigation";
 import { hasAppAccess } from "@/lib/auth";
 import { getAuthenticatedCookieUser } from "@/lib/auth-production";
 import { setRequestAuthUser } from "@/lib/request-scope";
@@ -32,6 +32,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const user = await getAuthenticatedCookieUser(cookieStore.toString());
   setRequestAuthUser(user);
   const pathname = headerStore.get("x-dg-pathname") ?? "";
+  const railCollapsed = cookieStore.get(COLLAPSED_COOKIE)?.value === "1";
   const isPublicForm = pathname.startsWith("/evaluate");
   const isPublicPage = isPublicForm;
   const isAccessStatusPage =
@@ -49,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   const resolvedNavItems = user && hasAppAccess(user.role) ? navItems : [];
 
   return (
-    <html lang="en" className="dark">
+    <html lang="en" className="dark" data-rail={railCollapsed ? "collapsed" : "expanded"}>
       <body>
         <AppProviders>
           <div className="min-h-screen bg-[#141816] text-stone-50">
@@ -62,9 +63,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <SidebarNavigation
                   items={resolvedNavItems}
                   isAuthenticated={Boolean(user?.userId)}
+                  defaultCollapsed={railCollapsed}
                 />
                 <main className="app-workspace min-w-0 flex-1 px-4 py-6 sm:px-7 lg:px-10 lg:py-8">
-                  <div className="mx-auto max-w-[1480px]">{children}</div>
+                  <div className="app-shell">{children}</div>
                 </main>
               </div>
             )}
