@@ -59,7 +59,9 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <div className="mx-auto max-w-7xl">{children}</div>
               </main>
             ) : (
-              <div className="min-h-screen lg:flex">
+              // A deeper ground than the panel, so the floating rail reads as raised
+              // rather than as a rounded notch cut out of the same colour.
+              <div className="min-h-screen bg-[#0e1211] lg:flex">
                 <SidebarNavigation
                   items={resolvedNavItems}
                   isAuthenticated={Boolean(user?.userId)}
