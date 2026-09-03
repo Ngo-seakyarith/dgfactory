@@ -218,7 +218,15 @@ export function SidebarNavigation({
                             : "text-stone-400 hover:bg-white/[0.05] hover:text-stone-50",
                         )}
                       >
-                        <Icon className={cn("h-4 w-4 shrink-0", isActive && "text-[#f4772e]")} />
+                        <Icon
+                          className={cn(
+                            // In the rail the icon carries the whole label, so it
+                            // grows to fill the space the text left behind.
+                            "shrink-0",
+                            collapsed ? "h-5 w-5" : "h-[18px] w-[18px]",
+                            isActive && "text-[#f4772e]",
+                          )}
+                        />
                         {collapsed ? null : <span>{item.label}</span>}
                       </Link>
                     );

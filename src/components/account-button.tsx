@@ -133,7 +133,11 @@ export function AccountButton({
         aria-label="Sign out"
         className="shrink-0 rounded-sm p-1.5 text-stone-400 transition-colors hover:bg-white/[0.06] hover:text-stone-50 disabled:opacity-40"
       >
-        {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+        {isLoading ? (
+          <Loader2 className={cn("animate-spin", collapsed ? "h-5 w-5" : "h-[18px] w-[18px]")} />
+        ) : (
+          <LogOut className={cn(collapsed ? "h-5 w-5" : "h-[18px] w-[18px]")} />
+        )}
       </button>
     </div>
   );
