@@ -66,6 +66,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   items={resolvedNavItems}
                   isAuthenticated={Boolean(user?.userId)}
                   defaultCollapsed={railCollapsed}
+                  account={{ name: user?.name, email: user?.email, avatarUrl: user?.avatarUrl }}
                 />
                 <main className="app-workspace min-w-0 flex-1 px-4 py-6 sm:px-7 lg:px-10 lg:py-8">
                   <div className="app-shell">{children}</div>

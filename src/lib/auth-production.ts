@@ -17,6 +17,7 @@ export type ProductionAuthProfile = {
   email: string;
   fullName: string;
   role: UserRole;
+  avatarUrl?: string;
 };
 
 const AUTH_CACHE_TTL_MS = 5_000;
@@ -47,6 +48,15 @@ async function getProductionAuthProfile(user: User | null) {
     .eq("id", user.id)
     .maybeSingle();
 
+  // Google hands the picture and display name to Supabase as identity metadata;
+  // the profiles row stays the source of truth for anything it does define.
+  const metadata = (user.user_metadata ?? {}) as {
+    avatar_url?: string;
+    picture?: string;
+    full_name?: string;
+    name?: string;
+  };
+
   const role = isUserRole((profile as { access_status?: unknown } | null)?.access_status)
     ? ((profile as { access_status: UserRole }).access_status)
     : "Pending";
@@ -56,9 +66,12 @@ async function getProductionAuthProfile(user: User | null) {
     email: (profile as { email?: string } | null)?.email || user.email || "",
     fullName:
       (profile as { full_name?: string } | null)?.full_name ||
+      metadata.full_name ||
+      metadata.name ||
       user.email ||
       user.id,
     role,
+    avatarUrl: metadata.avatar_url || metadata.picture || undefined,
   };
 }
 
@@ -105,6 +118,8 @@ function profileToAuthUser(profile: ProductionAuthProfile): AuthUser {
     role: profile.role,
     userId: profile.userId,
     email: profile.email,
+    name: profile.fullName,
+    avatarUrl: profile.avatarUrl,
   };
 }
 

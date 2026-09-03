@@ -20,7 +20,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-import { AccountButton } from "@/components/account-button";
+import { AccountButton, type SidebarAccount } from "@/components/account-button";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -46,12 +46,14 @@ type SidebarNavigationProps = {
   items: SidebarItem[];
   isAuthenticated: boolean;
   defaultCollapsed?: boolean;
+  account?: SidebarAccount;
 };
 
 export function SidebarNavigation({
   items,
   isAuthenticated,
   defaultCollapsed = false,
+  account,
 }: SidebarNavigationProps) {
   const pathname = usePathname();
   const [isOpen, setIsOpen] = useState(false);
@@ -229,11 +231,7 @@ export function SidebarNavigation({
       </nav>
 
       <div className={cn("border-t border-white/10 p-3", collapsed && "px-2")}>
-        <AccountButton
-          isAuthenticated={isAuthenticated}
-          hideLabel={collapsed}
-          className={cn("w-full", collapsed ? "justify-center px-0" : "justify-start")}
-        />
+        <AccountButton isAuthenticated={isAuthenticated} account={account} collapsed={collapsed} />
       </div>
     </>
   );

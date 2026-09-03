@@ -7,6 +7,8 @@ export type AuthUser = {
   role: UserRole;
   userId?: string;
   email?: string;
+  name?: string;
+  avatarUrl?: string;
 };
 
 export function isUserRole(value: unknown): value is UserRole {
