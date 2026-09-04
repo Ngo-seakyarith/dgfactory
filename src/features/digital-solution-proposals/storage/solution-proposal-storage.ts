@@ -54,8 +54,6 @@ type FileRow = {
 };
 
 function normalizeStatus(status: string): SolutionProposalStatus {
-  if (status === "Analyzing") return "Reviewing";
-  if (status === "Analysis Ready") return "Review Ready";
   if (["Draft", "Reviewing", "Review Ready", "Generated", "Failed"].includes(status)) {
     return status as SolutionProposalStatus;
   }
@@ -65,20 +63,11 @@ function normalizeStatus(status: string): SolutionProposalStatus {
 function normalizeBrief(value: ProposalRow["brief"]): SolutionProposalBrief {
   const text = (key: keyof SolutionProposalBrief, fallback = "") =>
     String(value[key] ?? fallback);
-  const legacyWorkflowAndChallenges = Array.from(
-    new Set(
-      [value.currentProcess, value.currentProblem]
-        .map((item) => String(item ?? "").trim())
-        .filter(Boolean),
-    ),
-  ).join("\n\n");
   return {
     ...emptySolutionProposalBrief,
     businessBackground: text("businessBackground"),
-    currentWorkflowAndChallenges: String(
-      value.currentWorkflowAndChallenges ?? legacyWorkflowAndChallenges,
-    ),
-    projectGoal: String(value.projectGoal ?? value.businessGoal ?? ""),
+    currentWorkflowAndChallenges: text("currentWorkflowAndChallenges"),
+    projectGoal: text("projectGoal"),
     desiredOutcomes: text("desiredOutcomes"),
     targetUsers: text("targetUsers"),
     userRoles: text("userRoles"),

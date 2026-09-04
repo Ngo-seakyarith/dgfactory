@@ -23,12 +23,12 @@ export default function AppError({
       <CardHeader>
         <CardTitle>Something needs attention</CardTitle>
         <CardDescription>
-          The Factory caught an interface error before it broke the whole app.
+          This page could not finish loading.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm leading-6 text-destructive/85">
-          {error.message || "Please retry the page. If it repeats, check server logs."}
+          {error.message || "Please try again. Contact support if the problem continues."}
         </p>
         <Button type="button" variant="outline" onClick={reset}>
           <RefreshCw className="h-4 w-4" />

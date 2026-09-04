@@ -51,6 +51,19 @@ export function useOpportunitiesQuery() {
   });
 }
 
+export function useOpportunityQuery(id: string) {
+  return useQuery({
+    queryKey: opportunityKeys.detail(id),
+    queryFn: async () => {
+      const payload = await requestJson<{ opportunity: Opportunity }>(
+        `/api/opportunities/${id}`,
+      );
+      return payload.opportunity;
+    },
+    enabled: Boolean(id),
+  });
+}
+
 export function useSaveClientMutation() {
   const queryClient = useQueryClient();
 

@@ -11,7 +11,6 @@ import { GenerationInputError } from "@/features/generation-jobs/domain/errors";
 import {
   buildPackageFromParts,
   emptyProposalBrief,
-  normalizePricingInputs,
   normalizeTrainingOutputs,
   secondTrainerSnapshotFields,
   trainerCatalog,
@@ -25,6 +24,7 @@ import { routeBrainTask } from "@/lib/brain/routing/router";
 import { listClients, resolvePackageClient } from "@/features/crm/server/storage";
 
 import { resolveImportTrainers } from "../domain/matching";
+import { getSyllabusPricingError } from "../domain/pricing-validation";
 import type { SyllabusProposalImport } from "../domain/types";
 import {
   deleteSyllabusImportSource,
@@ -50,9 +50,8 @@ const defaultClientResponsibilities = [
 ].join("\n");
 
 function requiredPricing(value: SyllabusProposalImport) {
-  if (value.pricingInputs.professionalFee <= 0) {
-    throw new GenerationInputError("Enter a professional fee greater than zero.");
-  }
+  const pricingError = getSyllabusPricingError(value.pricingInputs);
+  if (pricingError) throw new GenerationInputError(pricingError);
 }
 
 async function finalizeExistingPackage(value: SyllabusProposalImport, actor: string) {
@@ -157,18 +156,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
 
   const mapping = value.mapping;
   if (!mapping) throw new Error("The syllabus mapping was not saved.");
-  if (
-    value.pricingInputs.numberOfParticipants <= 0 &&
-    Number(mapping.participantCount ?? 0) > 0
-  ) {
-    value = await saveSyllabusImport({
-      ...value,
-      pricingInputs: normalizePricingInputs({
-        ...value.pricingInputs,
-        numberOfParticipants: Number(mapping.participantCount ?? 0),
-      }),
-    });
-  }
   const clientName = await resolveClientName(value);
   const trainerResolution = resolveImportTrainers({
     trainerNames: mapping.trainerNames,
@@ -187,10 +174,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
   ) {
     missingFields.push("trainer");
   }
-  if (value.pricingInputs.numberOfParticipants <= 0) {
-    missingFields.push("participants");
-  }
-
   if (missingFields.length) {
     return saveSyllabusImport({
       ...value,

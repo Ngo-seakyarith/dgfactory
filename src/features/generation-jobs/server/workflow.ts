@@ -8,7 +8,7 @@ import { GenerationInputError } from "../domain/errors";
 import { markGenerationResourceFailed } from "./resource-failure";
 
 function errorMessage(error: unknown) {
-  return error instanceof Error ? error.message : "Background generation failed.";
+  return error instanceof Error ? error.message : "Generation failed.";
 }
 
 async function runGenerationStep(jobId: string) {

@@ -170,41 +170,11 @@ export type SolutionCommercialInputs = {
   proposalValidity: string;
 };
 
-export type LegacySolutionModule = {
-  name: string;
-  purpose: string;
-  inputs: string[];
-  outputs: string[];
-  userValue: string;
-};
-
 export type SolutionImplementationPhase = {
   name: string;
   duration: string;
   activities: string[];
   deliverables: string[];
-};
-
-export type LegacyDigitalSolutionProposalContent = {
-  coverHeading: string;
-  solutionTitle: string;
-  client: string;
-  executiveSummary: string[];
-  clientSituation: string[];
-  discoveryFindings: string[];
-  projectObjectives: string[];
-  recommendedSolution: string[];
-  solutionModules: LegacySolutionModule[];
-  userJourneys: string[];
-  interfacesAndExperiences: string[];
-  architectureAndIntegrations: string[];
-  securityAndGovernance: string[];
-  implementationPhases: SolutionImplementationPhase[];
-  deliverables: string[];
-  clientResponsibilities: string[];
-  assumptions: string[];
-  risks: string[];
-  nextSteps: string[];
 };
 
 export const solutionProposalSectionKeys = [

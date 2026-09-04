@@ -27,6 +27,7 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { useDeliveryProjectsQuery } from "@/features/delivery/queries";
+import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
 import {
   createEmptyOpportunity,
   formatCrmMoney,
@@ -40,10 +41,12 @@ import {
 } from "@/features/crm/domain";
 import {
   useDeleteOpportunityMutation,
+  useClientsQuery,
+  useOpportunitiesQuery,
+  useOpportunityQuery,
   useSaveOpportunityMutation,
 } from "@/features/crm/queries";
 
-import { useCrmData } from "./use-crm-data";
 import {
   CrmGridSkeleton,
   DraftBlock,
@@ -64,7 +67,8 @@ export function OpportunityForm({
   const router = useRouter();
   const saveMutation = useSaveOpportunityMutation();
   const searchParams = useSearchParams();
-  const { clients, packages } = useCrmData();
+  const clients = useClientsQuery().data ?? [];
+  const packages = useTrainingPackagesQuery().data ?? [];
   const clientIdFromQuery = searchParams.get("clientId") ?? "";
   const packageIdFromQuery = searchParams.get("packageId") ?? "";
   const sourcePackage = packages.find((pkg) => pkg.id === packageIdFromQuery);
@@ -277,7 +281,21 @@ export function OpportunityCard({
 }
 
 export function OpportunitiesPageClient() {
-  const { clients, opportunities, notice, isLoading, error, refresh } = useCrmData();
+  const clientsQuery = useClientsQuery();
+  const opportunitiesQuery = useOpportunitiesQuery();
+  const clients = clientsQuery.data ?? [];
+  const opportunities = useMemo(
+    () => opportunitiesQuery.data ?? [],
+    [opportunitiesQuery.data],
+  );
+  const queries = [clientsQuery, opportunitiesQuery];
+  const isLoading = queries.some((query) => query.isPending);
+  const error = queries.find((query) => query.isError)?.error ?? null;
+  const notice = error
+    ? error.message
+    : !isLoading && queries.some((query) => query.isFetching)
+      ? "Refreshing opportunities..."
+      : "";
   const [query, setQuery] = useState("");
   const filtered = useMemo(() => {
     const normalized = query.trim().toLowerCase();
@@ -309,7 +327,10 @@ export function OpportunitiesPageClient() {
         </CardHeader>
         <CardContent>
           {error && !opportunities.length ? (
-            <QueryErrorState detail={error.message} onRetry={() => void refresh()} />
+            <QueryErrorState
+              detail={error.message}
+              onRetry={() => void Promise.all(queries.map((item) => item.refetch()))}
+            />
           ) : isLoading ? (
             <CrmGridSkeleton />
           ) : filtered.length ? (
@@ -338,8 +359,12 @@ export function OpportunitiesPageClient() {
 export function OpportunityDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const deleteMutation = useDeleteOpportunityMutation();
-  const { clients, opportunities, packages, isLoading } = useCrmData();
-  const opportunity = opportunities.find((item) => item.id === id);
+  const opportunityQuery = useOpportunityQuery(id);
+  const clientsQuery = useClientsQuery();
+  const packagesQuery = useTrainingPackagesQuery();
+  const clients = clientsQuery.data ?? [];
+  const packages = packagesQuery.data ?? [];
+  const opportunity = opportunityQuery.data;
   const client = clients.find((item) => item.id === opportunity?.clientId);
   const linkedPackage = packages.find(
     (pkg) => pkg.id === opportunity?.linkedPackageId,
@@ -349,6 +374,14 @@ export function OpportunityDetailClient({ id }: { id: string }) {
     (project) =>
       project.opportunityId === id ||
       (project.packageId && project.packageId === linkedPackage?.id),
+  );
+  const isLoading = [
+    opportunityQuery,
+    clientsQuery,
+    packagesQuery,
+    deliveriesQuery,
+  ].some(
+    (query) => query.isPending,
   );
   const [draft, setDraft] = useState<FollowUpDraft | null>(null);
   const [draftNotice, setDraftNotice] = useState("");
@@ -517,4 +550,3 @@ export function OpportunityDetailClient({ id }: { id: string }) {
     </div>
   );
 }
-

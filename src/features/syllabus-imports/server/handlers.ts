@@ -11,6 +11,7 @@ import { saveAuditLog } from "@/lib/audit";
 import { requireApproved } from "@/lib/route-guards";
 
 import { defaultSyllabusMimeType } from "../domain/file-types";
+import { getSyllabusPricingError } from "../domain/pricing-validation";
 import {
   createSyllabusImport,
   deleteSyllabusImport,
@@ -25,17 +26,10 @@ const correctionSchema = z.strictObject({
   clientName: z.string().max(200).optional(),
   trainerId: z.string().max(160).optional(),
   secondTrainerId: z.string().max(160).optional(),
-  numberOfParticipants: z.number().int().positive().optional(),
 });
 
 function message(error: unknown) {
   return error instanceof Error ? error.message : "The syllabus import request failed.";
-}
-
-function validatePricing(pricing: PricingInputs) {
-  if (pricing.professionalFee <= 0) {
-    throw new Error("Enter a professional fee greater than zero.");
-  }
 }
 
 export async function createSyllabusImportRequest(request: Request) {
@@ -53,7 +47,8 @@ export async function createSyllabusImportRequest(request: Request) {
     const sizeBytes = Number(body.sizeBytes ?? 0);
     validateSyllabusUpload({ name, mimeType, sizeBytes });
     const pricingInputs = normalizePricingInputs(body.pricingInputs);
-    validatePricing(pricingInputs);
+    const pricingError = getSyllabusPricingError(pricingInputs);
+    if (pricingError) throw new Error(pricingError);
     const created = await createSyllabusImport({
       originalName: name,
       mimeType: mimeType || defaultSyllabusMimeType(name),
@@ -116,9 +111,7 @@ export async function updateSyllabusImportRequest(
     if (value.status === "Completed") {
       return NextResponse.json({ error: "This syllabus import is already complete." }, { status: 409 });
     }
-    const { numberOfParticipants, ...corrections } = correctionSchema.parse(
-      await request.json(),
-    );
+    const corrections = correctionSchema.parse(await request.json());
     if (corrections.trainerId && !getTrainerById(corrections.trainerId)) {
       return NextResponse.json({ error: "Select an approved DG Academy trainer." }, { status: 400 });
     }
@@ -150,13 +143,6 @@ export async function updateSyllabusImportRequest(
     const saved = await saveSyllabusImport({
       ...value,
       corrections: nextCorrections,
-      pricingInputs:
-        numberOfParticipants === undefined
-          ? value.pricingInputs
-          : normalizePricingInputs({
-              ...value.pricingInputs,
-              numberOfParticipants,
-            }),
       errorMessage: "",
     });
     return NextResponse.json({ import: saved });
@@ -204,7 +190,10 @@ export async function generateSyllabusImportRequest(
     if (value.status === "Completed") {
       return NextResponse.json({ import: value });
     }
-    validatePricing(value.pricingInputs);
+    const pricingError = getSyllabusPricingError(value.pricingInputs);
+    if (pricingError) {
+      return NextResponse.json({ error: pricingError }, { status: 400 });
+    }
     const job = await startGenerationJob({
       jobType: "syllabus_proposal",
       resourceType: "syllabus_import",

@@ -9,6 +9,7 @@ import {
 import type {
   SyllabusImportCorrections,
   SyllabusImportStatus,
+  SyllabusMissingField,
   SyllabusProposalImport,
   SyllabusProposalMapping,
 } from "../domain/types";
@@ -27,7 +28,7 @@ type SyllabusImportRow = {
   pricing_inputs: PricingInputs;
   mapping: SyllabusProposalMapping | null;
   corrections: SyllabusImportCorrections;
-  missing_fields: Array<"client" | "trainer" | "participants">;
+  missing_fields: string[];
   package_id: string | null;
   error_message: string;
   created_by: string | null;
@@ -48,6 +49,10 @@ function requireSupabase() {
   return supabase;
 }
 
+function isSyllabusMissingField(value: string): value is SyllabusMissingField {
+  return value === "client" || value === "trainer";
+}
+
 function fromRow(row: SyllabusImportRow): SyllabusProposalImport {
   return {
     id: row.id,
@@ -60,7 +65,9 @@ function fromRow(row: SyllabusImportRow): SyllabusProposalImport {
     pricingInputs: normalizePricingInputs(row.pricing_inputs),
     mapping: row.mapping,
     corrections: { ...emptyCorrections, ...(row.corrections ?? {}) },
-    missingFields: Array.isArray(row.missing_fields) ? row.missing_fields : [],
+    missingFields: Array.isArray(row.missing_fields)
+      ? row.missing_fields.filter(isSyllabusMissingField)
+      : [],
     packageId: row.package_id,
     errorMessage: row.error_message,
     createdBy: row.created_by,

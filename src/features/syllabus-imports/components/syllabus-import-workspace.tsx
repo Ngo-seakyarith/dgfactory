@@ -52,6 +52,7 @@ import {
   isSupportedSyllabusFileName,
   syllabusFileAccept,
 } from "../domain/file-types";
+import { getSyllabusPricingError } from "../domain/pricing-validation";
 import type {
   SyllabusImportCorrections,
   SyllabusProposalImport,
@@ -192,9 +193,8 @@ export function SyllabusImportWorkspace({
         "The syllabus must be a non-empty DOCX, PPTX, or PDF file no larger than 10 MB.",
       );
     }
-    if (pricing.professionalFee <= 0) {
-      return setError("Enter a professional fee greater than zero.");
-    }
+    const pricingError = getSyllabusPricingError(pricing);
+    if (pricingError) return setError(pricingError);
 
     setBusy("Uploading syllabus...");
     let createdId = "";
@@ -248,12 +248,6 @@ export function SyllabusImportWorkspace({
     if (currentImport.missingFields.includes("trainer") && !getTrainerById(corrections.trainerId)) {
       return setError("Select an approved DG Academy trainer.");
     }
-    if (
-      currentImport.missingFields.includes("participants") &&
-      pricing.numberOfParticipants <= 0
-    ) {
-      return setError("Enter a participant count greater than zero.");
-    }
     setBusy("Saving the missing information...");
     try {
       const payload = await requestJson<{ import: SyllabusProposalImport }>(
@@ -261,12 +255,7 @@ export function SyllabusImportWorkspace({
         {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            ...corrections,
-            numberOfParticipants: currentImport.missingFields.includes("participants")
-              ? pricing.numberOfParticipants
-              : undefined,
-          }),
+          body: JSON.stringify(corrections),
         },
       );
       setSyllabusImportQueryData(queryClient, payload.import);
@@ -312,7 +301,7 @@ export function SyllabusImportWorkspace({
       {busy ? (
         <div className="flex items-center gap-3 rounded-md border border-teal-700/25 bg-teal-50 p-4 text-sm font-medium text-teal-950">
           <Loader2 className="h-4 w-4 animate-spin" />
-          <span>{busy} You can leave this page while the background job continues.</span>
+          <span>{busy} You can leave this page; generation will continue.</span>
         </div>
       ) : null}
 
@@ -437,30 +426,6 @@ export function SyllabusImportWorkspace({
               </div>
             ) : null}
 
-            {currentImport.missingFields.includes("participants") ? (
-              <Field label="Participants">
-                <Input
-                  type="text"
-                  inputMode="numeric"
-                  value={
-                    pricing.numberOfParticipants > 0
-                      ? String(pricing.numberOfParticipants)
-                      : ""
-                  }
-                  placeholder="Enter participant count"
-                  onChange={(event) => {
-                    const next = event.target.value;
-                    if (!/^\d*$/.test(next)) return;
-                    setPricing((current) => ({
-                      ...current,
-                      numberOfParticipants: next ? Number(next) : 0,
-                    }));
-                  }}
-                  onFocus={(event) => event.currentTarget.select()}
-                />
-              </Field>
-            ) : null}
-
             <div className="flex flex-wrap gap-2 border-t border-border pt-4">
               <Button onClick={() => void continueGeneration()} disabled={Boolean(busy)}>
                 <Sparkles className="h-4 w-4" />Continue generation
@@ -489,7 +454,7 @@ export function SyllabusImportWorkspace({
             <CardDescription>
               {currentImport.status === "Failed"
                 ? currentImport.errorMessage || "The proposal could not be generated."
-                : "The background job continues even when you leave this page."}
+                : "Generation continues safely if you leave this page."}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -581,8 +546,7 @@ export function SyllabusImportWorkspace({
           <CommercialSetup
             value={pricing}
             onChange={setPricing}
-            description="Enter the professional fee and VAT wording for the proposal."
-            showParticipants={false}
+            description="Enter the participant count, professional fee, and VAT wording before generation."
           />
 
           <div className="flex flex-wrap items-center gap-2 border-t border-border pt-5">

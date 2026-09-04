@@ -99,8 +99,8 @@ export function AccountButton({
   return (
     <div className={cn("flex items-center gap-3", collapsed && "flex-col gap-2", className)}>
       {showAvatar ? (
-        // eslint-disable-next-line @next/next/no-img-element -- Google avatars are
-        // hotlinked from an unconfigured host and need the no-referrer policy.
+        // Google avatars are hotlinked and need the no-referrer policy.
+        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={account?.avatarUrl}
           alt={account?.name ?? "Account"}

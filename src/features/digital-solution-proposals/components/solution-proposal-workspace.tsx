@@ -226,7 +226,7 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
           : null;
     if (!activeJob || !job || job.id !== activeJob.id) return;
     if (job.status === "Failed") {
-      fail(new Error(job.errorMessage || "Background generation failed."));
+      fail(new Error(job.errorMessage || "Proposal generation failed."));
       setBusy("");
       setActiveJob(null);
       return;

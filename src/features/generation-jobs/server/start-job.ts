@@ -22,7 +22,7 @@ export async function startGenerationJob(input: StartGenerationJobInput) {
       status: "Failed",
       completedAt: new Date().toISOString(),
       errorMessage:
-        error instanceof Error ? error.message : "The background job could not start.",
+        error instanceof Error ? error.message : "Generation could not start.",
     });
     throw error;
   }

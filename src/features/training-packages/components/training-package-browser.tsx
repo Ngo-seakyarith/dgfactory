@@ -7,9 +7,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowRight,
   Clock3,
-  Database,
   FileText,
-  Layers3,
   Plus,
   Search,
   Trash2,
@@ -20,18 +18,12 @@ import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { QueryErrorState } from "@/components/query-error-state";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  ErrorState,
-  LoadingState,
-  PackageForm,
-} from "@/features/training-packages/components";
+import { PackageForm } from "./training-package-factory";
+import { ErrorState, LoadingState } from "./shared";
 import type { TrainingPackage } from "@/features/training-packages/domain/training-package";
 import {
   trainingPackageKeys,
@@ -41,79 +33,6 @@ import {
 } from "@/features/training-packages/queries";
 import { PackageOpportunityPanel } from "@/features/crm/components/package-opportunity-panel";
 import { formatDateTime } from "@/lib/date-time";
-
-export function TrainingDashboardClient() {
-  const packagesQuery = useTrainingPackagesQuery();
-  const packages = packagesQuery.data ?? [];
-  const isLoading = packagesQuery.isPending;
-  const storageNotice = packagesQuery.isFetching && packagesQuery.data
-    ? "Refreshing saved packages..."
-    : "";
-  const latest = packages.slice(0, 4);
-  const generatedCount = packages.length;
-  const openMarkets = new Set(packages.map((pkg) => pkg.client).filter(Boolean)).size;
-
-  return (
-    <div className="space-y-5">
-      <section className="grid gap-4 md:grid-cols-2">
-        <MetricCard
-          icon={Layers3}
-          label="Saved Packages"
-          value={generatedCount.toString()}
-          detail="Ready to reopen"
-          loading={isLoading}
-        />
-        <MetricCard
-          icon={Database}
-          label="Markets Covered"
-          value={openMarkets.toString()}
-          detail="Clients or market segments"
-          loading={isLoading}
-        />
-      </section>
-
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardHeader className="gap-3 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
-          <div>
-            <CardTitle>Production Factory</CardTitle>
-            <CardDescription>
-              Build sellable training assets from one brief, then save, copy, and
-              reopen them.
-            </CardDescription>
-          </div>
-          <Button asChild variant="gold">
-            <Link href="/packages/new">
-              <Plus className="h-4 w-4" />
-              New Package
-            </Link>
-          </Button>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 md:grid-cols-3">
-            <FactoryStep title="1. Brief" detail="Capture the title, audience, client, promise, examples, and tone." />
-            <FactoryStep title="2. Generate" detail="Create the syllabus and proposal." />
-            <FactoryStep title="3. Package" detail="Review outputs, save the package, and reopen it when needed." />
-          </div>
-        </CardContent>
-      </Card>
-
-      {packagesQuery.isError ? (
-        <QueryErrorState
-          detail={packagesQuery.error.message}
-          onRetry={() => void packagesQuery.refetch()}
-        />
-      ) : (
-        <SavedPackageGrid
-          packages={latest}
-          storageNotice={storageNotice}
-          isLoading={isLoading}
-          emptyTitle="No packages yet"
-          emptyDetail="Create your first DG Academy training package to populate the factory."
-        />
-      )}
-    </div>
-  );
-}
 
 export function SavedPackagesClient() {
   const packagesQuery = useTrainingPackagesQuery();
@@ -364,48 +283,6 @@ function PackageGridSkeleton() {
           <Skeleton className="mt-4 h-3 w-40" />
         </div>
       ))}
-    </div>
-  );
-}
-
-function MetricCard({
-  icon: Icon,
-  label,
-  value,
-  detail,
-  loading = false,
-}: {
-  icon: typeof Layers3;
-  label: string;
-  value: string;
-  detail: string;
-  loading?: boolean;
-}) {
-  return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-      <CardContent className="flex items-start justify-between gap-4 p-5">
-        <div>
-          <div className="text-sm text-muted-foreground">{label}</div>
-          {loading ? (
-            <Skeleton className="mt-2 h-9 w-16" />
-          ) : (
-            <div className="mt-2 font-mono text-3xl font-semibold text-white">{value}</div>
-          )}
-          <div className="mt-2 text-xs leading-5 text-muted-foreground">{detail}</div>
-        </div>
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-teal-300/20 bg-teal-300/10 text-teal-100">
-          <Icon className="h-5 w-5" />
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function FactoryStep({ title, detail }: { title: string; detail: string }) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
-      <div className="font-semibold text-white">{title}</div>
-      <p className="mt-2 text-sm leading-6 text-muted-foreground">{detail}</p>
     </div>
   );
 }

@@ -24,15 +24,7 @@ type DeliveryProjectRow = {
   package_id: string | null;
   client_id: string | null;
   title: string;
-  delivery_status:
-    | DeliveryStatus
-    | "Syllabus Sent"
-    | "Planning"
-    | "Materials Preparation"
-    | "Confirmed"
-    | "Report Sent"
-    | "Cancelled"
-    | null;
+  delivery_status: DeliveryStatus | null;
   training_date: string | null;
   location: string | null;
   trainer_name: string | null;
@@ -57,30 +49,6 @@ type DeliveryMaterialRow = {
 
 function statusToRow(status: DeliveryStatus): DeliveryProjectRow["delivery_status"] {
   return status;
-}
-
-function statusFromRow(status: DeliveryProjectRow["delivery_status"]): DeliveryStatus {
-  if (status === "Syllabus Sent") {
-    return "Syllabus Sent";
-  }
-
-  if (status === "Planning" || status === "Materials Preparation") {
-    return "Prepared";
-  }
-
-  if (status === "Confirmed") {
-    return "Won";
-  }
-
-  if (status === "Report Sent") {
-    return "Delivered";
-  }
-
-  if (status === "Cancelled") {
-    return "Lost";
-  }
-
-  return status ?? "Syllabus Sent";
 }
 
 type DeliveryTaskRow = {
@@ -137,7 +105,7 @@ function projectFromRow(
     packageId: row.package_id,
     clientId: row.client_id,
     title: row.title,
-    deliveryStatus: statusFromRow(row.delivery_status),
+    deliveryStatus: row.delivery_status ?? "Syllabus Sent",
     trainingDate: row.training_date ?? "",
     location: row.location ?? "",
     trainerName: row.trainer_name ?? "",

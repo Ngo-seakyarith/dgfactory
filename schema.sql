@@ -107,8 +107,6 @@ create table if not exists public.intelligent_system_proposals (
   status text not null default 'Draft' check (
     status in (
       'Draft',
-      'Analyzing',
-      'Analysis Ready',
       'Reviewing',
       'Review Ready',
       'Generated',
@@ -193,8 +191,6 @@ create table if not exists public.generation_jobs (
   job_type text not null check (
     job_type in (
       'training_package',
-      'system_discovery',
-      'system_proposal',
       'solution_review',
       'solution_proposal',
       'delivery_material',
@@ -210,7 +206,6 @@ create table if not exists public.generation_jobs (
     status in ('Queued', 'Running', 'Completed', 'Failed')
   ),
   workflow_run_id text not null default '',
-  payload jsonb not null default '{}'::jsonb,
   error_message text not null default '',
   created_by uuid references public.profiles(id) on delete set null,
   created_by_actor text not null,

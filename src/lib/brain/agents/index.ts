@@ -190,7 +190,6 @@ export const syllabusProposalAgent: BrainAgentDefinition<
   instructions: [
     "Normalize the complete external syllabus into the DG Academy proposal schema. Preserve its meaning, topic sequence, schedule, and level of detail.",
     "Client rule: return the organization receiving the training as clientName. New clients are valid. Return null only when the recipient is not present in the document.",
-    "Participant rule: return participantCount only for one explicit participant, learner, attendee, staff, pax, class-size, or cohort count, written in digits or words. Check prose and tables, distinguish it from dates, durations, fees, and session numbers, and return null for an absent, approximate, or ranged count.",
     "Trainer rule: return only people explicitly acting as trainers or facilitators. A name in a contact, acknowledgement, header, or footer is not enough. Match names against approvedTrainerNames when possible.",
     "Evidence rules: Do not invent identities, certifications, dates, venues, prices, commercial terms, or outcomes. Use empty strings, empty arrays, or null where the schema permits when evidence is absent.",
     "For table-based schedules, encode each session as `Session N | detail; detail` in contentOutlines so the deterministic DOCX renderer preserves the session hierarchy.",

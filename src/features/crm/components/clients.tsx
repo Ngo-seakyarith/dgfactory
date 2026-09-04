@@ -27,7 +27,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import type { DigitalSolutionProposal } from "@/features/digital-solution-proposals";
+import { useSolutionProposalsQuery } from "@/features/digital-solution-proposals/queries";
 import type { TrainingPackage } from "@/features/training-packages";
+import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
 import {
   clientNameKey,
   createEmptyClient,
@@ -35,12 +37,14 @@ import {
   type Client,
 } from "@/features/crm/domain";
 import {
+  useClientQuery,
+  useClientsQuery,
   useDeleteClientMutation,
+  useOpportunitiesQuery,
   useSaveClientMutation,
 } from "@/features/crm/queries";
 import { formatDateTime } from "@/lib/date-time";
 
-import { useCrmData } from "./use-crm-data";
 import { OpportunityCard } from "./opportunities";
 import {
   CrmGridSkeleton,
@@ -329,7 +333,20 @@ type ClientsViewMode = "grid" | "rows";
 const clientsViewStorageKey = "dg-academy.clients-view";
 
 export function ClientsPageClient() {
-  const { clients, packages, systemProposals, notice, isLoading, error, refresh } = useCrmData();
+  const clientsQuery = useClientsQuery();
+  const packagesQuery = useTrainingPackagesQuery();
+  const proposalsQuery = useSolutionProposalsQuery();
+  const clients = useMemo(() => clientsQuery.data ?? [], [clientsQuery.data]);
+  const packages = packagesQuery.data ?? [];
+  const systemProposals = proposalsQuery.data ?? [];
+  const queries = [clientsQuery, packagesQuery, proposalsQuery];
+  const isLoading = queries.some((query) => query.isPending);
+  const error = queries.find((query) => query.isError)?.error ?? null;
+  const notice = error
+    ? error.message
+    : !isLoading && queries.some((query) => query.isFetching)
+      ? "Refreshing client records..."
+      : "";
   const [query, setQuery] = useState("");
   const [viewMode, setViewMode] = useState<ClientsViewMode>("grid");
 
@@ -409,7 +426,10 @@ export function ClientsPageClient() {
         </CardHeader>
         <CardContent>
           {error && !clients.length ? (
-            <QueryErrorState detail={error.message} onRetry={() => void refresh()} />
+            <QueryErrorState
+              detail={error.message}
+              onRetry={() => void Promise.all(queries.map((item) => item.refetch()))}
+            />
           ) : isLoading ? (
             <CrmGridSkeleton />
           ) : filtered.length ? (
@@ -434,8 +454,20 @@ export function ClientsPageClient() {
 export function ClientDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const deleteMutation = useDeleteClientMutation();
-  const { clients, opportunities, packages, systemProposals, isLoading } = useCrmData();
-  const client = clients.find((item) => item.id === id);
+  const clientQuery = useClientQuery(id);
+  const opportunitiesQuery = useOpportunitiesQuery();
+  const packagesQuery = useTrainingPackagesQuery();
+  const proposalsQuery = useSolutionProposalsQuery();
+  const client = clientQuery.data;
+  const opportunities = opportunitiesQuery.data ?? [];
+  const packages = packagesQuery.data ?? [];
+  const systemProposals = proposalsQuery.data ?? [];
+  const isLoading = [
+    clientQuery,
+    opportunitiesQuery,
+    packagesQuery,
+    proposalsQuery,
+  ].some((query) => query.isPending);
   const clientOpportunities = opportunities.filter((item) => item.clientId === id);
   const clientPackages = client ? packagesForClient(client, packages) : [];
   const clientSystemProposals = systemProposals.filter(
@@ -600,4 +632,3 @@ export function ClientDetailClient({ id }: { id: string }) {
     </div>
   );
 }
-

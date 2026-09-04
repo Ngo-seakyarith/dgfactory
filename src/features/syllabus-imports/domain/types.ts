@@ -44,7 +44,6 @@ export type SyllabusProposalMapping = {
   courseTitle: string;
   clientName: string | null;
   audience: string;
-  participantCount: number | null;
   duration: string;
   programGoal: string;
   context: string;
@@ -61,6 +60,8 @@ export type SyllabusImportCorrections = {
   secondTrainerId: string;
 };
 
+export type SyllabusMissingField = "client" | "trainer";
+
 export type SyllabusProposalImport = {
   id: string;
   status: SyllabusImportStatus;
@@ -72,7 +73,7 @@ export type SyllabusProposalImport = {
   pricingInputs: PricingInputs;
   mapping: SyllabusProposalMapping | null;
   corrections: SyllabusImportCorrections;
-  missingFields: Array<"client" | "trainer" | "participants">;
+  missingFields: SyllabusMissingField[];
   packageId: string | null;
   errorMessage: string;
   createdBy: string | null;

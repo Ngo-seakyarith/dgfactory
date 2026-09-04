@@ -2,7 +2,6 @@ import type {
   CombinedDatasetAnalysis,
   DigitalSolutionProposal,
   DigitalSolutionProposalContent,
-  LegacyDigitalSolutionProposalContent,
   SolutionCommercialInputs,
   SolutionProposalBlock,
   SolutionProposalBrief,
@@ -51,9 +50,6 @@ export function normalizeSolutionCommercialInputs(
   value: Partial<SolutionCommercialInputs> | null | undefined,
 ): SolutionCommercialInputs {
   const rawCurrency = String(value?.currency ?? "USD").trim();
-  const amountEnteredAsCurrency = /^\d+(?:\.\d+)?$/.test(rawCurrency)
-    ? Number(rawCurrency)
-    : 0;
   const lineItems = Array.isArray(value?.lineItems)
     ? value.lineItems
         .map((item) => ({
@@ -64,16 +60,8 @@ export function normalizeSolutionCommercialInputs(
         .filter((item) => item.description || item.amount > 0)
     : [];
 
-  if (amountEnteredAsCurrency > 0 && !lineItems.length) {
-    lineItems.push({
-      id: "professional-fee",
-      description: "Professional fee",
-      amount: amountEnteredAsCurrency,
-    });
-  }
-
   return {
-    currency: amountEnteredAsCurrency > 0 ? "USD" : rawCurrency || "USD",
+    currency: rawCurrency || "USD",
     lineItems,
     vatStatus:
       value?.vatStatus === "Including VAT" ? "Including VAT" : "Excluding VAT",
@@ -90,43 +78,10 @@ export function calculateSolutionCommercialTotal(inputs: SolutionCommercialInput
   );
 }
 
-const legacySectionTitles: Record<
-  Exclude<SolutionProposalSectionKey, "commercial_terms">,
-  string
-> = {
-  executive_summary: "Executive Summary",
-  client_situation: "Client Situation",
-  project_objectives: "Project Objectives",
-  recommended_solution: "Recommended Digital Solution",
-  solution_scope: "Solution Scope",
-  user_experience: "User Experience",
-  architecture_integrations: "Architecture and Integrations",
-  security_governance: "Security and Governance",
-  implementation: "Implementation Approach",
-  deliverables: "Project Deliverables",
-  client_responsibilities: "Client Responsibilities",
-  assumptions_risks: "Assumptions, Risks, and Items to Validate",
-  next_steps: "Recommended Next Steps",
-};
-
 function textItems(value: unknown) {
   return Array.isArray(value)
     ? value.map((item) => String(item ?? "").trim()).filter(Boolean)
     : [];
-}
-
-function bulletSection(
-  key: Exclude<SolutionProposalSectionKey, "commercial_terms">,
-  items: unknown,
-): SolutionProposalSection | null {
-  const values = textItems(items);
-  return values.length
-    ? {
-        key,
-        title: legacySectionTitles[key],
-        blocks: [{ type: "bullet_list", items: values }],
-      }
-    : null;
 }
 
 function normalizeBlock(value: unknown): SolutionProposalBlock | null {
@@ -177,10 +132,7 @@ function normalizeVersionTwoContent(
   value: Record<string, unknown>,
 ): DigitalSolutionProposalContent | null {
   if (value.version !== 2 || !Array.isArray(value.sections)) return null;
-  const validKeys = new Set<string>([
-    ...Object.keys(legacySectionTitles),
-    "commercial_terms",
-  ]);
+  const validKeys = new Set<string>(solutionProposalSectionKeys);
   const sections = value.sections.flatMap((item) => {
     if (!item || typeof item !== "object") return [];
     const section = item as Record<string, unknown>;
@@ -196,79 +148,12 @@ function normalizeVersionTwoContent(
   return sections.length ? { version: 2, sections } : null;
 }
 
-function convertLegacyContent(
-  value: LegacyDigitalSolutionProposalContent,
-): DigitalSolutionProposalContent | null {
-  const sections: Array<SolutionProposalSection | null> = [
-    bulletSection("executive_summary", value.executiveSummary),
-    bulletSection("client_situation", [
-      ...textItems(value.clientSituation),
-      ...textItems(value.discoveryFindings),
-    ]),
-    bulletSection("project_objectives", value.projectObjectives),
-    bulletSection("recommended_solution", value.recommendedSolution),
-    Array.isArray(value.solutionModules) && value.solutionModules.length
-      ? {
-          key: "solution_scope",
-          title: legacySectionTitles.solution_scope,
-          blocks: [
-            {
-              type: "capabilities",
-              items: value.solutionModules.map((module) => ({
-                name: String(module.name ?? "").trim(),
-                description: [
-                  String(module.purpose ?? "").trim(),
-                  textItems(module.inputs).length
-                    ? `Inputs: ${textItems(module.inputs).join(", ")}.`
-                    : "",
-                  textItems(module.outputs).length
-                    ? `Outputs: ${textItems(module.outputs).join(", ")}.`
-                    : "",
-                ]
-                  .filter(Boolean)
-                  .join(" "),
-                value: String(module.userValue ?? "").trim(),
-              })),
-            },
-          ],
-        }
-      : null,
-    bulletSection("user_experience", [
-      ...textItems(value.userJourneys),
-      ...textItems(value.interfacesAndExperiences),
-    ]),
-    bulletSection("architecture_integrations", value.architectureAndIntegrations),
-    bulletSection("security_governance", value.securityAndGovernance),
-    Array.isArray(value.implementationPhases) && value.implementationPhases.length
-      ? {
-          key: "implementation",
-          title: legacySectionTitles.implementation,
-          blocks: [{ type: "implementation_phases", items: value.implementationPhases }],
-        }
-      : null,
-    bulletSection("deliverables", value.deliverables),
-    bulletSection("client_responsibilities", value.clientResponsibilities),
-    bulletSection("assumptions_risks", [
-      ...textItems(value.assumptions),
-      ...textItems(value.risks),
-    ]),
-    bulletSection("next_steps", value.nextSteps),
-  ];
-  const normalized = sections.filter(
-    (section): section is SolutionProposalSection => Boolean(section),
-  );
-  return normalized.length ? { version: 2, sections: normalized } : null;
-}
-
 export function normalizeDigitalSolutionProposalContent(
   value: unknown,
 ): DigitalSolutionProposalContent | null {
   if (!value || typeof value !== "object") return null;
   const record = value as Record<string, unknown>;
-  return (
-    normalizeVersionTwoContent(record) ??
-    convertLegacyContent(record as unknown as LegacyDigitalSolutionProposalContent)
-  );
+  return normalizeVersionTwoContent(record);
 }
 
 function commercialSection(
