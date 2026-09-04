@@ -15,7 +15,7 @@ export default async function LoginPage() {
   const user = await getAuthenticatedCookieUser((await cookies()).toString());
 
   if (user) {
-    redirect(hasAppAccess(user.role) ? "/dashboard" : "/unauthorized");
+    redirect(hasAppAccess(user.role) ? "/pipeline" : "/unauthorized");
   }
 
   return (

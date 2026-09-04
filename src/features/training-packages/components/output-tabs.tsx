@@ -5,6 +5,7 @@ import { useMemo, useState } from "react";
 import { FileText } from "lucide-react";
 
 import { Button } from "@/components/ui/button";
+import { formatDateTime } from "@/lib/date-time";
 import {
   outputToText,
   packageOutputSections,
@@ -150,7 +151,7 @@ export function OutputTabs({ pkg }: { pkg: TrainingPackage }) {
       </div>
 
       <div className="flex flex-wrap items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span>Created {new Date(pkg.createdAt).toLocaleString()}</span>
+        <span>Created {formatDateTime(pkg.createdAt)}</span>
         <Link href="/packages" className="font-medium text-[#176a63] hover:text-foreground">
           View saved packages
         </Link>

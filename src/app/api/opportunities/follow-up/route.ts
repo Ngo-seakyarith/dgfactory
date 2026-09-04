@@ -4,7 +4,7 @@ import { routeBrainTask } from "@/lib/brain/routing/router";
 import {
   isOpportunityStatus,
   type FollowUpDraft,
-} from "@/lib/crm";
+} from "@/features/crm/domain";
 
 function safeError(error: unknown) {
   const status =

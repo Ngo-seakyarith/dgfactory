@@ -259,3 +259,4 @@ DG Academy`,
       "Schedule a short discovery/proposal review call and confirm participant count, budget range, and decision timeline.",
   };
 }
+

@@ -3,7 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { requestJson } from "@/lib/api-client";
-import type { Client, Opportunity } from "@/lib/crm";
+import type { Client, Opportunity } from "@/features/crm/domain";
 import { deliveryKeys } from "@/features/delivery/queries";
 
 export const clientKeys = {

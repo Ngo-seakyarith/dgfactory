@@ -4,8 +4,8 @@ import { NextResponse } from "next/server";
 
 import type { StartGenerationJob } from "@/features/generation-jobs/domain/types";
 import { saveAuditLog } from "@/lib/audit";
-import type { ClientProfileInput } from "@/lib/crm";
-import { resolvePackageClient } from "@/lib/crm-storage";
+import type { ClientProfileInput } from "@/features/crm/domain";
+import { resolvePackageClient } from "@/features/crm/server/storage";
 import { requireApproved } from "@/lib/route-guards";
 
 import { combineDatasetProfiles } from "../domain/analysis";

@@ -3,12 +3,12 @@ import {
   isWonOpportunityStatus,
   normalizeOpportunity,
   type Opportunity,
-} from "@/lib/crm";
+} from "@/features/crm/domain";
 import {
   findOpportunityByLinkedPackageId,
   listOpportunities,
   saveOpportunity,
-} from "@/lib/crm-storage";
+} from "@/features/crm/server/storage";
 import type { TrainingPackage } from "@/features/training-packages";
 import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
 import type { DeliveryProject } from "@/features/delivery";

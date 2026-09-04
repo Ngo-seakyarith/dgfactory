@@ -22,6 +22,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDateTime } from "@/lib/date-time";
 
 import type {
   SyllabusImportStatus,
@@ -56,7 +57,7 @@ function ImportRow({ value }: { value: SyllabusProposalImport }) {
   return (
     <Link
       href={importDestination(value)}
-      className="group grid gap-4 border-t border-border px-5 py-4 transition-colors first:border-t-0 hover:bg-muted/40 md:grid-cols-[minmax(0,1fr)_180px_150px_auto] md:items-center"
+      className="group grid gap-4 border-t border-border px-5 py-4 transition-colors first:border-t-0 hover:bg-muted/40 md:grid-cols-[minmax(0,1fr)_180px_180px_auto] md:items-center"
     >
       <div className="min-w-0">
         <div className="truncate font-semibold text-foreground">{value.originalName}</div>
@@ -66,13 +67,12 @@ function ImportRow({ value }: { value: SyllabusProposalImport }) {
         <StatusIcon className="h-3 w-3" />
         {status.label}
       </Badge>
-      <div className="text-sm text-muted-foreground">
-        {new Date(value.updatedAt).toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        })}
-      </div>
+      <time
+        dateTime={value.updatedAt}
+        className="text-sm tabular-nums text-muted-foreground"
+      >
+        {formatDateTime(value.updatedAt)}
+      </time>
       <ArrowRight className="h-4 w-4 text-muted-foreground transition-transform group-hover:translate-x-0.5 group-hover:text-foreground" />
     </Link>
   );
@@ -84,7 +84,7 @@ function ImportListSkeleton() {
       {Array.from({ length: 4 }, (_, index) => (
         <div
           key={index}
-          className="grid gap-4 border-t border-border px-5 py-4 first:border-t-0 md:grid-cols-[minmax(0,1fr)_180px_150px_auto] md:items-center"
+          className="grid gap-4 border-t border-border px-5 py-4 first:border-t-0 md:grid-cols-[minmax(0,1fr)_180px_180px_auto] md:items-center"
         >
           <div className="space-y-2">
             <Skeleton className="h-5 w-64 max-w-full" />

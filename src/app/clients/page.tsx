@@ -1,4 +1,4 @@
-import { ClientsPageClient } from "@/app/crm/_components/crm-components";
+import { ClientsPageClient } from "@/features/crm/components/clients";
 
 export default function ClientsPage() {
   return (

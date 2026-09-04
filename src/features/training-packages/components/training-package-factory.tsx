@@ -40,8 +40,8 @@ import { requestJson } from "@/lib/api-client";
 import { useAutosave } from "@/hooks/use-autosave";
 import { trainingPackageKeys } from "../queries";
 import type { ExportFormat, ExportTarget } from "@/features/training-packages";
-import type { Client, ClientProfileInput } from "@/lib/crm";
-import { useClientsQuery } from "@/features/clients/queries";
+import type { Client, ClientProfileInput } from "@/features/crm/domain";
+import { useClientsQuery } from "@/features/crm/queries";
 import {
   useGenerateTrainingPackageMutation,
   useSaveTrainingPackageMutation,

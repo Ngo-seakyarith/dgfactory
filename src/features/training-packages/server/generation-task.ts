@@ -8,7 +8,7 @@ import { ensureDeliveryProjectForPackage } from "@/features/delivery/storage/del
 import {
   ensureOpportunityForPackage,
   linkDeliveryToOpportunity,
-} from "@/lib/crm-sync";
+} from "@/features/crm/server/sync";
 import { GenerationInputError } from "@/features/generation-jobs/domain/errors";
 
 import {

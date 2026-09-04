@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 
 import { requireApproved } from "@/lib/route-guards";
-import { syncDeliveryProjectBond } from "@/lib/crm-sync";
+import { syncDeliveryProjectBond } from "@/features/crm/server/sync";
 import type { ExportFormat } from "@/features/training-packages/export/export-package";
 import {
   deleteDeliveryProject,

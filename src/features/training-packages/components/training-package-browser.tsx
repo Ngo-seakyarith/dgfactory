@@ -39,7 +39,8 @@ import {
   useTrainingPackageQuery,
   useTrainingPackagesQuery,
 } from "@/features/training-packages/queries";
-import { PackageOpportunityPanel } from "@/app/crm/_components/crm-components";
+import { PackageOpportunityPanel } from "@/features/crm/components/package-opportunity-panel";
+import { formatDateTime } from "@/lib/date-time";
 
 export function TrainingDashboardClient() {
   const packagesQuery = useTrainingPackagesQuery();
@@ -318,7 +319,7 @@ function SavedPackageGrid({
                 </div>
                 <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock3 className="h-3.5 w-3.5" />
-                  Updated {new Date(pkg.updatedAt).toLocaleString()}
+                  Updated {formatDateTime(pkg.updatedAt)}
                 </div>
               </Link>
             ))}

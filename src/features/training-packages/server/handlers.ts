@@ -2,12 +2,12 @@ import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
 import { requireApproved } from "@/lib/route-guards";
-import { resolvePackageClient } from "@/lib/crm-storage";
+import { resolvePackageClient } from "@/features/crm/server/storage";
 import {
   ensureOpportunityForPackage,
   linkDeliveryToOpportunity,
-} from "@/lib/crm-sync";
-import type { ClientProfileInput } from "@/lib/crm";
+} from "@/features/crm/server/sync";
+import type { ClientProfileInput } from "@/features/crm/domain";
 import {
   getTrainerById,
   type ExportFormat,

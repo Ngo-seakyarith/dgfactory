@@ -6,7 +6,7 @@ import { ensureDeliveryProjectForPackage } from "@/features/delivery/storage/del
 import {
   ensureOpportunityForPackage,
   linkDeliveryToOpportunity,
-} from "@/lib/crm-sync";
+} from "@/features/crm/server/sync";
 import { GenerationInputError } from "@/features/generation-jobs/domain/errors";
 import {
   buildPackageFromParts,
@@ -22,7 +22,7 @@ import { saveTrainingPackage } from "@/features/training-packages/storage/traini
 import { saveAuditLog } from "@/lib/audit";
 import type { SyllabusProposalBrainOutput } from "@/lib/brain/agents";
 import { routeBrainTask } from "@/lib/brain/routing/router";
-import { listClients, resolvePackageClient } from "@/lib/crm-storage";
+import { listClients, resolvePackageClient } from "@/features/crm/server/storage";
 
 import { resolveImportTrainers } from "../domain/matching";
 import type { SyllabusProposalImport } from "../domain/types";

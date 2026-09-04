@@ -8,7 +8,7 @@ import {
   type ClientProfileInput,
   type Opportunity,
   type OpportunityStatus,
-} from "@/lib/crm";
+} from "@/features/crm/domain";
 
 type ClientRow = {
   id: string;
@@ -303,3 +303,4 @@ export async function deleteOpportunity(id: string) {
   }
   return { deleted: true, storage: "supabase" as const };
 }
+

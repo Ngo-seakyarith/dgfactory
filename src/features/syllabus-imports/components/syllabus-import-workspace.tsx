@@ -35,7 +35,7 @@ import {
   trainerCatalog,
   type PricingInputs,
 } from "@/features/training-packages";
-import { useClientsQuery } from "@/features/clients/queries";
+import { useClientsQuery } from "@/features/crm/queries";
 import {
   isActiveGenerationJob,
   type GenerationJob,

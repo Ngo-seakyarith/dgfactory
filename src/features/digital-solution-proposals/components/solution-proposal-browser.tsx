@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatDateTime } from "@/lib/date-time";
 
 import { useSolutionProposalsQuery } from "../queries";
 
@@ -74,7 +75,7 @@ export function SolutionProposalBrowser() {
               <div className="mt-5 flex flex-wrap gap-2">
                 <Badge variant="outline">{proposal.solutionType}</Badge>
                 <Badge variant="teal">{proposal.status}</Badge>
-                <Badge variant="outline">Updated {new Date(proposal.updatedAt).toLocaleDateString()}</Badge>
+                <Badge variant="outline">Updated {formatDateTime(proposal.updatedAt)}</Badge>
               </div>
             </Link>
           ))}

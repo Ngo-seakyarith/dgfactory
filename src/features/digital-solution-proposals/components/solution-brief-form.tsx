@@ -7,7 +7,7 @@ import { Field } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
-import type { Client, ClientProfileInput } from "@/lib/crm";
+import type { Client, ClientProfileInput } from "@/features/crm/domain";
 
 import { calculateSolutionCommercialTotal } from "../domain/proposal";
 import { solutionTypes, type DigitalSolutionProposal } from "../domain/types";

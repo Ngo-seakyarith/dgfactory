@@ -19,7 +19,7 @@ import { QueryErrorState } from "@/components/query-error-state";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useClientsQuery } from "@/features/clients/queries";
+import { useClientsQuery } from "@/features/crm/queries";
 import {
   isActiveGenerationJob,
   type GenerationJob,
@@ -30,7 +30,7 @@ import {
   useLatestGenerationJobQuery,
 } from "@/features/generation-jobs/queries";
 import { requestJson } from "@/lib/api-client";
-import type { ClientProfileInput } from "@/lib/crm";
+import type { ClientProfileInput } from "@/features/crm/domain";
 import { useAutosave } from "@/hooks/use-autosave";
 import { createSupabaseBrowserClient } from "@/lib/supabase/client";
 

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
-import { getOpportunity, listOpportunities, saveOpportunity } from "@/lib/crm-storage";
-import { syncOpportunityToDelivery } from "@/lib/crm-sync";
-import type { Opportunity } from "@/lib/crm";
+import { getOpportunity, listOpportunities, saveOpportunity } from "@/features/crm/server/storage";
+import { syncOpportunityToDelivery } from "@/features/crm/server/sync";
+import type { Opportunity } from "@/features/crm/domain";
 import { requireApproved } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {

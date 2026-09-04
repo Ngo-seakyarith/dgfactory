@@ -1,4 +1,4 @@
-import { normalizeNumber } from "@/lib/crm";
+import { normalizeNumber } from "@/features/crm/domain";
 
 export const evaluationQuestionTypes = ["rating", "choice", "text"] as const;
 

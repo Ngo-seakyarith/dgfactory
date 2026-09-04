@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
-import { listClients, saveClient } from "@/lib/crm-storage";
-import type { Client } from "@/lib/crm";
+import { listClients, saveClient } from "@/features/crm/server/storage";
+import type { Client } from "@/features/crm/domain";
 import { requireApproved } from "@/lib/route-guards";
 
 function friendlyError(error: unknown) {

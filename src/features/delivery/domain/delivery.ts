@@ -2,7 +2,7 @@ import {
   normalizeNumber,
   opportunityStatuses,
   type OpportunityStatus,
-} from "@/lib/crm";
+} from "@/features/crm/domain";
 
 export const deliveryStatuses = opportunityStatuses;
 

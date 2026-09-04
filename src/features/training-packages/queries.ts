@@ -2,13 +2,13 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { clientKeys } from "@/features/clients/queries";
+import { clientKeys } from "@/features/crm/queries";
 import {
   setGenerationJobQueryData,
 } from "@/features/generation-jobs/queries";
 import type { GenerationJob } from "@/features/generation-jobs/domain/types";
 import { requestJson } from "@/lib/api-client";
-import type { Client, ClientProfileInput } from "@/lib/crm";
+import type { Client, ClientProfileInput } from "@/features/crm/domain";
 
 import type { TrainingPackage } from "./domain/training-package";
 

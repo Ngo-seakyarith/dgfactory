@@ -17,13 +17,12 @@ export const metadata: Metadata = {
 };
 
 const navItems: SidebarItem[] = [
-  { label: "Dashboard", href: "/dashboard", section: "Workspace" },
+  { label: "Pipeline", href: "/pipeline", section: "Business" },
+  { label: "Clients", href: "/clients", section: "Business" },
   { label: "Training Packages", href: "/packages", section: "Training" },
   { label: "Syllabus Imports", href: "/packages/from-syllabus", section: "Training" },
   { label: "Delivery", href: "/delivery", section: "Training" },
   { label: "Solution Proposals", href: "/solution-proposals", section: "Systems" },
-  { label: "Clients", href: "/clients", section: "Business" },
-  { label: "Pipeline", href: "/pipeline", section: "Business" },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-import { deleteOpportunity, getOpportunity } from "@/lib/crm-storage";
+import { deleteOpportunity, getOpportunity } from "@/features/crm/server/storage";
 import { requireApproved } from "@/lib/route-guards";
 
 type Context = {

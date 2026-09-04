@@ -57,11 +57,11 @@ Long-running package, syllabus-import, solution-proposal, delivery-material, eva
 
 ## Product Routes
 
-- `/dashboard` provides package, pipeline, follow-up, and delivery summaries.
+- `/pipeline` is the default workspace and manages proposal opportunities, values, statuses, and follow-ups.
 - `/packages` and `/packages/from-syllabus` manage training packages and external syllabus imports.
 - `/delivery` manages preparation, materials, pre/post-training evaluation forms, responses, and reports.
 - `/solution-proposals` manages digital solution discovery and proposals.
-- `/clients` and `/pipeline` manage client and opportunity records.
+- `/clients` manages client records and their linked package and proposal history.
 - `/evaluate/[token]` is the public, token-protected participant evaluation route.
 
 Authentication uses Google sign-in through Supabase. A profile remains `Pending` until an internal operator changes its access state to `Approved`; only approved users can access internal product routes.

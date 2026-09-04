@@ -1,4 +1,4 @@
-import { ClientDetailClient } from "@/app/crm/_components/crm-components";
+import { ClientDetailClient } from "@/features/crm/components/clients";
 
 export default async function ClientDetailPage({
   params,

@@ -2,9 +2,9 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { clientKeys } from "@/features/clients/queries";
+import { clientKeys } from "@/features/crm/queries";
 import { requestJson } from "@/lib/api-client";
-import type { Client, ClientProfileInput } from "@/lib/crm";
+import type { Client, ClientProfileInput } from "@/features/crm/domain";
 
 import type { DigitalSolutionProposal } from "./domain/types";
 

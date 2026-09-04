@@ -1,4 +1,4 @@
-import { PipelineBoard } from "@/app/crm/_components/crm-components";
+import { PipelineBoard } from "@/features/crm/components/pipeline-board";
 
 export default function PipelinePage() {
   return (

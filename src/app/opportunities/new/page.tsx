@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 
-import { OpportunityForm } from "@/app/crm/_components/crm-components";
+import { OpportunityForm } from "@/features/crm/components/opportunities";
 import { DetailLoadingSkeleton } from "@/components/page-loading-skeleton";
 
 export default function NewOpportunityPage() {

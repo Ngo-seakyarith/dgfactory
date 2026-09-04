@@ -11,7 +11,6 @@ import {
   CalendarCheck,
   FileCog,
   FileInput,
-  LayoutDashboard,
   Menu,
   PanelLeftClose,
   PanelLeftOpen,
@@ -31,7 +30,6 @@ export type SidebarItem = {
 };
 
 const icons: Record<string, LucideIcon> = {
-  Dashboard: LayoutDashboard,
   Clients: Building2,
   Pipeline: BriefcaseBusiness,
   Delivery: CalendarCheck,
@@ -134,7 +132,7 @@ export function SidebarNavigation({
         ) : (
           <>
             <Link
-              href="/dashboard"
+              href="/pipeline"
               className="flex min-w-0 items-center gap-3"
               onClick={() => setIsOpen(false)}
             >
@@ -247,7 +245,7 @@ export function SidebarNavigation({
   return (
     <>
       <div className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-white/10 bg-[#141816]/95 px-4 backdrop-blur lg:hidden">
-        <Link href="/dashboard" className="flex min-w-0 items-center gap-2.5">
+        <Link href="/pipeline" className="flex min-w-0 items-center gap-2.5">
           <Image src="/app-logo.png" alt="DG Academy" width={32} height={32} className="h-8 w-8 rounded-sm object-cover" unoptimized />
           <div>
             <div className="font-mono text-[9px] font-semibold uppercase text-[#f4772e]">DG Academy</div>
