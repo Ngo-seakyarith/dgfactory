@@ -29,7 +29,6 @@ export function packageGenerationContext(trainingPackage: TrainingPackage) {
     certificationLabel: brief.certificationLabel,
     clientBackground: brief.clientBackground,
     trainingNeed: brief.trainingNeed,
-    objectives: briefLines(brief.objectives),
     outcomes: briefLines(brief.expectedLearningOutcomes),
     contentPriorities: briefLines(brief.contentPriorities),
     targetParticipantProfile: brief.whoShouldAttend,

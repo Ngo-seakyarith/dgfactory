@@ -11,7 +11,6 @@ export type ProposalBrief = {
   certificationLabel: string;
   clientBackground: string;
   trainingNeed: string;
-  objectives: string;
   expectedLearningOutcomes: string;
   contentPriorities: string;
   whoShouldAttend: string;
@@ -56,7 +55,6 @@ export const emptyProposalBrief: ProposalBrief = {
   certificationLabel: "",
   clientBackground: "",
   trainingNeed: "",
-  objectives: "",
   expectedLearningOutcomes: "",
   contentPriorities: "",
   whoShouldAttend: "",

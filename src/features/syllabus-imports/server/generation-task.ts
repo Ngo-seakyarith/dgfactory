@@ -210,8 +210,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     ...emptyProposalBrief,
     coverHeading: "Customized Training Proposal",
     ...mapping.proposalBrief,
-    objectives:
-      mapping.proposalBrief.objectives || mapping.proposalNarrative.courseObjectives.join("\n"),
     expectedLearningOutcomes:
       mapping.proposalBrief.expectedLearningOutcomes ||
       mapping.proposalNarrative.expectedLearningOutcomes.join("\n"),

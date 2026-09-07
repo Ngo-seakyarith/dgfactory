@@ -6,7 +6,6 @@ export type ProposalNarrativeBrief = Pick<
   ProposalBrief,
   | "clientBackground"
   | "trainingNeed"
-  | "objectives"
   | "expectedLearningOutcomes"
   | "contentPriorities"
   | "whoShouldAttend"
@@ -21,7 +20,6 @@ export function proposalNarrativeBriefFrom(
   return {
     clientBackground: brief?.clientBackground ?? "",
     trainingNeed: brief?.trainingNeed ?? "",
-    objectives: brief?.objectives ?? "",
     expectedLearningOutcomes: brief?.expectedLearningOutcomes ?? "",
     contentPriorities: brief?.contentPriorities ?? "",
     whoShouldAttend: brief?.whoShouldAttend ?? "",

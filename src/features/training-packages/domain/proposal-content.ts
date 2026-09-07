@@ -259,10 +259,7 @@ export function proposalContentFromMarkdown(
               `${meta.client} is preparing ${meta.audience} to apply ${meta.title} in practical business situations.`,
               meta.promise,
             ],
-    courseObjectives:
-      briefLines(brief?.objectives).length > 0
-        ? briefLines(brief?.objectives)
-        : sectionLines(markdown, "Course Objectives"),
+    courseObjectives: sectionLines(markdown, "Course Objectives"),
     expectedLearningOutcomes:
       briefLines(brief?.expectedLearningOutcomes).length > 0
         ? briefLines(brief?.expectedLearningOutcomes)

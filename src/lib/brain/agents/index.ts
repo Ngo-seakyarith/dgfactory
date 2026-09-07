@@ -109,7 +109,6 @@ const coursePackageInputSchema: JsonSchema = {
       properties: {
         clientBackground: { type: "string" },
         trainingNeed: { type: "string" },
-        objectives: { type: "string" },
         expectedLearningOutcomes: { type: "string" },
         contentPriorities: { type: "string" },
         whoShouldAttend: { type: "string" },
@@ -263,7 +262,6 @@ export type EvaluationQuestionsBrainInput = {
   businessContext: string;
   clientBackground: string;
   trainingNeed: string;
-  objectives: string[];
   outcomes: string[];
   contentPriorities: string[];
   targetParticipantProfile: string;

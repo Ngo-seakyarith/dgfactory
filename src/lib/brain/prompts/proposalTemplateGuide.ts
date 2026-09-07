@@ -9,6 +9,6 @@ export const dgProposalTemplateGuide = [
   "6. Training Methodology: provide concise bullets for theory/practice balance, focused inputs, live demonstrations, exercises, group sharing, local context, and follow-up when relevant.",
   "7. Training and Coaching Tools: use the supplied tools when present; otherwise return an empty array.",
   "8. Training Evaluation: use the supplied evaluation approach when present; otherwise return an empty array.",
-  "Treat the user brief as authoritative. Convert line-separated objectives, topics, tools, and optional section content into clean arrays.",
+  "Treat the user brief as authoritative. Convert line-separated outcomes, topics, tools, and optional section content into clean arrays.",
   "Return only proposalNarrative. Do not return cover metadata, course identity, client identity, schedule, trainer profiles, commercial terms, pricing, acceptance wording, or signatory data. Application code owns and inserts those fields deterministically.",
 ].join("\n");

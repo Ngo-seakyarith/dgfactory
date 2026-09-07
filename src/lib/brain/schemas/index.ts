@@ -187,7 +187,6 @@ export const syllabusProposalOutputSchema = z.strictObject({
       certificationLabel: z.string(),
       clientBackground: z.string(),
       trainingNeed: z.string(),
-      objectives: z.string(),
       expectedLearningOutcomes: z.string(),
       contentPriorities: z.string(),
       whoShouldAttend: z.string(),

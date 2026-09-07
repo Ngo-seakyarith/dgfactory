@@ -652,12 +652,9 @@ export function PackageForm({
         <Card className="border-white/10 bg-white/[0.04] shadow-executive">
           <CardHeader>
             <CardTitle>Course Design</CardTitle>
-            <CardDescription>Objectives, methodology, tools, and evaluation reflected in the proposal.</CardDescription>
+            <CardDescription>Learning outcomes, methodology, tools, and evaluation reflected in the proposal.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-2">
-            <Field label="Objectives">
-              <Textarea rows={7} value={proposalBrief.objectives} onChange={(event) => updateProposalBrief("objectives", event.target.value)} placeholder="Enter one objective per line" />
-            </Field>
             <Field label="Expected learning outcomes">
               <Textarea rows={7} value={proposalBrief.expectedLearningOutcomes} onChange={(event) => updateProposalBrief("expectedLearningOutcomes", event.target.value)} placeholder="Enter one outcome per line. Leave blank if the proposal does not need this section." />
             </Field>

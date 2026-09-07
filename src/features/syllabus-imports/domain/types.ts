@@ -28,7 +28,6 @@ export type SyllabusProposalBriefMapping = {
   certificationLabel: string;
   clientBackground: string;
   trainingNeed: string;
-  objectives: string;
   expectedLearningOutcomes: string;
   contentPriorities: string;
   whoShouldAttend: string;
