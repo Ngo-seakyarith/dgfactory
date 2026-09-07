@@ -618,14 +618,9 @@ export function PackageForm({
             <Field label="Course title">
               <Input value={form.courseTitle} onChange={(event) => updateField("courseTitle", event.target.value)} placeholder="AI for Marketing Analytics" />
             </Field>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Cover heading">
-                <Input value={proposalBrief.coverHeading} onChange={(event) => updateProposalBrief("coverHeading", event.target.value)} placeholder="AI Capability Development" />
-              </Field>
-              <Field label="Certification or program label">
-                <Input value={proposalBrief.certificationLabel} onChange={(event) => updateProposalBrief("certificationLabel", event.target.value)} placeholder="DG Academy Certified AI Practitioner (DCAP) - Level 2 Marketing" />
-              </Field>
-            </div>
+            <Field label="Certification or program label">
+              <Input value={proposalBrief.certificationLabel} onChange={(event) => updateProposalBrief("certificationLabel", event.target.value)} placeholder="DG Academy Certified AI Practitioner (DCAP) - Level 2 Marketing" />
+            </Field>
             <Field label="Cover subtitle">
               <Textarea value={proposalBrief.coverSubtitle} onChange={(event) => updateProposalBrief("coverSubtitle", event.target.value)} placeholder="Practical AI skills for reporting, analytics, competitor tracking, and customer service" />
             </Field>
@@ -660,9 +655,6 @@ export function PackageForm({
             </Field>
             <Field label="Content priorities">
               <Textarea rows={7} value={proposalBrief.contentPriorities} onChange={(event) => updateProposalBrief("contentPriorities", event.target.value)} placeholder="Enter required sessions, topics, and practical applications" />
-            </Field>
-            <Field label="Who should attend">
-              <Textarea rows={6} value={proposalBrief.whoShouldAttend} onChange={(event) => updateProposalBrief("whoShouldAttend", event.target.value)} placeholder="Enter one participant group per line. Leave blank if the audience field is enough." />
             </Field>
             <Field label="Training methodology">
               <Textarea rows={6} value={proposalBrief.methodology} onChange={(event) => updateProposalBrief("methodology", event.target.value)} placeholder="Theory/practice ratio, demonstrations, exercises, group work, follow-up" />

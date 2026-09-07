@@ -8,6 +8,11 @@ import {
 } from "./pricing";
 import {
   defaultBillingArrangement,
+  defaultClientResponsibilities,
+  defaultEvaluationApproach,
+  defaultMethodology,
+  defaultTrainingTools,
+  defaultIncludedItems,
   defaultPaymentInstructions,
   normalizeProposalBrief,
   type ProposalBrief,
@@ -126,12 +131,16 @@ export function normalizeTrainingInput(
   };
 }
 
+function briefItems(value: string) {
+  return value.split(/\r?\n/).filter(Boolean);
+}
+
 export function createTrainingOutputTemplate(
   input: TrainingPackageInput,
 ): TrainingPackageOutputs {
   const proposalContent: ProposalContent = {
     generationStatus: "Draft",
-    coverTitle: input.proposalBrief?.coverHeading || "Customized Training Proposal",
+    coverTitle: "Customized Training Proposal",
     coverSubtitle: input.proposalBrief?.coverSubtitle ?? "",
     certificationLabel: input.proposalBrief?.certificationLabel ?? "",
     courseTitle: input.courseTitle,
@@ -155,21 +164,16 @@ export function createTrainingOutputTemplate(
       "Applied workshop labs",
       "Implementation planning",
     ],
-    whoShouldAttend: input.proposalBrief?.whoShouldAttend
-      ? input.proposalBrief.whoShouldAttend.split(/\r?\n/).filter(Boolean)
-      : [],
-    trainingMethodology: [
-      "Executive briefing",
-      "Practical demonstrations",
-      "Facilitated exercises",
-      "Action-plan readout",
-    ],
-    trainingTools: input.proposalBrief?.trainingTools
-      ? input.proposalBrief.trainingTools.split(/\r?\n/).filter(Boolean)
-      : [],
-    trainingEvaluation: input.proposalBrief?.evaluationApproach
-      ? input.proposalBrief.evaluationApproach.split(/\r?\n/).filter(Boolean)
-      : [],
+    whoShouldAttend: briefItems(input.audience),
+    trainingMethodology: briefItems(
+      input.proposalBrief?.methodology || defaultMethodology,
+    ),
+    trainingTools: briefItems(
+      input.proposalBrief?.trainingTools || defaultTrainingTools,
+    ),
+    trainingEvaluation: briefItems(
+      input.proposalBrief?.evaluationApproach || defaultEvaluationApproach,
+    ),
     schedule: {
       duration: input.duration,
       date: input.proposalBrief?.scheduleDate || "TBC",
@@ -214,16 +218,14 @@ export function createTrainingOutputTemplate(
         }
       : undefined,
     professionalFee: {
-      included: [
-        "Professional trainer with pre-training consultation",
-        "Training preparation and arrangement",
-        "Training materials",
-        "Certificates of completion",
-        "Pre-training and post-training evaluation",
-      ],
+      included: briefItems(
+        input.proposalBrief?.includedItems || defaultIncludedItems,
+      ),
       totalFee: `Professional fee to be confirmed from Commercial Setup (${input.proposalBrief?.vatStatus || "Excluding VAT"}).`,
       vatStatus: input.proposalBrief?.vatStatus || "Excluding VAT",
-      clientResponsibilities: ["Training venue", "Meals or refreshments", "Participants"],
+      clientResponsibilities: briefItems(
+        input.proposalBrief?.clientResponsibilities || defaultClientResponsibilities,
+      ),
       billingArrangement:
         input.proposalBrief?.billingArrangement || defaultBillingArrangement,
       paymentInstructions:

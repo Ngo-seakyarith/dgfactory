@@ -8,7 +8,6 @@ export type ProposalNarrativeBrief = Pick<
   | "trainingNeed"
   | "expectedLearningOutcomes"
   | "contentPriorities"
-  | "whoShouldAttend"
   | "methodology"
   | "trainingTools"
   | "evaluationApproach"
@@ -22,7 +21,6 @@ export function proposalNarrativeBriefFrom(
     trainingNeed: brief?.trainingNeed ?? "",
     expectedLearningOutcomes: brief?.expectedLearningOutcomes ?? "",
     contentPriorities: brief?.contentPriorities ?? "",
-    whoShouldAttend: brief?.whoShouldAttend ?? "",
     methodology: brief?.methodology ?? "",
     trainingTools: brief?.trainingTools ?? "",
     evaluationApproach: brief?.evaluationApproach ?? "",

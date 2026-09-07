@@ -245,7 +245,7 @@ export function proposalContentFromMarkdown(
 
   return {
     generationStatus: "Generated",
-    coverTitle: meta.proposalBrief?.coverHeading || "Customized Training Proposal",
+    coverTitle: "Customized Training Proposal",
     coverSubtitle: meta.proposalBrief?.coverSubtitle ?? "",
     certificationLabel: meta.proposalBrief?.certificationLabel ?? "",
     courseTitle: meta.title,
@@ -268,10 +268,7 @@ export function proposalContentFromMarkdown(
       briefLines(brief?.contentPriorities).length > 0
         ? briefLines(brief?.contentPriorities)
         : sectionLines(markdown, "Content Outlines"),
-    whoShouldAttend:
-      briefLines(brief?.whoShouldAttend).length > 0
-        ? briefLines(brief?.whoShouldAttend)
-        : sectionLines(markdown, "Who Should Attend"),
+    whoShouldAttend: sectionLines(markdown, "Who Should Attend"),
     trainingMethodology:
       briefLines(brief?.methodology).length > 0
         ? briefLines(brief?.methodology)

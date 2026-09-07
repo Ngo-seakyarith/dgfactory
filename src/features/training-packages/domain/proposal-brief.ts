@@ -6,14 +6,12 @@ import {
 } from "./trainers";
 
 export type ProposalBrief = {
-  coverHeading: string;
   coverSubtitle: string;
   certificationLabel: string;
   clientBackground: string;
   trainingNeed: string;
   expectedLearningOutcomes: string;
   contentPriorities: string;
-  whoShouldAttend: string;
   methodology: string;
   trainingTools: string;
   evaluationApproach: string;
@@ -43,6 +41,45 @@ export type ProposalBrief = {
   proposalDate: string;
 };
 
+export const defaultMethodology = [
+  "30% theory and 70% practice",
+  "Short, focused inputs of 15 to 20 minutes with immediate real-world application",
+  "Live demonstrations and worked examples drawn from the participants' sector",
+  "Structured exercises and case-based practice",
+  "Small group sharing and discussion after each module",
+  "Learning recap and an action plan for the key takeaways",
+].join("\n");
+
+export const defaultTrainingTools = [
+  "Practical templates and planning worksheets",
+  "Self-assessment of participant capability",
+  "Training handouts and exercise materials",
+  "Certificate of training",
+  "Action plan template for post-training application",
+].join("\n");
+
+export const defaultEvaluationApproach = [
+  "Pre-training assessment conducted online to capture participant needs and expectations",
+  "In-class observation of engagement and skill application during practical exercises",
+  "Learning-in-action activities completed during the session",
+  "Post-course feedback survey on content, delivery, and overall impact",
+].join("\n");
+
+export const defaultIncludedItems = [
+  "Pre-training consultation and program customization",
+  "Professional facilitation and training delivery",
+  "Digital participant materials and practical templates",
+  "Certificates of completion",
+  "Pre-training and post-training evaluation",
+].join("\n");
+
+export const defaultClientResponsibilities = [
+  "Confirm the participant list and learning priorities",
+  "Provide the training venue, display equipment, internet access, and refreshments",
+  "Ensure participants bring laptops and can access approved tools",
+  "Nominate a focal person for logistics and final coordination",
+].join("\n");
+
 export const defaultBillingArrangement =
   "The professional fee 100% shall be made to DG Academy before the training date.";
 
@@ -50,17 +87,15 @@ export const defaultPaymentInstructions =
   "Payment shall be made in either cash or check or bank transfer to DG Academy's account No: 34730640543314/ DGACADEMY of ACLEDA Bank. Bank slip shall be sent to DG Academy should the payment is made through bank transfer.";
 
 export const emptyProposalBrief: ProposalBrief = {
-  coverHeading: "",
   coverSubtitle: "",
   certificationLabel: "",
   clientBackground: "",
   trainingNeed: "",
   expectedLearningOutcomes: "",
   contentPriorities: "",
-  whoShouldAttend: "",
-  methodology: "",
-  trainingTools: "",
-  evaluationApproach: "",
+  methodology: defaultMethodology,
+  trainingTools: defaultTrainingTools,
+  evaluationApproach: defaultEvaluationApproach,
   scheduleDate: "",
   scheduleTime: "",
   scheduleVenue: "",
@@ -72,8 +107,8 @@ export const emptyProposalBrief: ProposalBrief = {
   trainerExperience: "",
   trainerQualifications: "",
   ...emptySecondTrainerSnapshotFields,
-  includedItems: "",
-  clientResponsibilities: "",
+  includedItems: defaultIncludedItems,
+  clientResponsibilities: defaultClientResponsibilities,
   billingArrangement: defaultBillingArrangement,
   paymentInstructions: defaultPaymentInstructions,
   vatStatus: "Excluding VAT",
@@ -90,6 +125,13 @@ export function normalizeProposalBrief(value?: Partial<ProposalBrief> | null): P
   ) as ProposalBrief;
   const trainer = getTrainerById(normalized.trainerId);
   const secondTrainer = getTrainerById(normalized.secondTrainerId);
+  normalized.methodology = normalized.methodology || defaultMethodology;
+  normalized.trainingTools = normalized.trainingTools || defaultTrainingTools;
+  normalized.evaluationApproach =
+    normalized.evaluationApproach || defaultEvaluationApproach;
+  normalized.includedItems = normalized.includedItems || defaultIncludedItems;
+  normalized.clientResponsibilities =
+    normalized.clientResponsibilities || defaultClientResponsibilities;
   normalized.billingArrangement =
     normalized.billingArrangement || defaultBillingArrangement;
   normalized.paymentInstructions =

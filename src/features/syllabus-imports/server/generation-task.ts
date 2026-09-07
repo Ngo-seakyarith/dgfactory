@@ -10,6 +10,8 @@ import {
 import { GenerationInputError } from "@/features/generation-jobs/domain/errors";
 import {
   buildPackageFromParts,
+  defaultClientResponsibilities,
+  defaultIncludedItems,
   emptyProposalBrief,
   normalizeTrainingOutputs,
   secondTrainerSnapshotFields,
@@ -33,21 +35,6 @@ import {
   saveSyllabusImport,
 } from "../storage/syllabus-import-storage";
 import { parseSyllabusDocument } from "./parse-syllabus";
-
-const defaultIncludedItems = [
-  "Pre-training consultation and program customization",
-  "Professional facilitation and training delivery",
-  "Digital participant materials and practical templates",
-  "Certificates of completion",
-  "Pre-training and post-training evaluation",
-].join("\n");
-
-const defaultClientResponsibilities = [
-  "Confirm the participant list and learning priorities",
-  "Provide the training venue, display equipment, internet access, and refreshments",
-  "Ensure participants bring laptops and can access approved tools",
-  "Nominate a focal person for logistics and final coordination",
-].join("\n");
 
 function requiredPricing(value: SyllabusProposalImport) {
   const pricingError = getSyllabusPricingError(value.pricingInputs);
@@ -208,7 +195,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     "Deliver the practical capabilities defined in the imported syllabus.";
   const proposalBrief = {
     ...emptyProposalBrief,
-    coverHeading: "Customized Training Proposal",
     ...mapping.proposalBrief,
     expectedLearningOutcomes:
       mapping.proposalBrief.expectedLearningOutcomes ||
@@ -216,9 +202,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     contentPriorities:
       mapping.proposalBrief.contentPriorities ||
       mapping.proposalNarrative.contentOutlines.join("\n"),
-    whoShouldAttend:
-      mapping.proposalBrief.whoShouldAttend ||
-      mapping.proposalNarrative.whoShouldAttend.join("\n"),
     methodology:
       mapping.proposalBrief.methodology ||
       mapping.proposalNarrative.trainingMethodology.join("\n"),

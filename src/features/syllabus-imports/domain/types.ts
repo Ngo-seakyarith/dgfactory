@@ -30,7 +30,6 @@ export type SyllabusProposalBriefMapping = {
   trainingNeed: string;
   expectedLearningOutcomes: string;
   contentPriorities: string;
-  whoShouldAttend: string;
   methodology: string;
   trainingTools: string;
   evaluationApproach: string;
