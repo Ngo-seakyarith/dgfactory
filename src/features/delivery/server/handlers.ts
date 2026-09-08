@@ -293,6 +293,12 @@ export async function saveDeliveryTaskHandler(request: Request) {
       );
     }
 
+    if (body.startDate && body.dueDate && body.startDate > body.dueDate) {
+      return NextResponse.json(
+        { error: "End date must be on or after start date." },
+        { status: 400 },
+      );
+    }
     const result = await saveDeliveryTask(body);
     return NextResponse.json(result);
   } catch (error) {

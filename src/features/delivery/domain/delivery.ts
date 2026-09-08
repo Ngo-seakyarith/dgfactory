@@ -1,3 +1,5 @@
+import { deliveryChecklistTemplate } from "./checklist-template";
+
 import {
   normalizeNumber,
   opportunityStatuses,
@@ -9,18 +11,24 @@ export const deliveryStatuses = opportunityStatuses;
 export type DeliveryStatus = OpportunityStatus;
 
 export const deliveryTaskCategories = [
-  "Client Confirmation",
-  "Materials",
-  "Logistics",
-  "Trainer Preparation",
-  "Attendance",
-  "Evaluation",
-  "Follow-up",
+  "Trainer",
+  "Certificate",
+  "Venue",
+  "Training Materials",
+  "Attendance List",
+  "Banner and Backdrop",
+  "Reception",
+  "Speech",
+  "Certificate Distribution",
+  "Training Evaluation",
+  "Photo and Video",
+  "Follow-up and Customer Relations",
+  "Report Writing after Training",
 ] as const;
 
 export type DeliveryTaskCategory = (typeof deliveryTaskCategories)[number];
 
-export const deliveryTaskStatuses = ["Open", "In Progress", "Done"] as const;
+export const deliveryTaskStatuses = ["Open", "In Progress", "Done", "Not Applicable"] as const;
 
 export type DeliveryTaskStatus = (typeof deliveryTaskStatuses)[number];
 
@@ -90,6 +98,8 @@ export type DeliveryTask = {
   category: DeliveryTaskCategory;
   status: DeliveryTaskStatus;
   dueDate: string;
+  startDate: string;
+  sortOrder: number;
   owner: string;
   notes: string;
   createdAt: string;
@@ -204,9 +214,11 @@ export function normalizeDeliveryTask(value: Partial<DeliveryTask>): DeliveryTas
     title: String(value.title ?? "").trim(),
     category: isDeliveryTaskCategory(value.category)
       ? value.category
-      : "Materials",
+      : "Training Materials",
     status: isDeliveryTaskStatus(value.status) ? value.status : "Open",
     dueDate: String(value.dueDate ?? "").trim(),
+    startDate: String(value.startDate ?? "").trim(),
+    sortOrder: Math.max(0, normalizeNumber(value.sortOrder)),
     owner: String(value.owner ?? "").trim(),
     notes: String(value.notes ?? "").trim(),
     createdAt: value.createdAt || now,
@@ -216,50 +228,17 @@ export function normalizeDeliveryTask(value: Partial<DeliveryTask>): DeliveryTas
 
 export function createDefaultDeliveryTasks(projectId: string): DeliveryTask[] {
   const now = new Date().toISOString();
-  const tasks: Array<Pick<DeliveryTask, "title" | "category" | "notes">> = [
-    {
-      title: "Confirm client sponsor, venue, date, timing, and participant list",
-      category: "Client Confirmation",
-      notes: "Confirm in writing before materials are finalized.",
-    },
-    {
-      title: "Prepare final slide deck and participant workbook",
-      category: "Materials",
-      notes: "Use the approved training package as the source.",
-    },
-    {
-      title: "Confirm room setup, projector, internet, sign-in flow, and refreshments",
-      category: "Logistics",
-      notes: "Capture any client access or security requirements.",
-    },
-    {
-      title: "Prepare trainer run sheet, examples, and facilitation notes",
-      category: "Trainer Preparation",
-      notes: "Include client context and likely executive questions.",
-    },
-    {
-      title: "Set up attendance capture",
-      category: "Attendance",
-      notes: "Record the actual participant count for client reporting.",
-    },
-    {
-      title: "Prepare evaluation form and feedback capture",
-      category: "Evaluation",
-      notes: "Collect satisfaction score, comments, and improvement suggestions.",
-    },
-    {
-      title: "Schedule post-training follow-up with client sponsor",
-      category: "Follow-up",
-      notes: "Agree next training or implementation support conversation.",
-    },
-  ];
-
-  return tasks.map((task) =>
+  const tasks = deliveryChecklistTemplate.flatMap(({ category, titles }) =>
+    titles.map((title) => ({ category, title, notes: "" })),
+  );
+  return tasks.map((task, sortOrder) =>
     normalizeDeliveryTask({
       id: crypto.randomUUID(),
       deliveryProjectId: projectId,
       status: "Open",
       dueDate: "",
+      startDate: "",
+      sortOrder,
       owner: "",
       createdAt: now,
       updatedAt: now,

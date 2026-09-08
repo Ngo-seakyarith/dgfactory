@@ -8,7 +8,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import {
   ArrowLeft,
   CalendarCheck,
-  CheckCircle2,
   ClipboardCheck,
   Download,
   FileText,
@@ -17,7 +16,6 @@ import {
   Search,
   Sparkles,
   Trash2,
-  Users,
 } from "lucide-react";
 
 import { PageLoadingSkeleton } from "@/components/page-loading-skeleton";
@@ -38,24 +36,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { useClientsQuery } from "@/features/crm/queries";
 import {
   deliveryStatuses,
-  deliveryTaskCategories,
-  deliveryTaskStatuses,
-  normalizeDeliveryTask,
   type DeliveryProject,
   type DeliveryStatus,
-  type DeliveryTask,
 } from "@/features/delivery";
 import {
   useDeleteDeliveryProjectMutation,
-  useDeleteDeliveryTaskMutation,
   useDeliveryProjectQuery,
   useDeliveryProjectsQuery,
-  useDeliveryTasksQuery,
   useSaveDeliveryProjectMutation,
-  useSaveDeliveryTaskMutation,
 } from "@/features/delivery/queries";
 import { EvaluationFormPanel } from "@/features/delivery/components/evaluation-panel";
 import { MaterialsPanel } from "@/features/delivery/components/materials-panel";
+import { DeliveryChecklist } from "./delivery-checklist";
 import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
 import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
 import { errorMessage, requestJson } from "@/lib/api-client";
@@ -68,7 +60,7 @@ import {
   useLatestGenerationJobQuery,
 } from "@/features/generation-jobs/queries";
 
-type DeliveryStage = "before" | "day" | "after";
+type DeliveryStage = "before" | "after";
 
 const stages: Array<{
   id: DeliveryStage;
@@ -81,12 +73,6 @@ const stages: Array<{
     label: "Before Training",
     description: "Assess participants and generate delivery materials.",
     icon: CalendarCheck,
-  },
-  {
-    id: "day",
-    label: "Training Day",
-    description: "Record attendance, notes, and issues.",
-    icon: Users,
   },
   {
     id: "after",
@@ -233,7 +219,7 @@ export function DeliveryProjectsPageClient() {
 
 function StageNavigation({ stage, onChange }: { stage: DeliveryStage; onChange: (stage: DeliveryStage) => void }) {
   return (
-    <div className="grid gap-2 md:grid-cols-3" role="tablist" aria-label="Delivery stages">
+    <div className="grid gap-2 md:grid-cols-2" role="tablist" aria-label="Delivery stages">
       {stages.map((item, index) => {
         const Icon = item.icon;
         const active = stage === item.id;
@@ -265,83 +251,6 @@ function StageNavigation({ stage, onChange }: { stage: DeliveryStage; onChange: 
   );
 }
 
-function DeliveryChecklist({ projectId }: { projectId: string }) {
-  const tasksQuery = useDeliveryTasksQuery(projectId);
-  const saveTask = useSaveDeliveryTaskMutation();
-  const deleteTask = useDeleteDeliveryTaskMutation();
-  const [title, setTitle] = useState("");
-
-  if (tasksQuery.isPending) return <PageLoadingSkeleton label="Loading delivery checklist" />;
-  if (tasksQuery.isError) return <QueryErrorState detail={errorMessage(tasksQuery.error)} onRetry={() => void tasksQuery.refetch()} />;
-
-  async function addTask() {
-    if (!title.trim()) return;
-    await saveTask.mutateAsync(normalizeDeliveryTask({ deliveryProjectId: projectId, title, category: "Materials", status: "Open" }));
-    setTitle("");
-  }
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Preparation Checklist</CardTitle>
-        <CardDescription>Complete the operational work before the trainer arrives.</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-3">
-        {(tasksQuery.data ?? []).map((task) => (
-          <div key={task.id} className="grid gap-3 rounded-md border border-white/10 p-3 lg:grid-cols-[1fr_180px_150px_40px]">
-            <Input defaultValue={task.title} onBlur={(event) => { if (event.target.value.trim() && event.target.value !== task.title) saveTask.mutate({ ...task, title: event.target.value }); }} />
-            <Select value={task.category} onChange={(event) => saveTask.mutate({ ...task, category: event.target.value as DeliveryTask["category"] })}>
-              {deliveryTaskCategories.map((category) => <option key={category}>{category}</option>)}
-            </Select>
-            <Select value={task.status} onChange={(event) => saveTask.mutate({ ...task, status: event.target.value as DeliveryTask["status"] })}>
-              {deliveryTaskStatuses.map((status) => <option key={status}>{status}</option>)}
-            </Select>
-            <Button type="button" variant="ghost" size="icon" title="Delete task" onClick={() => deleteTask.mutate(task)}><Trash2 /></Button>
-          </div>
-        ))}
-        <div className="flex gap-2">
-          <Input value={title} onChange={(event) => setTitle(event.target.value)} placeholder="Add a preparation task" onKeyDown={(event) => { if (event.key === "Enter") { event.preventDefault(); void addTask(); } }} />
-          <Button type="button" variant="outline" onClick={() => void addTask()} disabled={!title.trim() || saveTask.isPending}><Plus /> Add</Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
-
-function TrainingDay({ project, onSave }: { project: DeliveryProject; onSave: (project: DeliveryProject) => Promise<void> }) {
-  const [draft, setDraft] = useState(project);
-  const [busy, setBusy] = useState(false);
-  const [notice, setNotice] = useState("");
-  useEffect(() => setDraft(project), [project]);
-
-  async function save(delivered = false) {
-    setBusy(true);
-    try {
-      await onSave({ ...draft, deliveryStatus: delivered ? "Delivered" : draft.deliveryStatus });
-      setNotice(delivered ? "Training marked as delivered." : "Training-day record saved.");
-    } catch (error) {
-      setNotice(errorMessage(error));
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <Card>
-      <CardHeader><CardTitle>Training-Day Record</CardTitle><CardDescription>Capture what actually happened during delivery.</CardDescription></CardHeader>
-      <CardContent className="grid gap-5 md:grid-cols-2">
-        <Field label="Actual participants"><Input type="number" min="0" value={draft.participantCount || ""} onChange={(event) => setDraft({ ...draft, participantCount: Number(event.target.value) })} placeholder="Number attended" /></Field>
-        <Field label="Trainer"><Input value={draft.trainerName} onChange={(event) => setDraft({ ...draft, trainerName: event.target.value })} /></Field>
-        <Field label="Trainer notes and issues" className="md:col-span-2"><Textarea className="min-h-36" value={draft.notes} onChange={(event) => setDraft({ ...draft, notes: event.target.value })} placeholder="Participation, timing changes, technical issues, strong discussion points, and follow-up items" /></Field>
-        <div className="flex flex-wrap items-center gap-3 md:col-span-2">
-          <Button type="button" variant="outline" onClick={() => void save()} disabled={busy}><Save /> Save Record</Button>
-          <Button type="button" variant="gold" onClick={() => void save(true)} disabled={busy}><CheckCircle2 /> Mark Delivered</Button>
-          {notice ? <span className="text-sm text-muted-foreground">{notice}</span> : null}
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
 
 function EvaluationAndReport({ project, clientName, packageTitle, onSave }: { project: DeliveryProject; clientName: string; packageTitle: string; onSave: (project: DeliveryProject) => Promise<void> }) {
   const queryClient = useQueryClient();
@@ -550,7 +459,6 @@ export function DeliveryProjectDetailClient({ id }: { id: string }) {
           <DeliveryChecklist projectId={project.id} />
         </div>
       ) : null}
-      {stage === "day" ? <TrainingDay project={project} onSave={save} /> : null}
       {stage === "after" ? (
         <div className="space-y-5">
           <EvaluationFormPanel project={project} />

@@ -55,13 +55,11 @@ type DeliveryTaskRow = {
   id: string;
   delivery_project_id: string;
   title: string;
-  category:
-    | DeliveryTaskCategory
-    | "Certificates"
-    | "Post-training Report"
-    | null;
+  category: DeliveryTaskCategory | null;
   status: DeliveryTaskStatus | null;
   due_date: string | null;
+  start_date: string | null;
+  sort_order: number;
   owner: string | null;
   notes: string | null;
   created_at: string;
@@ -145,6 +143,8 @@ function taskToRow(task: DeliveryTask) {
     category: task.category,
     status: task.status,
     due_date: task.dueDate || null,
+    start_date: task.startDate || null,
+    sort_order: task.sortOrder,
     owner: task.owner,
     notes: task.notes,
     created_at: task.createdAt,
@@ -157,12 +157,11 @@ function taskFromRow(row: DeliveryTaskRow): DeliveryTask {
     id: row.id,
     deliveryProjectId: row.delivery_project_id,
     title: row.title,
-    category:
-      row.category === "Certificates" || row.category === "Post-training Report"
-        ? "Follow-up"
-        : row.category ?? "Materials",
+    category: row.category ?? "Training Materials",
     status: row.status ?? "Open",
     dueDate: row.due_date ?? "",
+    startDate: row.start_date ?? "",
+    sortOrder: row.sort_order ?? 0,
     owner: row.owner ?? "",
     notes: row.notes ?? "",
     createdAt: row.created_at,
@@ -343,7 +342,12 @@ export async function ensureDeliveryProjectForPackage(pkg: TrainingPackage) {
 
   const saved = await saveDeliveryProject(project);
   const tasks = createDefaultDeliveryTasks(saved.project.id);
-  await Promise.all(tasks.map((task) => saveDeliveryTask(task)));
+  const supabase = getSupabaseServerClient();
+  if (!supabase) throw new Error("Delivery storage is unavailable.");
+  const { error: taskError } = await supabase
+    .from("delivery_tasks")
+    .insert(tasks.map((task) => withAppScope(taskToRow(task))));
+  if (taskError) throw new Error(taskError.message);
 
   return { project: saved.project, created: true as const };
 }
@@ -371,7 +375,7 @@ export async function listDeliveryTasks(deliveryProjectId?: string) {
     throw new Error("Supabase is required to list delivery tasks.");
   }
 
-  let query = scopeAppData(supabase.from("delivery_tasks").select("*").order("created_at"));
+  let query = scopeAppData(supabase.from("delivery_tasks").select("*").order("sort_order").order("created_at"));
 
   if (deliveryProjectId) {
     query = query.eq("delivery_project_id", deliveryProjectId);
@@ -383,13 +387,7 @@ export async function listDeliveryTasks(deliveryProjectId?: string) {
     throw new Error(error.message);
   }
 
-  return (data as DeliveryTaskRow[])
-    .filter(
-      (row) =>
-        row.category !== "Certificates" &&
-        row.category !== "Post-training Report",
-    )
-    .map(taskFromRow);
+  return (data as DeliveryTaskRow[]).map(taskFromRow);
 }
 
 export async function saveDeliveryTask(input: Partial<DeliveryTask>) {

@@ -523,21 +523,27 @@ create table if not exists public.delivery_tasks (
   id uuid primary key default gen_random_uuid(),
   delivery_project_id uuid not null references public.delivery_projects(id) on delete cascade,
   title text not null,
-  category text not null default 'Materials' check (
+  category text not null default 'Training Materials' check (
     category in (
-      'Client Confirmation',
-      'Materials',
-      'Logistics',
-      'Trainer Preparation',
-      'Attendance',
-      'Evaluation',
-      'Certificates',
-      'Post-training Report',
-      'Follow-up'
+      'Trainer',
+      'Certificate',
+      'Venue',
+      'Training Materials',
+      'Attendance List',
+      'Banner and Backdrop',
+      'Reception',
+      'Speech',
+      'Certificate Distribution',
+      'Training Evaluation',
+      'Photo and Video',
+      'Follow-up and Customer Relations',
+      'Report Writing after Training'
     )
   ),
-  status text not null default 'Open' check (status in ('Open', 'In Progress', 'Done')),
+  status text not null default 'Open' check (status in ('Open', 'In Progress', 'Done', 'Not Applicable')),
+  start_date date,
   due_date date,
+  sort_order integer not null default 0,
   owner text,
   notes text,
   created_at timestamptz default now(),
