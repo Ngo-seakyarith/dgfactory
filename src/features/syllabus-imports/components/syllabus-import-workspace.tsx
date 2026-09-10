@@ -31,6 +31,7 @@ import { Select } from "@/components/ui/select";
 import { CommercialSetup } from "@/features/training-packages/components/commercial-setup";
 import {
   defaultPricingInputs,
+  getCommercialSetupError,
   getTrainerById,
   trainerCatalog,
   type PricingInputs,
@@ -52,7 +53,6 @@ import {
   isSupportedSyllabusFileName,
   syllabusFileAccept,
 } from "../domain/file-types";
-import { getSyllabusPricingError } from "../domain/pricing-validation";
 import type {
   SyllabusImportCorrections,
   SyllabusProposalImport,
@@ -193,7 +193,7 @@ export function SyllabusImportWorkspace({
         "The syllabus must be a non-empty DOCX, PPTX, or PDF file no larger than 10 MB.",
       );
     }
-    const pricingError = getSyllabusPricingError(pricing);
+    const pricingError = getCommercialSetupError(pricing);
     if (pricingError) return setError(pricingError);
 
     setBusy("Uploading syllabus...");

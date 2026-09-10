@@ -43,7 +43,6 @@ export type SyllabusProposalMapping = {
   clientName: string | null;
   audience: string;
   duration: string;
-  programGoal: string;
   context: string;
   trainerNames: string[];
   trainerIdentification: "Confirmed" | "Unclear" | "Missing";

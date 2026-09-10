@@ -67,7 +67,6 @@ type ProposalFallbackMeta = {
   client: string;
   audience: string;
   duration: string;
-  promise: string;
   proposalBrief?: ProposalBrief;
 };
 
@@ -252,12 +251,12 @@ export function proposalContentFromMarkdown(
     client: meta.client,
     courseOverview:
       brief?.clientBackground || brief?.trainingNeed
-        ? [brief.clientBackground, brief.trainingNeed, meta.promise].filter(Boolean)
+        ? [brief.clientBackground, brief.trainingNeed].filter(Boolean)
         : sectionLines(markdown, "Course Overview").length > 0
           ? sectionLines(markdown, "Course Overview")
           : [
               `${meta.client} is preparing ${meta.audience} to apply ${meta.title} in practical business situations.`,
-              meta.promise,
+              `The program is structured around the expected learning outcomes and the client's stated training need.`,
             ],
     courseObjectives: sectionLines(markdown, "Course Objectives"),
     expectedLearningOutcomes:
@@ -315,7 +314,7 @@ export function proposalContentFromMarkdown(
           ? briefLines(brief?.includedItems)
           : sectionLines(markdown, "Professional Fee"),
       totalFee: "Professional fee to be confirmed from Commercial Setup.",
-      vatStatus: brief?.vatStatus || "Excluding VAT",
+      vatStatus: "Excluding VAT",
       clientResponsibilities:
         briefLines(brief?.clientResponsibilities).length > 0
           ? briefLines(brief?.clientResponsibilities)

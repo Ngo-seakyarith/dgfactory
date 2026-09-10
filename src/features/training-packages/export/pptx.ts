@@ -36,7 +36,10 @@ export type PptxTrainingPackage = {
   client: string;
   audience: string;
   duration: string;
-  promise: string;
+  proposalBrief: {
+    coverSubtitle: string;
+    expectedLearningOutcomes: string;
+  };
   deckOutline: string;
 };
 
@@ -562,7 +565,11 @@ function addCoverSlide(
     h: 0,
     line: { color: COLORS.orange, width: 3 },
   });
-  slide.addText(pkg.promise, {
+  const coverSummary =
+    pkg.proposalBrief.coverSubtitle ||
+    pkg.proposalBrief.expectedLearningOutcomes.split(/\r?\n/).find(Boolean) ||
+    "Practical, client-focused learning outcomes";
+  slide.addText(coverSummary, {
     x: 0.92,
     y: 3.92,
     w: 8.9,
@@ -596,7 +603,7 @@ function addCoverSlide(
     color: COLORS.muted,
   });
   slide.addNotes(
-    `Open by connecting the training promise to ${pkg.client || "the client"}'s operating context.`,
+    `Open by connecting the expected learning outcomes to ${pkg.client || "the client"}'s operating context.`,
   );
 }
 

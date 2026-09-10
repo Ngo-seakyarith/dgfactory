@@ -26,7 +26,7 @@ function opportunityFromPackage(pkg: TrainingPackage): Opportunity {
   return normalizeOpportunity({
     clientId: pkg.clientId,
     title: pkg.title,
-    trainingNeed: pkg.promise,
+    trainingNeed: pkg.proposalBrief.trainingNeed,
     estimatedValue: pkg.pricingOutputs?.finalPrice ?? 0,
     status: "Syllabus Sent",
     linkedPackageId: pkg.id,

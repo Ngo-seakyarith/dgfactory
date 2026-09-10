@@ -78,7 +78,7 @@ export function OpportunityForm({
       clientId: clientIdFromQuery,
       linkedPackageId: sourcePackage?.id ?? (packageIdFromQuery || null),
       title: sourcePackage ? sourcePackage.title : "",
-      trainingNeed: sourcePackage ? sourcePackage.promise : "",
+      trainingNeed: sourcePackage ? sourcePackage.proposalBrief.trainingNeed : "",
       estimatedValue: sourcePackage?.pricingOutputs.finalPrice ?? 0,
       status: sourcePackage ? "Syllabus Sent" : "Lead",
     }),
@@ -96,7 +96,8 @@ export function OpportunityForm({
       linkedPackageId:
         current.linkedPackageId ?? sourcePackage?.id ?? (packageIdFromQuery || null),
       title: current.title || sourcePackage?.title || "",
-      trainingNeed: current.trainingNeed || sourcePackage?.promise || "",
+      trainingNeed:
+        current.trainingNeed || sourcePackage?.proposalBrief.trainingNeed || "",
       estimatedValue: current.estimatedValue || sourcePackage?.pricingOutputs.finalPrice || 0,
       status: current.status === "Lead" && sourcePackage ? "Syllabus Sent" : current.status,
     }));

@@ -178,7 +178,6 @@ export const syllabusProposalOutputSchema = z.strictObject({
     clientName: z.string().min(1).nullable(),
     audience: z.string(),
     duration: z.string(),
-    programGoal: z.string(),
     context: z.string(),
     trainerNames: stringArraySchema,
     trainerIdentification: z.enum(["Confirmed", "Unclear", "Missing"]),

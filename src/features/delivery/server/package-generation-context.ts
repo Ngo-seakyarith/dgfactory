@@ -21,7 +21,6 @@ export function packageGenerationContext(trainingPackage: TrainingPackage) {
     client: trainingPackage.client,
     audience: trainingPackage.audience,
     duration: trainingPackage.duration,
-    promise: trainingPackage.promise,
     businessContext: trainingPackage.context,
     tone: trainingPackage.tone,
     coverSubtitle: brief.coverSubtitle,

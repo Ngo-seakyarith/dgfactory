@@ -10,6 +10,8 @@ import {
 import type { ClientProfileInput } from "@/features/crm/domain";
 import {
   getTrainerById,
+  getCommercialSetupError,
+  validateTrainingInput,
   type ExportFormat,
   type ExportTarget,
   type TrainingPackage,
@@ -87,9 +89,9 @@ export async function saveTrainingPackageRequest(request: Request) {
             name: packageInput.client,
           };
 
-    if (!packageInput.id || !packageInput.title || !packageInput.syllabus) {
+    if (!packageInput.id || !packageInput.title) {
       return NextResponse.json(
-        { error: "A generated package with id, title, and outputs is required." },
+        { error: "A generated package with an id and title is required." },
         { status: 400 },
       );
     }
@@ -250,6 +252,19 @@ export async function generateTrainingPackageRequest(
       );
     }
     const pkg = await getTrainingPackage(packageId);
+    const commercialError = getCommercialSetupError(pkg.pricingInputs);
+    if (commercialError) {
+      return NextResponse.json({ error: commercialError }, { status: 400 });
+    }
+    validateTrainingInput({
+      title: pkg.title,
+      audience: pkg.audience,
+      duration: pkg.duration,
+      client: pkg.client,
+      context: pkg.context,
+      tone: pkg.tone,
+      proposalBrief: pkg.proposalBrief,
+    });
     if (!getTrainerById(pkg.proposalBrief?.trainerId ?? "")) {
       return NextResponse.json(
         { error: "Select a DG Academy trainer before generating the package." },
@@ -265,7 +280,11 @@ export async function generateTrainingPackageRequest(
     });
     return NextResponse.json({ job }, { status: 202 });
   } catch (error) {
-    return NextResponse.json({ error: generationError(error) }, { status: 500 });
+    const message = generationError(error);
+    return NextResponse.json(
+      { error: message },
+      { status: message.toLowerCase().includes("missing required fields") ? 400 : 500 },
+    );
   }
 }
 

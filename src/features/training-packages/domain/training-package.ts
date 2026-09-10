@@ -31,7 +31,6 @@ export type TrainingPackageInput = {
   audience: string;
   duration: string;
   client: string;
-  promise: string;
   context: string;
   tone: string;
   proposalBrief?: ProposalBrief;
@@ -98,12 +97,32 @@ type RawTrainingInput = Partial<TrainingPackageInput> & {
 
 export function validateTrainingInput(input: RawTrainingInput) {
   const courseTitle = input.courseTitle ?? input.title;
+  const brief = input.proposalBrief;
   const missing = [
     ["course title", courseTitle],
     ["target learners", input.audience],
     ["duration", input.duration],
     ["client or market", input.client],
-    ["program promise", input.promise],
+    ["special requirements", input.context],
+    ["certification or program label", brief?.certificationLabel],
+    ["cover subtitle", brief?.coverSubtitle],
+    ["client background", brief?.clientBackground],
+    ["training need", brief?.trainingNeed],
+    ["expected learning outcomes", brief?.expectedLearningOutcomes],
+    ["content priorities", brief?.contentPriorities],
+    ["training methodology", brief?.methodology],
+    ["training tools and materials", brief?.trainingTools],
+    ["evaluation approach", brief?.evaluationApproach],
+    ["training date", brief?.scheduleDate],
+    ["session schedule", brief?.scheduleTime],
+    ["training venue", brief?.scheduleVenue],
+    ["primary trainer", brief?.trainerId],
+    ["package inclusions", brief?.includedItems],
+    ["client responsibilities", brief?.clientResponsibilities],
+    ["billing arrangement", brief?.billingArrangement],
+    ["payment instructions", brief?.paymentInstructions],
+    ["acceptance deadline", brief?.acceptanceDeadline],
+    ["proposal date", brief?.proposalDate],
   ]
     .filter(([, value]) => !String(value ?? "").trim())
     .map(([label]) => label);
@@ -124,7 +143,6 @@ export function normalizeTrainingInput(
     audience: String(input.audience).trim(),
     duration: String(input.duration).trim(),
     client: String(input.client).trim(),
-    promise: String(input.promise).trim(),
     context: String(input.context ?? "").trim(),
     tone: String(input.tone ?? "Executive, practical, clear").trim(),
     proposalBrief: normalizeProposalBrief(input.proposalBrief),
@@ -147,7 +165,7 @@ export function createTrainingOutputTemplate(
     client: input.client,
     courseOverview: [
       `DG Academy will deliver a ${durationAsModifier(input.duration)} training experience for ${input.audience}.`,
-      `The program is designed for ${input.client} and promises to ${input.promise}.`,
+      `The program is designed for ${input.client} around the stated training need and expected learning outcomes.`,
     ],
     courseObjectives: [
       "Explain the business case for the training topic in their own operating context.",
@@ -221,8 +239,8 @@ export function createTrainingOutputTemplate(
       included: briefItems(
         input.proposalBrief?.includedItems || defaultIncludedItems,
       ),
-      totalFee: `Professional fee to be confirmed from Commercial Setup (${input.proposalBrief?.vatStatus || "Excluding VAT"}).`,
-      vatStatus: input.proposalBrief?.vatStatus || "Excluding VAT",
+      totalFee: "Professional fee to be confirmed from Commercial Setup (excluding VAT).",
+      vatStatus: "Excluding VAT",
       clientResponsibilities: briefItems(
         input.proposalBrief?.clientResponsibilities || defaultClientResponsibilities,
       ),
@@ -259,7 +277,6 @@ export function normalizeTrainingOutputs(
     client: input.client,
     audience: input.audience,
     duration: input.duration,
-    promise: input.promise,
     proposalBrief: input.proposalBrief,
   };
   const generatedContent = outputs.proposalNarrative
@@ -280,7 +297,6 @@ export function normalizeTrainingOutputs(
             pricingOutputs.finalPrice > 0
               ? formatMoney(
                   pricingOutputs.finalPrice,
-                  normalizedPricingInputs.currency,
                 )
               : "Professional fee to be confirmed.",
           vatStatus: normalizedPricingInputs.vatStatus,
@@ -309,7 +325,6 @@ export function fullPackageToMarkdown(pkg: TrainingPackage) {
     `Audience: ${pkg.audience}`,
     `Duration: ${pkg.duration}`,
     `Client or market: ${pkg.client}`,
-    `Promise: ${pkg.promise}`,
     `Tone: ${pkg.tone}`,
     "",
     pkg.syllabus,
@@ -350,7 +365,6 @@ export function buildPackageFromParts({
     audience: input.audience,
     duration: input.duration,
     client: input.client,
-    promise: input.promise,
     context: input.context,
     tone: input.tone,
     proposalBrief,

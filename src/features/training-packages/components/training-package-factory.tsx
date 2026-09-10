@@ -7,7 +7,6 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Clipboard,
-  Calculator,
   FileText,
   Loader2,
   MessageSquareText,
@@ -31,6 +30,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   buildPackageFromParts,
   createTrainingOutputTemplate,
+  normalizeTrainingInput,
   type TrainingPackage,
   type TrainingPackageInput,
 } from "@/features/training-packages";
@@ -61,11 +61,8 @@ import {
 } from "@/features/training-packages";
 import {
   calculatePricing,
-  clientPricingParagraph,
   defaultPricingInputs,
-  formatMoney,
-  formatPercent,
-  internalProfitabilityNote,
+  getCommercialSetupError,
   normalizePricingInputs,
   type PricingInputs,
 } from "@/features/training-packages";
@@ -78,7 +75,6 @@ const defaultInput: TrainingPackageInput = {
   audience: "",
   duration: "",
   client: "",
-  promise: "",
   context: "",
   tone: "Executive, practical, commercially sharp",
 };
@@ -181,19 +177,6 @@ function TrainerProfilePreview({
 
 const blankPackagePricingInputs: PricingInputs = {
   ...defaultPricingInputs,
-  numberOfParticipants: 0,
-  numberOfTrainingDays: 0,
-  numberOfTrainers: 0,
-  trainerDayRate: 0,
-  venueCost: 0,
-  foodAndBeverageCostPerPerson: 0,
-  materialCostPerPerson: 0,
-  adminCost: 0,
-  marketingCost: 0,
-  travelCost: 0,
-  otherCost: 0,
-  targetProfitMarginPercent: 0,
-  discountPercent: 0,
 };
 
 export function PackageForm({
@@ -213,7 +196,6 @@ export function PackageForm({
           audience: initialPackage.audience,
           duration: normalizeDurationLabel(initialPackage.duration),
           client: initialPackage.client,
-          promise: initialPackage.promise,
           context: initialPackage.context,
           tone: initialPackage.tone || defaultInput.tone,
         }
@@ -354,7 +336,6 @@ export function PackageForm({
       audience: searchParams.get("audience") ?? "",
       duration: normalizeDurationLabel(searchParams.get("duration") ?? ""),
       client: searchParams.get("client") ?? "",
-      promise: searchParams.get("promise") ?? "",
       context: searchParams.get("context") ?? "",
       tone: searchParams.get("tone") ?? "",
     };
@@ -366,7 +347,6 @@ export function PackageForm({
         audience: prefill.audience || current.audience,
         duration: prefill.duration || current.duration,
         client: prefill.client || current.client,
-        promise: prefill.promise || current.promise,
         context: prefill.context || current.context,
         tone: prefill.tone || current.tone,
       }));
@@ -459,10 +439,6 @@ export function PackageForm({
     const pricingOutputs = calculatePricing(normalizedInputs);
 
     setPricingInputs(normalizedInputs);
-    setProposalBrief((current) => ({
-      ...current,
-      vatStatus: normalizedInputs.vatStatus,
-    }));
     setCurrentPackage((current) =>
       current
         ? {
@@ -520,7 +496,13 @@ export function PackageForm({
       if (!selectedTrainer) {
         throw new Error("Select a trainer before generating the package.");
       }
+      const commercialError = getCommercialSetupError(pricingInputs);
+      if (commercialError) throw new Error(commercialError);
 
+      normalizeTrainingInput({
+        ...editorState.form,
+        proposalBrief: editorState.proposalBrief,
+      });
       const pkg = buildEditablePackage(editorState);
 
       const savedPackage = await persistPackage(pkg);
@@ -562,8 +544,9 @@ export function PackageForm({
               </Select>
             </Field>
             <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Company name">
+              <Field label="Company name" required>
                 <Input
+                  required
                   value={clientProfile.name}
                   onChange={(event) => updateClientField("name", event.target.value)}
                   placeholder="Nippon Paint"
@@ -615,31 +598,28 @@ export function PackageForm({
             <CardDescription>Client facts and required training content.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Field label="Course title">
-              <Input value={form.courseTitle} onChange={(event) => updateField("courseTitle", event.target.value)} placeholder="AI for Marketing Analytics" />
+            <Field label="Course title" required>
+              <Input required value={form.courseTitle} onChange={(event) => updateField("courseTitle", event.target.value)} placeholder="AI for Marketing Analytics" />
             </Field>
-            <Field label="Certification or program label">
-              <Input value={proposalBrief.certificationLabel} onChange={(event) => updateProposalBrief("certificationLabel", event.target.value)} placeholder="DG Academy Certified AI Practitioner (DCAP) - Level 2 Marketing" />
+            <Field label="Certification or program label" required>
+              <Input required value={proposalBrief.certificationLabel} onChange={(event) => updateProposalBrief("certificationLabel", event.target.value)} placeholder="DG Academy Certified AI Practitioner (DCAP) - Level 2 Marketing" />
             </Field>
-            <Field label="Cover subtitle">
-              <Textarea value={proposalBrief.coverSubtitle} onChange={(event) => updateProposalBrief("coverSubtitle", event.target.value)} placeholder="Practical AI skills for reporting, analytics, competitor tracking, and customer service" />
+            <Field label="Cover subtitle" required>
+              <Textarea required value={proposalBrief.coverSubtitle} onChange={(event) => updateProposalBrief("coverSubtitle", event.target.value)} placeholder="Practical AI skills for reporting, analytics, competitor tracking, and customer service" />
             </Field>
-            <Field label="Target learners">
-              <Input value={form.audience} onChange={(event) => updateField("audience", event.target.value)} placeholder="Marketing team, campaign managers, analysts, customer-service leads" />
+            <Field label="Target learners" required>
+              <Input required value={form.audience} onChange={(event) => updateField("audience", event.target.value)} placeholder="Marketing team, campaign managers, analysts, customer-service leads" />
             </Field>
             <div className="grid gap-4 lg:grid-cols-2">
-              <Field label="Client background">
-                <Textarea rows={5} value={proposalBrief.clientBackground} onChange={(event) => updateProposalBrief("clientBackground", event.target.value)} placeholder="Company, sector, team responsibilities, current priorities, and operating context" />
+              <Field label="Client background" required>
+                <Textarea required rows={5} value={proposalBrief.clientBackground} onChange={(event) => updateProposalBrief("clientBackground", event.target.value)} placeholder="Company, sector, team responsibilities, current priorities, and operating context" />
               </Field>
-              <Field label="Training need">
-                <Textarea rows={5} value={proposalBrief.trainingNeed} onChange={(event) => updateProposalBrief("trainingNeed", event.target.value)} placeholder="Reporting delays, analysis gaps, competitor monitoring needs, customer-service challenges" />
+              <Field label="Training need" required>
+                <Textarea required rows={5} value={proposalBrief.trainingNeed} onChange={(event) => updateProposalBrief("trainingNeed", event.target.value)} placeholder="Reporting delays, analysis gaps, competitor monitoring needs, customer-service challenges" />
               </Field>
             </div>
-            <Field label="Program goal">
-              <Textarea value={form.promise} onChange={(event) => updateField("promise", event.target.value)} placeholder="Enable the team to use AI for faster analysis, stronger decisions, and more productive daily workflows" />
-            </Field>
-            <Field label="Special requirements">
-              <Textarea value={form.context} onChange={(event) => updateField("context", event.target.value)} placeholder="Required tools, local examples, available data, confidentiality limits, and topics to avoid" />
+            <Field label="Special requirements" required>
+              <Textarea required value={form.context} onChange={(event) => updateField("context", event.target.value)} placeholder="Required tools, local examples, available data, confidentiality limits, and topics to avoid" />
             </Field>
           </CardContent>
         </Card>
@@ -650,20 +630,20 @@ export function PackageForm({
             <CardDescription>Learning outcomes, methodology, tools, and evaluation reflected in the proposal.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-2">
-            <Field label="Expected learning outcomes">
-              <Textarea rows={7} value={proposalBrief.expectedLearningOutcomes} onChange={(event) => updateProposalBrief("expectedLearningOutcomes", event.target.value)} placeholder="Enter one outcome per line. Leave blank if the proposal does not need this section." />
+            <Field label="Expected learning outcomes" required>
+              <Textarea required rows={7} value={proposalBrief.expectedLearningOutcomes} onChange={(event) => updateProposalBrief("expectedLearningOutcomes", event.target.value)} placeholder="Enter one measurable outcome per line" />
             </Field>
-            <Field label="Content priorities">
-              <Textarea rows={7} value={proposalBrief.contentPriorities} onChange={(event) => updateProposalBrief("contentPriorities", event.target.value)} placeholder="Enter required sessions, topics, and practical applications" />
+            <Field label="Content priorities" required>
+              <Textarea required rows={7} value={proposalBrief.contentPriorities} onChange={(event) => updateProposalBrief("contentPriorities", event.target.value)} placeholder="Enter required sessions, topics, and practical applications" />
             </Field>
-            <Field label="Training methodology">
-              <Textarea rows={6} value={proposalBrief.methodology} onChange={(event) => updateProposalBrief("methodology", event.target.value)} placeholder="Theory/practice ratio, demonstrations, exercises, group work, follow-up" />
+            <Field label="Training methodology" required>
+              <Textarea required rows={6} value={proposalBrief.methodology} onChange={(event) => updateProposalBrief("methodology", event.target.value)} placeholder="Theory/practice ratio, demonstrations, exercises, group work, follow-up" />
             </Field>
-            <Field label="Training tools and materials">
-              <Textarea rows={6} value={proposalBrief.trainingTools} onChange={(event) => updateProposalBrief("trainingTools", event.target.value)} placeholder="AI tools, templates, datasets, handouts, certificates, action plans" />
+            <Field label="Training tools and materials" required>
+              <Textarea required rows={6} value={proposalBrief.trainingTools} onChange={(event) => updateProposalBrief("trainingTools", event.target.value)} placeholder="AI tools, templates, datasets, handouts, certificates, action plans" />
             </Field>
-            <Field label="Evaluation approach">
-              <Textarea rows={5} value={proposalBrief.evaluationApproach} onChange={(event) => updateProposalBrief("evaluationApproach", event.target.value)} placeholder="Pre-training assessment, practical exercises, observation, feedback, application evidence" />
+            <Field label="Evaluation approach" required>
+              <Textarea required rows={5} value={proposalBrief.evaluationApproach} onChange={(event) => updateProposalBrief("evaluationApproach", event.target.value)} placeholder="Pre-training assessment, practical exercises, observation, feedback, application evidence" />
             </Field>
           </CardContent>
         </Card>
@@ -675,7 +655,7 @@ export function PackageForm({
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="grid gap-4 sm:grid-cols-3">
-              <Field label="Duration">
+              <Field label="Duration" required>
                 <Select
                   value={form.duration}
                   onChange={(event) => selectDuration(event.target.value)}
@@ -693,18 +673,20 @@ export function PackageForm({
                   ))}
                 </Select>
               </Field>
-              <Field label="Date">
-                <Input value={proposalBrief.scheduleDate} onChange={(event) => updateProposalBrief("scheduleDate", event.target.value)} placeholder="TBC" />
+              <Field label="Date" required>
+                <Input required value={proposalBrief.scheduleDate} onChange={(event) => updateProposalBrief("scheduleDate", event.target.value)} placeholder="TBC" />
               </Field>
-              <Field label="Venue">
-                <Input value={proposalBrief.scheduleVenue} onChange={(event) => updateProposalBrief("scheduleVenue", event.target.value)} placeholder="Client office or TBC" />
+              <Field label="Venue" required>
+                <Input required value={proposalBrief.scheduleVenue} onChange={(event) => updateProposalBrief("scheduleVenue", event.target.value)} placeholder="Client office or TBC" />
               </Field>
             </div>
             <Field
               label="Session schedule"
+              required
               description="The selected duration inserts a default schedule. Edit any line as needed."
             >
               <Textarea
+                required
                 rows={form.duration === "1.5 days" || form.duration === "2 days" ? 18 : 8}
                 value={proposalBrief.scheduleTime}
                 onChange={(event) => updateProposalBrief("scheduleTime", event.target.value)}
@@ -714,6 +696,7 @@ export function PackageForm({
             <div className="grid gap-4 lg:grid-cols-2">
               <Field
                 label="Primary trainer"
+                required
                 description="Required. The approved profile is used exactly as stored."
               >
                 <Select
@@ -776,26 +759,27 @@ export function PackageForm({
             <CardDescription>Proposal terms around the professional fee.</CardDescription>
           </CardHeader>
           <CardContent className="grid gap-4 lg:grid-cols-2">
-            <Field label="Package includes">
-              <Textarea rows={6} value={proposalBrief.includedItems} onChange={(event) => updateProposalBrief("includedItems", event.target.value)} placeholder="Enter one included item per line" />
+            <Field label="Package includes" required>
+              <Textarea required rows={6} value={proposalBrief.includedItems} onChange={(event) => updateProposalBrief("includedItems", event.target.value)} placeholder="Enter one included item per line" />
             </Field>
-            <Field label="Client responsibilities">
-              <Textarea rows={6} value={proposalBrief.clientResponsibilities} onChange={(event) => updateProposalBrief("clientResponsibilities", event.target.value)} placeholder="Enter one client responsibility per line" />
+            <Field label="Client responsibilities" required>
+              <Textarea required rows={6} value={proposalBrief.clientResponsibilities} onChange={(event) => updateProposalBrief("clientResponsibilities", event.target.value)} placeholder="Enter one client responsibility per line" />
             </Field>
-            <Field label="Billing arrangement">
-              <Textarea value={proposalBrief.billingArrangement} onChange={(event) => updateProposalBrief("billingArrangement", event.target.value)} placeholder="The professional fee 100% shall be made to DG Academy before the training date." />
+            <Field label="Billing arrangement" required>
+              <Textarea required value={proposalBrief.billingArrangement} onChange={(event) => updateProposalBrief("billingArrangement", event.target.value)} placeholder="The professional fee 100% shall be made to DG Academy before the training date." />
             </Field>
-            <Field label="Payment instructions">
-              <Textarea value={proposalBrief.paymentInstructions} onChange={(event) => updateProposalBrief("paymentInstructions", event.target.value)} placeholder="Payment shall be made in either cash or check or bank transfer to DG Academy's account No: 34730640543314/ DGACADEMY of ACLEDA Bank. Bank slip shall be sent to DG Academy should the payment is made through bank transfer." />
+            <Field label="Payment instructions" required>
+              <Textarea required value={proposalBrief.paymentInstructions} onChange={(event) => updateProposalBrief("paymentInstructions", event.target.value)} placeholder="Payment shall be made in either cash or check or bank transfer to DG Academy's account No: 34730640543314/ DGACADEMY of ACLEDA Bank. Bank slip shall be sent to DG Academy should the payment is made through bank transfer." />
             </Field>
-            <Field label="Acceptance deadline">
-              <Input value={proposalBrief.acceptanceDeadline} onChange={(event) => updateProposalBrief("acceptanceDeadline", event.target.value)} placeholder="No later than one week before the training date" />
+            <Field label="Acceptance deadline" required>
+              <Input required value={proposalBrief.acceptanceDeadline} onChange={(event) => updateProposalBrief("acceptanceDeadline", event.target.value)} placeholder="No later than one week before the training date" />
             </Field>
             <Field
               label="Proposal date"
+              required
               description="Mr. Hin Sopheap, Executive Director, remains the authorized DG Academy signatory."
             >
-              <Input value={proposalBrief.proposalDate} onChange={(event) => updateProposalBrief("proposalDate", event.target.value)} placeholder="17 June 2026" />
+              <Input required value={proposalBrief.proposalDate} onChange={(event) => updateProposalBrief("proposalDate", event.target.value)} placeholder="17 June 2026" />
             </Field>
           </CardContent>
         </Card>

@@ -29,17 +29,16 @@ export function proposalNarrativeBriefFrom(
 
 const narrativeItemSchema = z.string().trim().min(1);
 const requiredNarrativeItemsSchema = z.array(narrativeItemSchema).min(1);
-const optionalNarrativeItemsSchema = z.array(narrativeItemSchema);
 
 export const proposalNarrativeSchema = z.strictObject({
   courseOverview: requiredNarrativeItemsSchema,
   courseObjectives: requiredNarrativeItemsSchema,
-  expectedLearningOutcomes: optionalNarrativeItemsSchema,
+  expectedLearningOutcomes: requiredNarrativeItemsSchema,
   contentOutlines: requiredNarrativeItemsSchema,
-  whoShouldAttend: optionalNarrativeItemsSchema,
+  whoShouldAttend: requiredNarrativeItemsSchema,
   trainingMethodology: requiredNarrativeItemsSchema,
-  trainingTools: optionalNarrativeItemsSchema,
-  trainingEvaluation: optionalNarrativeItemsSchema,
+  trainingTools: requiredNarrativeItemsSchema,
+  trainingEvaluation: requiredNarrativeItemsSchema,
 });
 
 export type ProposalNarrative = z.infer<typeof proposalNarrativeSchema>;

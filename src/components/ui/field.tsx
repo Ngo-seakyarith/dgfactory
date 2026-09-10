@@ -8,12 +8,16 @@ type FieldProps = {
   children: React.ReactNode;
   className?: string;
   description?: string;
+  required?: boolean;
 };
 
-function Field({ label, children, className, description }: FieldProps) {
+function Field({ label, children, className, description, required = false }: FieldProps) {
   return (
     <Label className={cn("block space-y-2", className)}>
-      <span className="text-sm font-medium text-foreground">{label}</span>
+      <span className="text-sm font-medium text-foreground">
+        {label}
+        {required ? <span className="ml-1 text-[#a94b18]">*</span> : null}
+      </span>
       {children}
       {description ? (
         <span className="block text-xs leading-5 text-muted-foreground">

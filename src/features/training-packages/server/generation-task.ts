@@ -14,6 +14,7 @@ import { GenerationInputError } from "@/features/generation-jobs/domain/errors";
 import {
   buildPackageFromParts,
   getTrainerById,
+  getCommercialSetupError,
   normalizeTrainingInput,
   normalizeTrainingOutputs,
   proposalNarrativeBriefFrom,
@@ -28,12 +29,13 @@ export async function generateAndSaveTrainingPackage(
   actor: string,
 ) {
   const current = await getTrainingPackage(packageId);
+  const commercialError = getCommercialSetupError(current.pricingInputs);
+  if (commercialError) throw new GenerationInputError(commercialError);
   const input = normalizeTrainingInput({
     courseTitle: current.title,
     audience: current.audience,
     duration: current.duration,
     client: current.client,
-    promise: current.promise,
     context: current.context,
     tone: current.tone,
     proposalBrief: current.proposalBrief,

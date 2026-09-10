@@ -47,7 +47,13 @@ export function SavedPackagesClient() {
     }
 
     return packages.filter((pkg) =>
-      [pkg.title, pkg.audience, pkg.client, pkg.promise]
+      [
+        pkg.title,
+        pkg.audience,
+        pkg.client,
+        pkg.proposalBrief.trainingNeed,
+        pkg.proposalBrief.expectedLearningOutcomes,
+      ]
         .join(" ")
         .toLowerCase()
         .includes(normalized),
@@ -62,7 +68,7 @@ export function SavedPackagesClient() {
             <Input
               value={query}
               onChange={(event) => setQuery(event.target.value)}
-              placeholder="Search title, audience, client, or promise"
+              placeholder="Search title, audience, client, or learning outcome"
               className="pl-9"
             />
           </div>
@@ -224,7 +230,8 @@ function SavedPackageGrid({
                       {pkg.title}
                     </div>
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                      {pkg.promise}
+                      {pkg.proposalBrief.expectedLearningOutcomes ||
+                        pkg.proposalBrief.trainingNeed}
                     </p>
                   </div>
                   <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-[#a94b18]" />

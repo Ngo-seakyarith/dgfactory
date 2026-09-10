@@ -87,7 +87,6 @@ function exportPackageForDelivery(
     audience: "Training participants",
     duration: project.trainingDate || "Confirmed training",
     client: "Client",
-    promise: "Confirmed training delivery",
     context: project.notes,
     tone: "Professional, clear, executive-friendly",
     syllabus: "",

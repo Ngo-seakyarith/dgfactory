@@ -865,7 +865,6 @@ export async function createDocx(
     client: pkg.client,
     audience: pkg.audience,
     duration: pkg.duration,
-    promise: pkg.promise,
     proposalBrief: pkg.proposalBrief,
   });
   const trainerProfiles = [
@@ -890,7 +889,6 @@ export async function createDocx(
     pkg.pricingOutputs.finalPrice > 0
       ? `Total professional fee for ${durationAsModifier(pkg.duration)} training (${pricingInputs.vatStatus.toLowerCase()}): ${formatMoney(
           pkg.pricingOutputs.finalPrice,
-          pricingInputs.currency,
         )}.`
       : proposalContent.professionalFee.totalFee;
   const children =

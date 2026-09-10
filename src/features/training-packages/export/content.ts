@@ -76,7 +76,7 @@ export function contentForTarget(pkg: TrainingPackage, target: ExportTarget) {
     `Client: ${pkg.client}`,
     `Audience: ${pkg.audience}`,
     `Duration: ${pkg.duration}`,
-    `Promise: ${pkg.promise}`,
+    `Expected learning outcomes: ${pkg.proposalBrief.expectedLearningOutcomes}`,
   ].join("\n");
 
   const targets: Record<ExportTarget, string> = {

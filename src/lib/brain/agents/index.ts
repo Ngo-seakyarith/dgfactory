@@ -95,17 +95,25 @@ const genericInputSchema: JsonSchema = {
 
 const coursePackageInputSchema: JsonSchema = {
   type: "object",
-  required: ["courseTitle", "audience", "duration", "client", "promise"],
+  required: ["courseTitle", "audience", "duration", "client", "context", "tone", "proposalBrief"],
   properties: {
     courseTitle: { type: "string" },
     audience: { type: "string" },
     duration: { type: "string" },
     client: { type: "string" },
-    promise: { type: "string" },
     context: { type: "string" },
     tone: { type: "string" },
     proposalBrief: {
       type: "object",
+      required: [
+        "clientBackground",
+        "trainingNeed",
+        "expectedLearningOutcomes",
+        "contentPriorities",
+        "methodology",
+        "trainingTools",
+        "evaluationApproach",
+      ],
       properties: {
         clientBackground: { type: "string" },
         trainingNeed: { type: "string" },
@@ -189,9 +197,9 @@ export const syllabusProposalAgent: BrainAgentDefinition<
     "Normalize the complete external syllabus into the DG Academy proposal schema. Preserve its meaning, topic sequence, schedule, and level of detail.",
     "Client rule: return the organization receiving the training as clientName. New clients are valid. Return null only when the recipient is not present in the document.",
     "Trainer rule: return only people explicitly acting as trainers or facilitators. A name in a contact, acknowledgement, header, or footer is not enough. Match names against approvedTrainerNames when possible.",
-    "Evidence rules: Do not invent identities, certifications, dates, venues, prices, commercial terms, or outcomes. Use empty strings, empty arrays, or null where the schema permits when evidence is absent.",
+    "Evidence rules: Derive learning outcomes from documented course content when they are not explicitly labeled. Do not invent identities, certifications, dates, venues, prices, commercial terms, or factual claims. Use empty strings, empty arrays, or null where the schema permits when evidence is absent.",
     "For table-based schedules, encode each session as `Session N | detail; detail` in contentOutlines so the deterministic DOCX renderer preserves the session hierarchy.",
-    "Use professional connective language where needed, but do not add unsupported client facts or training promises.",
+    "Use professional connective language where needed, but do not add unsupported client facts or outcomes.",
     "Never return trainer biographies, pricing, signatory information, bank details, phone numbers, or email addresses.",
   ].join("\n\n"),
   inputSchema: { type: "object" },
@@ -257,7 +265,6 @@ export type EvaluationQuestionsBrainInput = {
   client: string;
   audience: string;
   duration: string;
-  promise: string;
   businessContext: string;
   clientBackground: string;
   trainingNeed: string;

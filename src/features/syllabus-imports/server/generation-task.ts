@@ -13,6 +13,7 @@ import {
   defaultClientResponsibilities,
   defaultIncludedItems,
   emptyProposalBrief,
+  getCommercialSetupError,
   normalizeTrainingOutputs,
   secondTrainerSnapshotFields,
   trainerCatalog,
@@ -26,7 +27,6 @@ import { routeBrainTask } from "@/lib/brain/routing/router";
 import { listClients, resolvePackageClient } from "@/features/crm/server/storage";
 
 import { resolveImportTrainers } from "../domain/matching";
-import { getSyllabusPricingError } from "../domain/pricing-validation";
 import type { SyllabusProposalImport } from "../domain/types";
 import {
   deleteSyllabusImportSource,
@@ -37,7 +37,7 @@ import {
 import { parseSyllabusDocument } from "./parse-syllabus";
 
 function requiredPricing(value: SyllabusProposalImport) {
-  const pricingError = getSyllabusPricingError(value.pricingInputs);
+  const pricingError = getCommercialSetupError(value.pricingInputs);
   if (pricingError) throw new GenerationInputError(pricingError);
 }
 
@@ -189,10 +189,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
   const title = mapping.courseTitle.trim();
   const audience = mapping.audience.trim() || "To be confirmed";
   const duration = mapping.duration.trim() || "To be confirmed";
-  const promise =
-    mapping.programGoal.trim() ||
-    mapping.proposalNarrative.courseObjectives[0] ||
-    "Deliver the practical capabilities defined in the imported syllabus.";
   const proposalBrief = {
     ...emptyProposalBrief,
     ...mapping.proposalBrief,
@@ -215,7 +211,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     ...(secondTrainer ? secondTrainerSnapshotFields(secondTrainer) : {}),
     includedItems: defaultIncludedItems,
     clientResponsibilities: defaultClientResponsibilities,
-    vatStatus: value.pricingInputs.vatStatus,
     proposalDate: new Intl.DateTimeFormat("en-GB", {
       day: "2-digit",
       month: "short",
@@ -228,7 +223,6 @@ export async function generatePackageFromSyllabusImport(id: string, actor: strin
     audience,
     duration,
     client: clientResult.client.name,
-    promise,
     context: mapping.context,
     tone: "Executive, practical, commercially sharp",
     proposalBrief,

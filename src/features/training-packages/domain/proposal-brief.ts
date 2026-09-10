@@ -36,7 +36,6 @@ export type ProposalBrief = {
   clientResponsibilities: string;
   billingArrangement: string;
   paymentInstructions: string;
-  vatStatus: string;
   acceptanceDeadline: string;
   proposalDate: string;
 };
@@ -111,7 +110,6 @@ export const emptyProposalBrief: ProposalBrief = {
   clientResponsibilities: defaultClientResponsibilities,
   billingArrangement: defaultBillingArrangement,
   paymentInstructions: defaultPaymentInstructions,
-  vatStatus: "Excluding VAT",
   acceptanceDeadline: "",
   proposalDate: "",
 };
@@ -136,7 +134,6 @@ export function normalizeProposalBrief(value?: Partial<ProposalBrief> | null): P
     normalized.billingArrangement || defaultBillingArrangement;
   normalized.paymentInstructions =
     normalized.paymentInstructions || defaultPaymentInstructions;
-  normalized.vatStatus = normalized.vatStatus || emptyProposalBrief.vatStatus;
 
   const withPrimary = trainer
     ? { ...normalized, ...trainerSnapshotFields(trainer) }

@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { StartGenerationJob } from "@/features/generation-jobs/domain/types";
 import {
   getTrainerById,
+  getCommercialSetupError,
   normalizePricingInputs,
   type PricingInputs,
 } from "@/features/training-packages";
@@ -11,7 +12,6 @@ import { saveAuditLog } from "@/lib/audit";
 import { requireApproved } from "@/lib/route-guards";
 
 import { defaultSyllabusMimeType } from "../domain/file-types";
-import { getSyllabusPricingError } from "../domain/pricing-validation";
 import {
   createSyllabusImport,
   deleteSyllabusImport,
@@ -47,7 +47,7 @@ export async function createSyllabusImportRequest(request: Request) {
     const sizeBytes = Number(body.sizeBytes ?? 0);
     validateSyllabusUpload({ name, mimeType, sizeBytes });
     const pricingInputs = normalizePricingInputs(body.pricingInputs);
-    const pricingError = getSyllabusPricingError(pricingInputs);
+    const pricingError = getCommercialSetupError(pricingInputs);
     if (pricingError) throw new Error(pricingError);
     const created = await createSyllabusImport({
       originalName: name,
@@ -190,7 +190,7 @@ export async function generateSyllabusImportRequest(
     if (value.status === "Completed") {
       return NextResponse.json({ import: value });
     }
-    const pricingError = getSyllabusPricingError(value.pricingInputs);
+    const pricingError = getCommercialSetupError(value.pricingInputs);
     if (pricingError) {
       return NextResponse.json({ error: pricingError }, { status: 400 });
     }

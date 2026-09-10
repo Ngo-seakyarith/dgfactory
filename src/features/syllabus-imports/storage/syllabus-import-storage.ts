@@ -25,7 +25,9 @@ type SyllabusImportRow = {
   mime_type: string;
   size_bytes: number;
   sha256: string;
-  pricing_inputs: PricingInputs;
+  participant_count: number;
+  professional_fee: number;
+  vat_status: string;
   mapping: SyllabusProposalMapping | null;
   corrections: SyllabusImportCorrections;
   missing_fields: string[];
@@ -62,7 +64,11 @@ function fromRow(row: SyllabusImportRow): SyllabusProposalImport {
     mimeType: row.mime_type,
     sizeBytes: Number(row.size_bytes),
     sha256: row.sha256,
-    pricingInputs: normalizePricingInputs(row.pricing_inputs),
+    pricingInputs: normalizePricingInputs({
+      numberOfParticipants: Number(row.participant_count),
+      professionalFee: Number(row.professional_fee),
+      vatStatus: row.vat_status,
+    }),
     mapping: row.mapping,
     corrections: { ...emptyCorrections, ...(row.corrections ?? {}) },
     missingFields: Array.isArray(row.missing_fields)
@@ -85,7 +91,9 @@ function toRow(value: SyllabusProposalImport): SyllabusImportRow {
     mime_type: value.mimeType,
     size_bytes: value.sizeBytes,
     sha256: value.sha256,
-    pricing_inputs: value.pricingInputs,
+    participant_count: value.pricingInputs.numberOfParticipants,
+    professional_fee: value.pricingInputs.professionalFee,
+    vat_status: value.pricingInputs.vatStatus,
     mapping: value.mapping,
     corrections: value.corrections,
     missing_fields: value.missingFields,
