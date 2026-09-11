@@ -125,7 +125,7 @@ function safeFilename(value: string) {
 export async function exportSolutionProposalDocx(proposal: DigitalSolutionProposal) {
   const document = composeSolutionProposalDocument(proposal);
   if (!document) {
-    throw new Error("Generate the digital solution proposal before exporting.");
+    throw new Error("Generate the intelligent system proposal before exporting.");
   }
   const template = await readFile(
     join(

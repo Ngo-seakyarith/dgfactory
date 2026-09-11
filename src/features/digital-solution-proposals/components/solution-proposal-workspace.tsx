@@ -472,12 +472,12 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
         <div className="page-heading">
           <Button asChild variant="ghost" className="mb-1 -ml-3">
             <Link href="/solution-proposals">
-              <ArrowLeft className="h-4 w-4" />Digital solution proposals
+              <ArrowLeft className="h-4 w-4" />Intelligent System Proposals
             </Link>
           </Button>
-          <div className="page-eyebrow">Digital consulting</div>
+          <div className="page-eyebrow">Intelligent systems</div>
           <h1 className="page-title">
-            {resourceId ? proposal.title || "Digital solution proposal" : "New digital solution proposal"}
+            {resourceId ? proposal.title || "Intelligent System Proposal" : "New Intelligent System Proposal"}
           </h1>
           <p className="page-description">
             Define the client problem, review the solution scope, and generate a branded proposal.

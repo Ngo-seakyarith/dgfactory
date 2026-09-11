@@ -155,7 +155,7 @@ function proposalFromRow(
 
 function requireSupabase() {
   const supabase = getSupabaseServerClient();
-  if (!supabase) throw new Error("Supabase is required for digital solution proposals.");
+  if (!supabase) throw new Error("Supabase is required for intelligent system proposals.");
   return supabase;
 }
 

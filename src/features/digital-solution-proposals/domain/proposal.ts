@@ -211,7 +211,7 @@ export function composeSolutionProposalDocument(
       (sectionOrder.get(right.key) ?? Number.MAX_SAFE_INTEGER),
   );
   return {
-    coverHeading: "Digital Solution Proposal",
+    coverHeading: "Intelligent System Proposal",
     solutionTitle: proposal.title,
     client: proposal.clientName,
     sections,

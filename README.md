@@ -1,6 +1,6 @@
 # DG Academy Training Factory
 
-Standalone Next.js application for creating DG Academy training packages, importing external syllabuses, preparing delivery, managing clients and pipeline work, and producing digital solution proposals.
+Standalone Next.js application for creating DG Academy training packages, importing external syllabuses, preparing delivery, managing clients and pipeline work, and producing intelligent system proposals.
 
 ## Development
 
@@ -23,7 +23,7 @@ bun run build
 
 Supabase is required for persisted production behavior. The authoritative schema snapshot is [`schema.sql`](schema.sql), with a browser-friendly mirror in [`database-schema-visual.html`](database-schema-visual.html).
 
-The retained database surface is deliberately small: profiles, clients, training packages, syllabus imports, digital solution proposals and files, opportunities, delivery projects and tasks, delivery materials, evaluation forms and responses, generation jobs, and audit logs.
+The retained database surface is deliberately small: profiles, clients, training packages, syllabus imports, intelligent system proposals and files, opportunities, delivery projects and tasks, delivery materials, evaluation forms and responses, generation jobs, and audit logs.
 
 Delivery material content is normalized in `public.delivery_materials`, with one row per delivery project and material type. The composite primary key `(delivery_project_id, material_type)` allows Slides, Workbook, Facilitator Guide, and Prompt Library jobs to save independently. `public.generation_jobs` remains the source of generation status.
 
@@ -31,7 +31,7 @@ The legacy `delivery_projects.materials` JSON column is retained temporarily as 
 
 Each saved training package is linked to one CRM opportunity through `opportunities.linked_package_id`. Generated packages also link their delivery project to that opportunity. Pipeline and Delivery share one status list, and changing either linked record synchronizes the other.
 
-## Digital Solution Proposals
+## Intelligent System Proposals
 
 `/solution-proposals` creates proposals for websites, web applications, internal systems, customer portals, e-commerce, data systems, and AI-enabled systems. Client, project title, and solution type are searchable columns; evolving discovery requirements remain in the existing `brief` JSONB column.
 
@@ -60,7 +60,7 @@ Long-running package, syllabus-import, solution-proposal, delivery-material, eva
 - `/pipeline` is the default workspace and manages proposal opportunities, values, statuses, and follow-ups.
 - `/packages` and `/packages/from-syllabus` manage training packages and external syllabus imports.
 - `/delivery` manages preparation, materials, pre/post-training evaluation forms, responses, and reports.
-- `/solution-proposals` manages digital solution discovery and proposals.
+- `/solution-proposals` manages intelligent system discovery and proposals.
 - `/clients` manages client records and their linked package and proposal history.
 - `/evaluate/[token]` is the public, token-protected participant evaluation route.
 

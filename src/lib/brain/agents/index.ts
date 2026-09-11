@@ -151,9 +151,9 @@ export const solutionReviewAgent: BrainAgentDefinition<
 > = {
   taskType: "solution_review",
   name: "solutionReviewAgent",
-  role: "Senior business analyst and digital solution consultant",
+  role: "Senior business analyst and intelligent systems consultant",
   instructions: [
-    "Review the supplied client brief and recommend an appropriate digital solution for the stated business problem.",
+    "Review the supplied client brief and recommend an appropriate intelligent system for the stated business problem.",
     "The brief is the primary source. Spreadsheet evidence is optional and may be null.",
     "When evidenceAnalysis is null, set evidenceBasis to Brief only and leave evidenceFindings empty. Never imply that files or raw data were reviewed.",
     "When evidenceAnalysis is present, use only its deterministic profiles and masked samples. Never reconstruct redacted values or invent metrics.",
@@ -171,7 +171,7 @@ export const digitalSolutionProposalAgent: BrainAgentDefinition<
 > = {
   taskType: "digital_solution_proposal",
   name: "digitalSolutionProposalAgent",
-  role: "Digital solution architect and client proposal writer",
+  role: "Intelligent systems architect and client proposal writer",
   instructions: [
     "Create a concise, client-ready DG Academy proposal from the supplied project brief and approved solution review.",
     "Synthesize the information into a practical recommendation instead of copying or restating the input.",

@@ -22,7 +22,7 @@ const navItems: SidebarItem[] = [
   { label: "Training Packages", href: "/packages", section: "Training" },
   { label: "Syllabus Imports", href: "/packages/from-syllabus", section: "Training" },
   { label: "Delivery", href: "/delivery", section: "Training" },
-  { label: "Solution Proposals", href: "/solution-proposals", section: "Systems" },
+  { label: "Intelligent System Proposals", href: "/solution-proposals", section: "Systems" },
 ];
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

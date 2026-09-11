@@ -33,7 +33,7 @@ import {
 function errorMessage(error: unknown) {
   return error instanceof Error
     ? error.message
-    : "Digital solution proposal request failed.";
+    : "Intelligent system proposal request failed.";
 }
 
 function validateBrief(proposal: DigitalSolutionProposal) {
@@ -175,7 +175,7 @@ export async function getSolutionProposalRequest(
     return proposal
       ? NextResponse.json({ proposal })
       : NextResponse.json(
-          { error: "Digital solution proposal was not found." },
+          { error: "Intelligent system proposal was not found." },
           { status: 404 },
         );
   } catch (error) {
@@ -216,7 +216,7 @@ export async function createSolutionUploadTokenRequest(
     const proposal = await getSolutionProposal(id);
     if (!proposal) {
       return NextResponse.json(
-        { error: "Digital solution proposal was not found." },
+        { error: "Intelligent system proposal was not found." },
         { status: 404 },
       );
     }
@@ -277,7 +277,7 @@ export async function analyzeSolutionFileRequest(
   try {
     await saveSourceFile({ ...file, status: "Analyzing", errorMessage: "" });
     const proposal = await getSolutionProposal(id);
-    if (!proposal) throw new Error("Digital solution proposal was not found.");
+    if (!proposal) throw new Error("Intelligent system proposal was not found.");
     const alreadyAnalyzed = proposal.files
       .filter((item) => item.id !== fileId)
       .reduce((sum, item) => sum + (item.analysis?.analyzedRows ?? 0), 0);
@@ -303,7 +303,7 @@ export async function analyzeSolutionFileRequest(
       errorMessage: "",
     });
     const refreshed = await getSolutionProposal(id);
-    if (!refreshed) throw new Error("Digital solution proposal was not found after analysis.");
+    if (!refreshed) throw new Error("Intelligent system proposal was not found after analysis.");
     refreshed.evidenceAnalysis = combineDatasetProfiles(
       refreshed.files.flatMap((item) => (item.analysis ? [item.analysis] : [])),
     );
@@ -348,7 +348,7 @@ export async function runSolutionReviewRequest(
     const proposal = await getSolutionProposal(id);
     if (!proposal) {
       return NextResponse.json(
-        { error: "Digital solution proposal was not found." },
+        { error: "Intelligent system proposal was not found." },
         { status: 404 },
       );
     }
@@ -384,7 +384,7 @@ export async function generateSolutionProposalRequest(
     let proposal = body.proposal ?? (await getSolutionProposal(id));
     if (!proposal) {
       return NextResponse.json(
-        { error: "Digital solution proposal was not found." },
+        { error: "Intelligent system proposal was not found." },
         { status: 404 },
       );
     }
@@ -420,7 +420,7 @@ export async function exportSolutionProposalRequest(
     const proposal = await getSolutionProposal(id);
     if (!proposal) {
       return NextResponse.json(
-        { error: "Digital solution proposal was not found." },
+        { error: "Intelligent system proposal was not found." },
         { status: 404 },
       );
     }

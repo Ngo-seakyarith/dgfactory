@@ -18,7 +18,7 @@ import {
 
 export async function runSolutionReviewJob(id: string, actor: string) {
   const proposal = await getSolutionProposal(id);
-  if (!proposal) throw new GenerationInputError("Digital solution proposal was not found.");
+  if (!proposal) throw new GenerationInputError("Intelligent system proposal was not found.");
 
   const readyProfiles = proposal.files.flatMap((file) =>
     file.status === "Ready" && file.analysis ? [file.analysis] : [],
@@ -71,7 +71,7 @@ export async function runSolutionReviewJob(id: string, actor: string) {
 
 export async function generateSolutionProposalJob(id: string, actor: string) {
   const proposal = await getSolutionProposal(id);
-  if (!proposal) throw new GenerationInputError("Digital solution proposal was not found.");
+  if (!proposal) throw new GenerationInputError("Intelligent system proposal was not found.");
   if (!proposal.solutionReview) {
     throw new GenerationInputError("Complete the solution review first.");
   }

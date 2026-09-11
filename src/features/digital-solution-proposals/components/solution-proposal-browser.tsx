@@ -42,20 +42,20 @@ export function SolutionProposalBrowser() {
           <Input className="pl-9" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search project, client, or solution type" />
         </div>
         <Button asChild variant="gold">
-          <Link href="/solution-proposals/new"><Plus />New digital solution proposal</Link>
+          <Link href="/solution-proposals/new"><Plus />New Intelligent System Proposal</Link>
         </Button>
       </div>
 
       <div className="flex items-center justify-between gap-3 border-b border-border pb-3">
         <div>
           <div className="data-label">Consulting archive</div>
-          <h2 className="mt-1 text-lg font-semibold">Digital solution proposals</h2>
+          <h2 className="mt-1 text-lg font-semibold">Intelligent System Proposals</h2>
         </div>
         {proposalsQuery.isPending ? <Skeleton className="h-6 w-20" /> : <Badge variant="teal">{filtered.length} visible</Badge>}
       </div>
 
       {proposalsQuery.isError ? (
-        <QueryErrorState title="Digital solution proposals could not be loaded" detail={proposalsQuery.error.message} onRetry={() => void proposalsQuery.refetch()} />
+        <QueryErrorState title="Intelligent system proposals could not be loaded" detail={proposalsQuery.error.message} onRetry={() => void proposalsQuery.refetch()} />
       ) : proposalsQuery.isPending ? (
         <SolutionProposalSkeleton />
       ) : filtered.length ? (
@@ -83,7 +83,7 @@ export function SolutionProposalBrowser() {
       ) : (
         <div className="rounded-lg border border-dashed border-border bg-card p-10 text-center">
           <FileCog className="mx-auto h-7 w-7 text-[#20867d]" />
-          <h2 className="mt-3 font-semibold">{query.trim() ? "No matching proposals" : "No digital solution proposals yet"}</h2>
+          <h2 className="mt-3 font-semibold">{query.trim() ? "No matching proposals" : "No intelligent system proposals yet"}</h2>
           <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
             {query.trim() ? "Try a different client, project, or solution term." : "Start with a client problem and requirements. Supporting files are optional."}
           </p>
@@ -96,7 +96,7 @@ export function SolutionProposalBrowser() {
 
 function SolutionProposalSkeleton() {
   return (
-    <div className="grid gap-3 md:grid-cols-2" aria-label="Loading digital solution proposals" aria-busy="true">
+    <div className="grid gap-3 md:grid-cols-2" aria-label="Loading intelligent system proposals" aria-busy="true">
       {Array.from({ length: 4 }, (_, index) => (
         <div key={index} className="rounded-lg border border-border bg-card p-4">
           <div className="flex gap-3"><Skeleton className="h-9 w-9 shrink-0" /><div className="w-full space-y-3"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-4 w-1/2" /></div></div>

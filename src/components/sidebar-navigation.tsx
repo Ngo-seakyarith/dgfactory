@@ -35,7 +35,7 @@ const icons: Record<string, LucideIcon> = {
   Delivery: CalendarCheck,
   "Training Packages": Archive,
   "Syllabus Imports": FileInput,
-  "Solution Proposals": FileCog,
+  "Intelligent System Proposals": FileCog,
 };
 
 export const COLLAPSED_COOKIE = "sidebar-collapsed";

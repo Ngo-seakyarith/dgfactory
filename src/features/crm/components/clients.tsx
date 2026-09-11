@@ -575,8 +575,8 @@ export function ClientDetailClient({ id }: { id: string }) {
 
       <Card className="border-white/10 bg-white/[0.04] shadow-executive">
         <CardHeader>
-          <CardTitle>Digital Solution Proposals</CardTitle>
-          <CardDescription>Website, application, portal, data, and AI solution proposals prepared for this client.</CardDescription>
+          <CardTitle>Intelligent System Proposals</CardTitle>
+          <CardDescription>Website, application, portal, data, and AI system proposals prepared for this client.</CardDescription>
         </CardHeader>
         <CardContent>
           {clientSystemProposals.length ? (
@@ -597,7 +597,7 @@ export function ClientDetailClient({ id }: { id: string }) {
               ))}
             </div>
           ) : (
-            <EmptyCrmState title="No digital solution proposals for this client" href="/solution-proposals/new" label="Create Solution Proposal" />
+            <EmptyCrmState title="No intelligent system proposals for this client" href="/solution-proposals/new" label="Create Intelligent System Proposal" />
           )}
         </CardContent>
       </Card>
