@@ -91,8 +91,8 @@ export function useSaveDeliveryProjectMutation() {
         payload.project,
       );
       void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
+      void queryClient.invalidateQueries({ queryKey: ["training-packages"] });
       // Keep this literal to avoid a circular import with the clients feature.
-      void queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     },
   });
 }
@@ -109,6 +109,7 @@ export function useDeleteDeliveryProjectMutation() {
       queryClient.removeQueries({ queryKey: deliveryKeys.project(id) });
       queryClient.removeQueries({ queryKey: deliveryKeys.tasks(id) });
       void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
+      void queryClient.invalidateQueries({ queryKey: ["training-packages"] });
     },
   });
 }

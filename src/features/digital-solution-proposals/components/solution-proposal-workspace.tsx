@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useClientsQuery } from "@/features/crm/queries";
+import { ProposalStageControl } from "@/features/pipeline/proposal-stage-control";
 import {
   isActiveGenerationJob,
   type GenerationJob,
@@ -485,6 +486,7 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
         </div>
         <div className="flex items-center gap-2">
           {resourceId ? <Badge variant="teal">{proposal.status}</Badge> : null}
+          {resourceId ? <ProposalStageControl id={proposal.id} kind="system_proposal" status={proposalQuery.data?.salesStatus ?? proposal.salesStatus} disabled={proposal.status !== "Generated"} /> : null}
           <AutosaveIndicator status={autosave.status} />
           {resourceId ? (
             <Button variant="destructive" size="icon" title="Delete proposal" onClick={() => void deleteProject()} disabled={Boolean(busy)}>

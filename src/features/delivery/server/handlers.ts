@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 import { requireApproved } from "@/lib/route-guards";
-import { syncDeliveryProjectBond } from "@/features/crm/server/sync";
 import type { ExportFormat } from "@/features/training-packages/export/export-package";
 import {
   deleteDeliveryProject,
@@ -14,6 +13,7 @@ import {
 } from "@/features/delivery/storage/delivery-storage";
 import {
   normalizeDeliveryProject,
+  isDeliveryStatus,
   type DeliveryProject,
   type DeliveryTask,
 } from "@/features/delivery";
@@ -84,22 +84,37 @@ export async function saveDeliveryProjectHandler(request: Request) {
   try {
     const body = (await request.json()) as Partial<DeliveryProject>;
 
-    if (!body.title?.trim()) {
+    if (!body.id) {
       return NextResponse.json(
-        { error: "Delivery project title is required." },
+        { error: "Delivery is created when a training proposal is Won." },
         { status: 400 },
       );
     }
 
-    const result = await saveDeliveryProject(body);
-    const bonded = await syncDeliveryProjectBond(
-      result.project,
-      auth.user.actor,
-    ).catch(() => null);
-    return NextResponse.json({
-      ...result,
-      project: bonded?.project ?? result.project,
+    const existing = await getDeliveryProject(body.id);
+    if (!existing.packageId) {
+      return NextResponse.json({ error: "Delivery must be linked to a training package." }, { status: 409 });
+    }
+    const pkg = await getTrainingPackage(existing.packageId);
+    if (pkg.salesStatus !== "Won" && pkg.salesStatus !== "Delivered") {
+      return NextResponse.json({ error: "Mark the training proposal Won before editing delivery." }, { status: 409 });
+    }
+    if (body.deliveryStatus && !isDeliveryStatus(body.deliveryStatus)) {
+      return NextResponse.json({ error: "Invalid delivery status." }, { status: 400 });
+    }
+
+    const result = await saveDeliveryProject({
+      ...existing,
+      deliveryStatus: body.deliveryStatus ?? existing.deliveryStatus,
+      trainingDate: body.trainingDate ?? existing.trainingDate,
+      location: body.location ?? existing.location,
+      trainerName: body.trainerName ?? existing.trainerName,
+      participantCount: body.participantCount ?? existing.participantCount,
+      notes: body.notes ?? existing.notes,
+      evaluation: body.evaluation ?? existing.evaluation,
+      postTrainingReport: body.postTrainingReport ?? existing.postTrainingReport,
     });
+    return NextResponse.json(result);
   } catch (error) {
     return NextResponse.json(
       { error: friendlyError(error, "Delivery project request failed.") },

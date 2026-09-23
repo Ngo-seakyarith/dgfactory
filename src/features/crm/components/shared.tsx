@@ -6,23 +6,10 @@ import type React from "react";
 import { Clipboard, DollarSign, Plus, Search } from "lucide-react";
 
 import { DetailLoadingSkeleton } from "@/components/page-loading-skeleton";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
-import type { OpportunityStatus } from "@/features/crm/domain";
-
-export function OpportunityStatusBadge({ status }: { status: OpportunityStatus }) {
-  const variant =
-    status === "Won" || status === "Delivered"
-      ? "teal"
-      : status === "Lost" || status === "Dormant"
-        ? "outline"
-        : "gold";
-
-  return <Badge variant={variant}>{status}</Badge>;
-}
 
 export function Toolbar({
   query,
@@ -83,17 +70,6 @@ export function InfoBlock({ label, value }: { label: string; value: string }) {
       </div>
       <div className="mt-2 text-sm font-medium leading-6 text-white">{value}</div>
     </div>
-  );
-}
-
-export function Metric({ label, value }: { label: string; value: string }) {
-  return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="data-label">{label}</div>
-        <div className="mt-2 font-mono text-xl font-semibold text-foreground">{value}</div>
-      </CardContent>
-    </Card>
   );
 }
 
@@ -179,4 +155,3 @@ export function DraftBlock({ title, value }: { title: string; value: string }) {
     </div>
   );
 }
-

@@ -1,5 +1,6 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { scopeAppData, withAppScope } from "@/lib/request-scope";
+import { isProposalStage, type ProposalStage } from "@/features/pipeline/domain";
 import type { TrainingPackage } from "@/features/training-packages";
 import {
   normalizeProposalBrief,
@@ -18,6 +19,7 @@ import {
 
 type PackageRow = {
   id: string;
+  sales_status: ProposalStage;
   course_title: string;
   target_learners: string;
   duration: string;
@@ -138,6 +140,7 @@ function fromRow(row: PackageRow): TrainingPackage {
 
   return {
     id: row.id,
+    salesStatus: isProposalStage(row.sales_status) ? row.sales_status : "Not Sent",
     status: proposalContent.generationStatus,
     title: row.course_title,
     audience: row.target_learners,
@@ -210,11 +213,14 @@ export async function saveTrainingPackage(pkg: TrainingPackage) {
   }
 
   const scopedRow = withAppScope(toRow(packageToSave));
-  const result = await supabase
-    .from("training_packages")
-    .upsert(scopedRow, { onConflict: "id" })
-    .select("*")
-    .single();
+  const { data: existing, error: lookupError } = await scopeAppData(
+    supabase.from("training_packages").select("id").eq("id", pkg.id),
+  ).maybeSingle();
+  if (lookupError) throw new Error(lookupError.message);
+  const result = await (existing
+    ? supabase.from("training_packages").update(scopedRow).eq("id", pkg.id)
+    : supabase.from("training_packages").insert(scopedRow)
+  ).select("*").single();
 
   if (result.error) {
     throw new Error(result.error.message);

@@ -3,10 +3,7 @@ import { NextResponse } from "next/server";
 import { saveAuditLog } from "@/lib/audit";
 import { requireApproved } from "@/lib/route-guards";
 import { resolvePackageClient } from "@/features/crm/server/storage";
-import {
-  ensureOpportunityForPackage,
-  linkDeliveryToOpportunity,
-} from "@/features/crm/server/sync";
+import { findDeliveryProjectByPackageId } from "@/features/delivery/storage/delivery-storage";
 import type { ClientProfileInput } from "@/features/crm/domain";
 import {
   getTrainerById,
@@ -23,7 +20,6 @@ import {
   listTrainingPackages,
   saveTrainingPackage,
 } from "@/features/training-packages/storage/training-storage";
-import { ensureDeliveryProjectForPackage } from "@/features/delivery/storage/delivery-storage";
 import type { StartGenerationJob } from "@/features/generation-jobs/domain/types";
 
 const exportFormats: ExportFormat[] = ["docx", "pptx", "md"];
@@ -149,53 +145,9 @@ export async function saveTrainingPackageRequest(request: Request) {
       });
     }
 
-    let pipelineOpportunity: Awaited<
-      ReturnType<typeof ensureOpportunityForPackage>
-    >["opportunity"] | null = null;
-    let pipelineNotice: string | undefined;
-    try {
-      pipelineOpportunity = (
-        await ensureOpportunityForPackage(result.package, auth.user.actor)
-      ).opportunity;
-    } catch (error) {
-      pipelineNotice =
-        error instanceof Error
-          ? `Package saved, but the pipeline opportunity could not be created: ${error.message}`
-          : "Package saved, but the pipeline opportunity could not be created.";
-    }
-
-    let deliveryNotice: string | undefined;
-    if (result.package.status === "Generated") {
-      try {
-        const delivery = await ensureDeliveryProjectForPackage(result.package);
-        if (pipelineOpportunity) {
-          await linkDeliveryToOpportunity(delivery.project, pipelineOpportunity);
-        }
-        if (delivery.created) {
-          await saveAuditLog({
-            actor: auth.user.actor,
-            action: "delivery_created_from_package",
-            entityType: "delivery_project",
-            entityId: delivery.project.id,
-            metadata: {
-              title: delivery.project.title,
-              packageId: result.package.id,
-            },
-          });
-        }
-      } catch (error) {
-        deliveryNotice =
-          error instanceof Error
-            ? `Package saved, but the delivery record could not be created: ${error.message}`
-            : "Package saved, but the delivery record could not be created.";
-      }
-    }
-
     return NextResponse.json({
       ...result,
       client: clientResult.client,
-      pipelineNotice,
-      deliveryNotice,
     });
   } catch (error) {
     return NextResponse.json({ error: packageError(error) }, { status: 500 });
@@ -229,10 +181,18 @@ export async function deleteTrainingPackageRequest(
   const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
 
-  const { id } = await params;
-  const result = await deleteTrainingPackage(id);
-
-  return NextResponse.json(result);
+  try {
+    const { id } = await params;
+    if (await findDeliveryProjectByPackageId(id)) {
+      return NextResponse.json(
+        { error: "Delete the linked delivery before deleting this training package." },
+        { status: 409 },
+      );
+    }
+    return NextResponse.json(await deleteTrainingPackage(id));
+  } catch (error) {
+    return NextResponse.json({ error: packageError(error) }, { status: 500 });
+  }
 }
 
 export async function generateTrainingPackageRequest(

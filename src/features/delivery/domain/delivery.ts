@@ -2,13 +2,11 @@ import { deliveryChecklistTemplate } from "./checklist-template";
 
 import {
   normalizeNumber,
-  opportunityStatuses,
-  type OpportunityStatus,
 } from "@/features/crm/domain";
 
-export const deliveryStatuses = opportunityStatuses;
+export const deliveryStatuses = ["Not Started", "Prepared", "Delivered"] as const;
 
-export type DeliveryStatus = OpportunityStatus;
+export type DeliveryStatus = (typeof deliveryStatuses)[number];
 
 export const deliveryTaskCategories = [
   "Trainer",
@@ -74,7 +72,6 @@ export function normalizeDeliveryMaterials(
 
 export type DeliveryProject = {
   id: string;
-  opportunityId: string | null;
   packageId: string | null;
   clientId: string | null;
   title: string;
@@ -160,11 +157,10 @@ export function createEmptyDeliveryProject(
 
   return normalizeDeliveryProject({
     id: crypto.randomUUID(),
-    opportunityId: null,
     packageId: null,
     clientId: null,
     title: "",
-    deliveryStatus: "Syllabus Sent",
+    deliveryStatus: "Not Started",
     trainingDate: "",
     location: "",
     trainerName: "",
@@ -185,13 +181,12 @@ export function normalizeDeliveryProject(
   const now = new Date().toISOString();
   return {
     id: value.id || crypto.randomUUID(),
-    opportunityId: value.opportunityId || null,
     packageId: value.packageId || null,
     clientId: value.clientId || null,
     title: String(value.title ?? "").trim(),
     deliveryStatus: isDeliveryStatus(value.deliveryStatus)
       ? value.deliveryStatus
-      : "Syllabus Sent",
+      : "Not Started",
     trainingDate: String(value.trainingDate ?? "").trim(),
     location: String(value.location ?? "").trim(),
     trainerName: String(value.trainerName ?? "").trim(),

@@ -49,6 +49,10 @@ create table if not exists public.clients (
   sector text,
   contact_person text,
   contact_position text,
+  account_owner text not null default '',
+  client_type text not null default '',
+  relationship_history text not null default '',
+  next_action text not null default '',
   email text,
   phone text,
   notes text,
@@ -60,6 +64,7 @@ alter table public.clients enable row level security;
 
 create table if not exists public.training_packages (
   id uuid primary key default gen_random_uuid(),
+  sales_status text not null default 'Not Sent' check (sales_status in ('Not Sent', 'Sent', 'Won', 'Delivered', 'Lost')),
   course_title text not null,
   target_learners text not null,
   duration text not null,
@@ -109,6 +114,7 @@ create index if not exists idx_training_packages_client_id
 
 create table if not exists public.intelligent_system_proposals (
   id uuid primary key default gen_random_uuid(),
+  sales_status text not null default 'Not Sent' check (sales_status in ('Not Sent', 'Sent', 'Won', 'Delivered', 'Lost')),
   client_id uuid references public.clients(id) on delete set null,
   client_name text not null,
   title text not null,
@@ -295,77 +301,22 @@ on conflict (id) do update set
   file_size_limit = excluded.file_size_limit,
   allowed_mime_types = excluded.allowed_mime_types;
 
-create table if not exists public.opportunities (
-  id uuid primary key default gen_random_uuid(),
-  client_id uuid references public.clients(id) on delete set null,
-  title text not null,
-  training_need text,
-  estimated_value numeric default 0,
-  status text not null default 'Lead' check (
-    status in (
-      'Lead',
-      'Discovery',
-      'Syllabus Sent',
-      'Proposal Sent',
-      'Negotiation',
-      'Won',
-      'Prepared',
-      'Delivered',
-      'Lost',
-      'Dormant'
-    )
-  ),
-  expected_close_date date,
-  next_follow_up_date date,
-  notes text,
-  linked_package_id uuid,
-  created_at timestamptz default now(),
-  updated_at timestamptz default now()
-);
-
-alter table public.opportunities enable row level security;
-
 create index if not exists idx_clients_updated_at
   on public.clients(updated_at desc);
 
 create unique index if not exists idx_clients_normalized_name_unique
   on public.clients(lower(btrim(name)));
 
-create index if not exists idx_opportunities_status
-  on public.opportunities(status);
-
-create index if not exists idx_opportunities_client_id
-  on public.opportunities(client_id);
-
-create index if not exists idx_opportunities_follow_up
-  on public.opportunities(next_follow_up_date);
-
-create index if not exists idx_opportunities_linked_package
-  on public.opportunities(linked_package_id);
-
--- One pipeline opportunity per training package.
-create unique index if not exists idx_opportunities_linked_package_unique
-  on public.opportunities(linked_package_id)
-  where linked_package_id is not null;
-
 create table if not exists public.delivery_projects (
   id uuid primary key default gen_random_uuid(),
-  opportunity_id uuid references public.opportunities(id) on delete set null,
-  package_id uuid references public.training_packages(id) on delete set null,
+  package_id uuid not null references public.training_packages(id) on delete restrict,
   client_id uuid references public.clients(id) on delete set null,
   title text not null,
-  delivery_status text not null default 'Syllabus Sent' check (
+  delivery_status text not null default 'Not Started' check (
     delivery_status in (
-      'Lead',
-      'Discovery',
-      'Syllabus Sent',
-      'Proposal Sent',
-      'Negotiation',
-      'Won',
+      'Not Started',
       'Prepared',
-      'Delivered',
-      'Lost',
-      'Dormant'
+      'Delivered'
     )
   ),
   training_date date,
@@ -381,6 +332,80 @@ create table if not exists public.delivery_projects (
 );
 
 alter table public.delivery_projects enable row level security;
+
+create unique index if not exists idx_delivery_projects_package_unique
+  on public.delivery_projects(package_id);
+
+create or replace function public.require_won_delivery_package()
+returns trigger language plpgsql as $$
+begin
+  if not exists (
+    select 1 from public.training_packages
+    where id = new.package_id and sales_status in ('Won', 'Delivered')
+  ) then
+    raise exception 'Delivery requires a Won training package.' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger require_won_delivery_package
+before insert or update of package_id on public.delivery_projects
+for each row execute function public.require_won_delivery_package();
+
+create or replace function public.keep_won_package_with_delivery()
+returns trigger language plpgsql as $$
+begin
+  if new.sales_status not in ('Won', 'Delivered') and exists (
+    select 1 from public.delivery_projects where package_id = old.id
+  ) then
+    raise exception 'Delete the linked delivery before moving this proposal out of Won or Delivered.' using errcode = '23514';
+  end if;
+  if new.sales_status = 'Delivered' and not exists (
+    select 1 from public.delivery_projects where package_id = old.id and delivery_status = 'Delivered'
+  ) then
+    raise exception 'Complete the linked delivery before marking this proposal Delivered.' using errcode = '23514';
+  end if;
+  if new.sales_status = 'Won' and exists (
+    select 1 from public.delivery_projects where package_id = old.id and delivery_status = 'Delivered'
+  ) then
+    raise exception 'Reopen the linked delivery before moving this proposal back to Won.' using errcode = '23514';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger keep_won_package_with_delivery
+before update of sales_status on public.training_packages
+for each row execute function public.keep_won_package_with_delivery();
+
+create or replace function public.sync_package_from_delivery()
+returns trigger language plpgsql as $$
+begin
+  if tg_op = 'DELETE' then
+    if old.delivery_status = 'Delivered' then
+      update public.training_packages set sales_status = 'Won', updated_at = now() where id = old.package_id;
+    end if;
+    return old;
+  end if;
+  if tg_op = 'INSERT' then
+    if new.delivery_status = 'Delivered' then
+      update public.training_packages set sales_status = 'Delivered', updated_at = now() where id = new.package_id;
+    end if;
+    return new;
+  end if;
+  if new.delivery_status = 'Delivered' then
+    update public.training_packages set sales_status = 'Delivered', updated_at = now() where id = new.package_id;
+  elsif old.delivery_status = 'Delivered' then
+    update public.training_packages set sales_status = 'Won', updated_at = now() where id = new.package_id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger sync_package_delivery_status
+after insert or update of delivery_status or delete on public.delivery_projects
+for each row execute function public.sync_package_from_delivery();
 
 create table if not exists public.delivery_materials (
   delivery_project_id uuid not null
@@ -622,9 +647,6 @@ create index if not exists idx_evaluation_responses_form_id
 
 create index if not exists idx_evaluation_responses_created_at
   on public.evaluation_responses(created_at desc);
-
-create index if not exists idx_delivery_projects_opportunity_id
-  on public.delivery_projects(opportunity_id);
 
 create index if not exists idx_delivery_tasks_project_id
   on public.delivery_tasks(delivery_project_id);

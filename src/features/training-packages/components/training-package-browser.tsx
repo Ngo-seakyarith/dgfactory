@@ -31,7 +31,7 @@ import {
   useTrainingPackageQuery,
   useTrainingPackagesQuery,
 } from "@/features/training-packages/queries";
-import { PackageOpportunityPanel } from "@/features/crm/components/package-opportunity-panel";
+import { ProposalStageControl } from "@/features/pipeline/proposal-stage-control";
 import { formatDateTime } from "@/lib/date-time";
 
 export function SavedPackagesClient() {
@@ -153,6 +153,9 @@ export function PackageDetailClient({ id }: { id: string }) {
 
   return (
     <div className="space-y-5">
+      <div className="border-y border-border py-4">
+        <ProposalStageControl id={pkg.id} kind="training_package" status={pkg.salesStatus} disabled={pkg.status !== "Generated"} />
+      </div>
       <PackageForm
         initialPackage={pkg}
         onPackageSaved={(savedPackage) =>
@@ -181,8 +184,6 @@ export function PackageDetailClient({ id }: { id: string }) {
           {deleteMutation.isPending ? "Deleting" : "Delete"}
         </Button>
       </div>
-
-      <PackageOpportunityPanel pkg={pkg} />
 
     </div>
   );
@@ -241,6 +242,7 @@ function SavedPackageGrid({
                     <Badge variant="gold">Draft</Badge>
                   ) : null}
                   <Badge variant="outline">{pkg.client}</Badge>
+                  <Badge variant="outline">{pkg.salesStatus}</Badge>
                   <Badge variant="outline">{pkg.duration}</Badge>
                 </div>
                 <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">

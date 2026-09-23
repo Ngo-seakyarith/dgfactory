@@ -25,6 +25,7 @@ import {
   type ProposalContent,
 } from "./proposal-content";
 import type { ProposalNarrative } from "./proposal-narrative";
+import type { ProposalStage } from "@/features/pipeline/domain";
 
 export type TrainingPackageInput = {
   courseTitle: string;
@@ -56,6 +57,7 @@ export type TrainingPackage = Omit<TrainingPackageInput, "courseTitle" | "propos
   {
     id: string;
     status: "Draft" | "Generated";
+    salesStatus: ProposalStage;
     clientId: string | null;
     title: string;
     syllabus: string;
@@ -360,6 +362,7 @@ export function buildPackageFromParts({
 
   return {
     status: normalizedOutputs.proposalContent?.generationStatus ?? "Generated",
+    salesStatus: "Not Sent",
     clientId,
     title: input.courseTitle,
     audience: input.audience,

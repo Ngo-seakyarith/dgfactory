@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { isProposalStage, type ProposalStage } from "@/features/pipeline/domain";
 
 import {
   emptySolutionCommercialInputs,
@@ -23,6 +24,7 @@ export const SOLUTION_PROPOSAL_BUCKET = "solution-proposal-inputs";
 
 type ProposalRow = {
   id: string;
+  sales_status: ProposalStage;
   client_id: string | null;
   client_name: string;
   title: string;
@@ -131,6 +133,7 @@ function proposalFromRow(
 ): DigitalSolutionProposal {
   return {
     id: row.id,
+    salesStatus: isProposalStage(row.sales_status) ? row.sales_status : "Not Sent",
     clientId: row.client_id,
     clientName: row.client_name,
     title: row.title,
@@ -191,11 +194,13 @@ export async function getSolutionProposal(id: string) {
 export async function saveSolutionProposal(proposal: DigitalSolutionProposal) {
   const supabase = requireSupabase();
   const updated = { ...proposal, updatedAt: new Date().toISOString() };
-  const { data, error } = await supabase
-    .from("intelligent_system_proposals")
-    .upsert(proposalToRow(updated), { onConflict: "id" })
-    .select("*")
-    .single();
+  const { data: existing, error: lookupError } = await supabase
+    .from("intelligent_system_proposals").select("id").eq("id", proposal.id).maybeSingle();
+  if (lookupError) throw new Error(lookupError.message);
+  const { data, error } = await (existing
+    ? supabase.from("intelligent_system_proposals").update(proposalToRow(updated)).eq("id", proposal.id)
+    : supabase.from("intelligent_system_proposals").insert(proposalToRow(updated))
+  ).select("*").single();
   if (error) throw new Error(error.message);
   return proposalFromRow(data as ProposalRow, proposal.files);
 }

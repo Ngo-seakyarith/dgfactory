@@ -3,11 +3,8 @@ import { scopeAppData, withAppScope } from "@/lib/request-scope";
 import {
   clientNameKey,
   normalizeClient,
-  normalizeOpportunity,
   type Client,
   type ClientProfileInput,
-  type Opportunity,
-  type OpportunityStatus,
 } from "@/features/crm/domain";
 
 type ClientRow = {
@@ -16,24 +13,13 @@ type ClientRow = {
   sector: string | null;
   contact_person: string | null;
   contact_position: string | null;
+  account_owner: string | null;
+  client_type: string | null;
+  relationship_history: string | null;
+  next_action: string | null;
   email: string | null;
   phone: string | null;
   notes: string | null;
-  created_at: string;
-  updated_at: string;
-};
-
-type OpportunityRow = {
-  id: string;
-  client_id: string;
-  title: string;
-  training_need: string | null;
-  estimated_value: number | null;
-  status: OpportunityStatus | null;
-  expected_close_date: string | null;
-  next_follow_up_date: string | null;
-  notes: string | null;
-  linked_package_id: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -45,6 +31,10 @@ function clientToRow(client: Client) {
     sector: client.sector,
     contact_person: client.contactPerson,
     contact_position: client.contactPosition,
+    account_owner: client.accountOwner,
+    client_type: client.clientType,
+    relationship_history: client.relationshipHistory,
+    next_action: client.nextAction,
     email: client.email,
     phone: client.phone,
     notes: client.notes,
@@ -60,46 +50,16 @@ function clientFromRow(row: ClientRow): Client {
     sector: row.sector ?? "",
     contactPerson: row.contact_person ?? "",
     contactPosition: row.contact_position ?? "",
+    accountOwner: row.account_owner ?? "",
+    clientType: row.client_type ?? "",
+    relationshipHistory: row.relationship_history ?? "",
+    nextAction: row.next_action ?? "",
     email: row.email ?? "",
     phone: row.phone ?? "",
     notes: row.notes ?? "",
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
-}
-
-function opportunityToRow(opportunity: Opportunity) {
-  return {
-    id: opportunity.id,
-    client_id: opportunity.clientId,
-    title: opportunity.title,
-    training_need: opportunity.trainingNeed,
-    estimated_value: opportunity.estimatedValue,
-    status: opportunity.status,
-    expected_close_date: opportunity.expectedCloseDate || null,
-    next_follow_up_date: opportunity.nextFollowUpDate || null,
-    notes: opportunity.notes,
-    linked_package_id: opportunity.linkedPackageId,
-    created_at: opportunity.createdAt,
-    updated_at: opportunity.updatedAt,
-  };
-}
-
-function opportunityFromRow(row: OpportunityRow): Opportunity {
-  return normalizeOpportunity({
-    id: row.id,
-    clientId: row.client_id,
-    title: row.title,
-    trainingNeed: row.training_need ?? "",
-    estimatedValue: row.estimated_value ?? 0,
-    status: row.status ?? "Lead",
-    expectedCloseDate: row.expected_close_date ?? "",
-    nextFollowUpDate: row.next_follow_up_date ?? "",
-    notes: row.notes ?? "",
-    linkedPackageId: row.linked_package_id,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  });
 }
 
 export async function listClients() {
@@ -203,104 +163,3 @@ export async function deleteClient(id: string) {
   }
   return { deleted: true, storage: "supabase" as const };
 }
-
-export async function listOpportunities() {
-  const supabase = getSupabaseServerClient();
-
-  if (!supabase) {
-    throw new Error("Supabase is required to list opportunities.");
-  }
-
-  const query = supabase
-    .from("opportunities")
-    .select("*")
-    .order("updated_at", { ascending: false });
-  const { data, error } = await scopeAppData(query);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return (data as OpportunityRow[]).map(opportunityFromRow);
-}
-
-export async function getOpportunity(id: string) {
-  const supabase = getSupabaseServerClient();
-
-  if (supabase) {
-    const { data, error } = await scopeAppData(
-      supabase.from("opportunities").select("*").eq("id", id),
-    ).maybeSingle();
-
-    if (!error && data) {
-      return opportunityFromRow(data as OpportunityRow);
-    }
-  }
-
-  throw new Error("Supabase is required to load opportunities.");
-}
-
-export async function findOpportunityByLinkedPackageId(packageId: string) {
-  const supabase = getSupabaseServerClient();
-
-  if (!supabase) {
-    throw new Error("Supabase is required to load opportunities.");
-  }
-
-  const { data, error } = await scopeAppData(
-    supabase
-      .from("opportunities")
-      .select("*")
-      .eq("linked_package_id", packageId),
-  ).maybeSingle();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return data ? opportunityFromRow(data as OpportunityRow) : null;
-}
-
-export async function saveOpportunity(input: Partial<Opportunity>) {
-  const opportunity = normalizeOpportunity({
-    ...input,
-    updatedAt: new Date().toISOString(),
-  });
-  const supabase = getSupabaseServerClient();
-
-  if (!supabase) {
-    throw new Error("Supabase is required to save opportunities.");
-  }
-
-  const { data, error } = await supabase
-    .from("opportunities")
-    .upsert(withAppScope(opportunityToRow(opportunity)), { onConflict: "id" })
-    .select("*")
-    .single();
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  return {
-    opportunity: opportunityFromRow(data as OpportunityRow),
-    storage: "supabase" as const,
-  };
-}
-
-export async function deleteOpportunity(id: string) {
-  const supabase = getSupabaseServerClient();
-
-  if (!supabase) {
-    throw new Error("Supabase is required to delete opportunities.");
-  }
-
-  const { error } = await scopeAppData(
-    supabase.from("opportunities").delete().eq("id", id),
-  );
-  if (error) {
-    throw new Error(error.message);
-  }
-  return { deleted: true, storage: "supabase" as const };
-}
-

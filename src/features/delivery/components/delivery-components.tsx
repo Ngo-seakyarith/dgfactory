@@ -108,11 +108,7 @@ export function DeliveryStatusBadge({ status }: { status: DeliveryStatus }) {
   const variant =
     status === "Delivered"
       ? "teal"
-      : status === "Lost" ||
-          status === "Dormant" ||
-          status === "Proposal Sent"
-        ? "outline"
-        : "gold";
+      : status === "Prepared" ? "gold" : "outline";
 
   return <Badge variant={variant}>{status}</Badge>;
 }
@@ -209,7 +205,7 @@ export function DeliveryProjectsPageClient() {
           <p className="mt-2 text-sm text-muted-foreground">
             {search
               ? "Try a different training or client name."
-              : "A delivery is created automatically with the same status as its linked pipeline opportunity."}
+              : "Delivery begins when a training proposal is marked Won."}
           </p>
         </div>
       )}
@@ -382,7 +378,7 @@ function EvaluationAndReport({ project, clientName, packageTitle, onSave }: { pr
           <div className="flex flex-wrap items-start justify-between gap-3">
             <div><CardTitle>Post-Training Report</CardTitle><CardDescription className="mt-2">AI drafts the report from the delivery record and feedback above.</CardDescription></div>
             <div className="flex flex-wrap gap-2">
-              <Button type="button" variant="gold" onClick={() => void generate()} disabled={busy}><Sparkles /> {draft.postTrainingReport ? "Regenerate Report" : "Generate Report"}</Button>
+              {project.packageId ? <Button type="button" variant="gold" onClick={() => void generate()} disabled={busy}><Sparkles /> {draft.postTrainingReport ? "Regenerate Report" : "Generate Report"}</Button> : null}
               {draft.postTrainingReport ? <Button type="button" variant="outline" onClick={() => void exportDocx()} disabled={busy}><Download /> Export DOCX</Button> : null}
             </div>
           </div>
@@ -441,6 +437,7 @@ export function DeliveryProjectDetailClient({ id }: { id: string }) {
           <Link href="/delivery" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-[#a94b18] focus-visible:text-[#a94b18]"><ArrowLeft className="h-4 w-4" /> Training Delivery</Link>
           <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold">{project.title}</h1><DeliveryStatusBadge status={project.deliveryStatus} /></div>
           <p className="mt-2 text-sm text-muted-foreground">{client?.name || "No client linked"}{project.trainingDate ? ` · ${project.trainingDate}` : ""}</p>
+          {project.packageId ? <Link href={`/packages/${project.packageId}`} className="mt-2 inline-block text-sm font-medium text-[#176a63] hover:underline">View training package</Link> : null}
         </div>
         <div className="flex items-center gap-2">
           <Select value={project.deliveryStatus} onChange={(event) => void save({ ...project, deliveryStatus: event.target.value as DeliveryStatus })} className="w-40">
@@ -455,7 +452,7 @@ export function DeliveryProjectDetailClient({ id }: { id: string }) {
       {stage === "before" ? (
         <div className="space-y-5">
           <EvaluationFormPanel project={project} formType="pre_training" />
-          <MaterialsPanel project={project} />
+          {project.packageId ? <MaterialsPanel project={project} /> : null}
           <DeliveryChecklist projectId={project.id} />
         </div>
       ) : null}

@@ -20,7 +20,6 @@ import type { TrainingPackage } from "@/features/training-packages/domain/traini
 
 type DeliveryProjectRow = {
   id: string;
-  opportunity_id: string | null;
   package_id: string | null;
   client_id: string | null;
   title: string;
@@ -69,7 +68,6 @@ type DeliveryTaskRow = {
 function projectToRow(project: DeliveryProject) {
   return {
     id: project.id,
-    opportunity_id: project.opportunityId,
     package_id: project.packageId,
     client_id: project.clientId,
     title: project.title,
@@ -99,11 +97,10 @@ function projectFromRow(
 
   return normalizeDeliveryProject({
     id: row.id,
-    opportunityId: row.opportunity_id,
     packageId: row.package_id,
     clientId: row.client_id,
     title: row.title,
-    deliveryStatus: row.delivery_status ?? "Syllabus Sent",
+    deliveryStatus: row.delivery_status ?? "Not Started",
     trainingDate: row.training_date ?? "",
     location: row.location ?? "",
     trainerName: row.trainer_name ?? "",
@@ -320,6 +317,10 @@ export async function findDeliveryProjectByPackageId(packageId: string) {
 }
 
 export async function ensureDeliveryProjectForPackage(pkg: TrainingPackage) {
+  if (pkg.salesStatus !== "Won") {
+    throw new Error("Mark the training proposal Won before creating delivery.");
+  }
+
   const existing = await findDeliveryProjectByPackageId(pkg.id);
 
   if (existing) {
@@ -333,21 +334,33 @@ export async function ensureDeliveryProjectForPackage(pkg: TrainingPackage) {
     packageId: pkg.id,
     clientId: pkg.clientId,
     title: pkg.title,
-    deliveryStatus: "Syllabus Sent",
+    deliveryStatus: "Not Started",
     trainingDate: /^\d{4}-\d{2}-\d{2}$/.test(scheduleDate) ? scheduleDate : "",
     location: scheduleVenue.toUpperCase() === "TBC" ? "" : scheduleVenue,
     trainerName: String(brief?.trainerName ?? "").trim(),
-    participantCount: pkg.pricingInputs?.numberOfParticipants ?? 0,
+    participantCount: pkg.pricingInputs.numberOfParticipants,
   });
 
-  const saved = await saveDeliveryProject(project);
+  let saved: Awaited<ReturnType<typeof saveDeliveryProject>>;
+  try {
+    saved = await saveDeliveryProject(project);
+  } catch (error) {
+    const concurrentlyCreated = await findDeliveryProjectByPackageId(pkg.id);
+    if (concurrentlyCreated) {
+      return { project: concurrentlyCreated, created: false as const };
+    }
+    throw error;
+  }
   const tasks = createDefaultDeliveryTasks(saved.project.id);
   const supabase = getSupabaseServerClient();
   if (!supabase) throw new Error("Delivery storage is unavailable.");
   const { error: taskError } = await supabase
     .from("delivery_tasks")
     .insert(tasks.map((task) => withAppScope(taskToRow(task))));
-  if (taskError) throw new Error(taskError.message);
+  if (taskError) {
+    await deleteDeliveryProject(saved.project.id);
+    throw new Error(taskError.message);
+  }
 
   return { project: saved.project, created: true as const };
 }

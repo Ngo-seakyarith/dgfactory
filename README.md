@@ -23,13 +23,13 @@ bun run build
 
 Supabase is required for persisted production behavior. The authoritative schema snapshot is [`schema.sql`](schema.sql), with a browser-friendly mirror in [`database-schema-visual.html`](database-schema-visual.html).
 
-The retained database surface is deliberately small: profiles, clients, training packages, syllabus imports, intelligent system proposals and files, opportunities, delivery projects and tasks, delivery materials, evaluation forms and responses, generation jobs, and audit logs.
+The retained database surface is deliberately small: profiles, clients, training packages, syllabus imports, intelligent system proposals and files, delivery projects and tasks, delivery materials, evaluation forms and responses, generation jobs, and audit logs.
 
 Delivery material content is normalized in `public.delivery_materials`, with one row per delivery project and material type. The composite primary key `(delivery_project_id, material_type)` allows Slides, Workbook, Facilitator Guide, and Prompt Library jobs to save independently. `public.generation_jobs` remains the source of generation status.
 
 The legacy `delivery_projects.materials` JSON column is retained temporarily as a compatibility snapshot. Database triggers synchronize both representations during rollout and rollback. New application code reads and writes `delivery_materials`; a later migration can remove the triggers and legacy column after all deployed versions use the normalized table.
 
-Each saved training package is linked to one CRM opportunity through `opportunities.linked_package_id`. Generated packages also link their delivery project to that opportunity. Pipeline and Delivery share one status list, and changing either linked record synchronizes the other.
+Pipeline reads training packages and intelligent-system proposals directly. Each proposal has a separate status: Not Sent, Sent, Won, Delivered, or Lost. Generated training packages create a linked delivery project when marked Won. Their Pipeline status follows Delivery progress: Delivered when training is delivered, Won if reopened. Intelligent-system proposals can be marked Delivered manually because their implementation is outside the Delivery module. Delivery tracks its own Not Started, Prepared, and Delivered progress. A delivery must be deleted before its training package can leave Won or Delivered.
 
 ## Intelligent System Proposals
 
@@ -57,11 +57,11 @@ Long-running package, syllabus-import, solution-proposal, delivery-material, eva
 
 ## Product Routes
 
-- `/pipeline` is the default workspace and manages proposal opportunities, values, statuses, and follow-ups.
+- `/pipeline` is the default workspace and shows training and intelligent-system proposals by sales status.
 - `/packages` and `/packages/from-syllabus` manage training packages and external syllabus imports.
 - `/delivery` manages preparation, materials, pre/post-training evaluation forms, responses, and reports.
 - `/solution-proposals` manages intelligent system discovery and proposals.
-- `/clients` manages client records and their linked package and proposal history.
+- `/clients` manages contacts, account ownership, relationship history, next actions, and linked package and system-proposal records.
 - `/evaluate/[token]` is the public, token-protected participant evaluation route.
 
 Authentication uses Google sign-in through Supabase. A profile remains `Pending` until an internal operator changes its access state to `Approved`; only approved users can access internal product routes.

@@ -2,12 +2,7 @@ import { NextResponse } from "next/server";
 
 import { saveAuditLog } from "@/lib/audit";
 import { requireApproved } from "@/lib/route-guards";
-import {
-  calculatePricing,
-  defaultPricingInputs,
-  emptyProposalBrief,
-  type TrainingPackage,
-} from "@/features/training-packages";
+import type { TrainingPackage } from "@/features/training-packages";
 import { exportTrainingPackage } from "@/features/training-packages/export/export-package";
 import type { ExportFormat, ExportTarget } from "@/features/training-packages/export/types";
 import { getTrainingPackage } from "@/features/training-packages/storage/training-storage";
@@ -67,42 +62,14 @@ async function loadDeliveryContext(id: string) {
 
 function exportPackageForDelivery(
   project: DeliveryProject,
-  trainingPackage: TrainingPackage | null,
+  trainingPackage: TrainingPackage,
 ): TrainingPackage {
-  if (trainingPackage) {
-    return {
-      ...trainingPackage,
-      deckOutline: project.materials.slides,
-      workbook: project.materials.workbook,
-      facilitatorGuide: project.materials.facilitatorGuide,
-      promptLibrary: project.materials.promptLibrary,
-    };
-  }
-
   return {
-    id: project.id,
-    status: "Generated",
-    clientId: project.clientId,
-    title: project.title,
-    audience: "Training participants",
-    duration: project.trainingDate || "Confirmed training",
-    client: "Client",
-    context: project.notes,
-    tone: "Professional, clear, executive-friendly",
-    syllabus: "",
-    proposal: "",
-    proposalContent: null,
-    proposalBrief: emptyProposalBrief,
-    commercialProposal: "",
+    ...trainingPackage,
     deckOutline: project.materials.slides,
     workbook: project.materials.workbook,
     facilitatorGuide: project.materials.facilitatorGuide,
     promptLibrary: project.materials.promptLibrary,
-    followUpEmail: "",
-    pricingInputs: defaultPricingInputs,
-    pricingOutputs: calculatePricing(defaultPricingInputs),
-    createdAt: project.createdAt,
-    updatedAt: project.updatedAt,
   };
 }
 

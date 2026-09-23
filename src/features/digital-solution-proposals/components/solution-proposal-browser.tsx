@@ -75,6 +75,7 @@ export function SolutionProposalBrowser() {
               <div className="mt-5 flex flex-wrap gap-2">
                 <Badge variant="outline">{proposal.solutionType}</Badge>
                 <Badge variant="teal">{proposal.status}</Badge>
+                <Badge variant="outline">{proposal.salesStatus}</Badge>
                 <Badge variant="outline">Updated {formatDateTime(proposal.updatedAt)}</Badge>
               </div>
             </Link>

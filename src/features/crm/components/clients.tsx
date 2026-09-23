@@ -40,12 +40,10 @@ import {
   useClientQuery,
   useClientsQuery,
   useDeleteClientMutation,
-  useOpportunitiesQuery,
   useSaveClientMutation,
 } from "@/features/crm/queries";
 import { formatDateTime } from "@/lib/date-time";
 
-import { OpportunityCard } from "./opportunities";
 import {
   CrmGridSkeleton,
   EmptyCrmState,
@@ -90,7 +88,7 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
       <CardHeader>
         <CardTitle>{existingClient ? "Edit Client" : "New Client"}</CardTitle>
         <CardDescription>
-          Capture the buyer, contact, and context for training opportunities.
+          Keep the contact, account context, and next action together.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -123,6 +121,20 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
               placeholder="Head of HR, Managing Director"
             />
           </Field>
+          <Field label="Account owner">
+            <Input
+              value={client.accountOwner}
+              onChange={(event) => updateField("accountOwner", event.target.value)}
+              placeholder="DG Academy team member"
+            />
+          </Field>
+          <Field label="Client type">
+            <Input
+              value={client.clientType}
+              onChange={(event) => updateField("clientType", event.target.value)}
+              placeholder="Existing client, prospect, partner"
+            />
+          </Field>
           <Field label="Email">
             <Input
               type="email"
@@ -139,6 +151,20 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
             />
           </Field>
         </div>
+        <Field label="Relationship history">
+          <Textarea
+            value={client.relationshipHistory}
+            onChange={(event) => updateField("relationshipHistory", event.target.value)}
+            placeholder="Past work and important relationship context"
+          />
+        </Field>
+        <Field label="Next action">
+          <Textarea
+            value={client.nextAction}
+            onChange={(event) => updateField("nextAction", event.target.value)}
+            placeholder="The next action for this account"
+          />
+        </Field>
         <Field label="Notes">
           <Textarea
             value={client.notes}
@@ -215,6 +241,11 @@ export function ClientCard({
             {client.contactPosition ? `, ${client.contactPosition}` : ""}
             {client.sector ? ` - ${client.sector}` : ""}
           </p>
+          {client.accountOwner || client.clientType ? (
+            <p className="mt-1 text-xs text-muted-foreground">
+              {[client.clientType, client.accountOwner].filter(Boolean).join(" · ")}
+            </p>
+          ) : null}
         </div>
         <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-[#176a63]" />
       </div>
@@ -229,10 +260,9 @@ export function ClientCard({
         {client.phone ? <Badge variant="outline">{client.phone}</Badge> : null}
       </div>
       {latestPackage ? (
-        <p className="mt-3 line-clamp-1 text-xs text-muted-foreground">
-          Latest: {latestPackage.title}
-        </p>
+        <p className="mt-3 line-clamp-1 text-xs text-muted-foreground">Latest: {latestPackage.title}</p>
       ) : null}
+      {client.nextAction ? <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">Next: {client.nextAction}</p> : null}
     </Link>
   );
 }
@@ -248,7 +278,7 @@ function ClientsTable({
 }) {
   return (
     <div className="max-h-[70vh] overflow-auto rounded-lg border border-border bg-card">
-      <table className="min-w-[2200px] border-separate border-spacing-0 text-left text-xs">
+      <table className="min-w-[2700px] border-separate border-spacing-0 text-left text-xs">
         <caption className="sr-only">DG Academy client relationship records in spreadsheet view</caption>
         <thead className="sticky top-0 z-20 bg-muted text-[11px] uppercase tracking-[0.12em] text-muted-foreground shadow-[0_1px_0_hsl(var(--border))]">
           <tr>
@@ -257,9 +287,12 @@ function ClientsTable({
             <th className="min-w-40 border-b border-r border-border px-3 py-2">Sector</th>
             <th className="min-w-48 border-b border-r border-border px-3 py-2">Contact person</th>
             <th className="min-w-48 border-b border-r border-border px-3 py-2">Position</th>
+            <th className="min-w-40 border-b border-r border-border px-3 py-2">Account owner</th>
+            <th className="min-w-36 border-b border-r border-border px-3 py-2">Client type</th>
             <th className="min-w-56 border-b border-r border-border px-3 py-2">Email</th>
             <th className="min-w-40 border-b border-r border-border px-3 py-2">Phone</th>
             <th className="min-w-80 border-b border-r border-border px-3 py-2">Notes</th>
+            <th className="min-w-72 border-b border-r border-border px-3 py-2">Next action</th>
             <th className="min-w-28 border-b border-r border-border px-3 py-2 text-right">Packages</th>
             <th className="min-w-36 border-b border-r border-border px-3 py-2 text-right">System proposals</th>
             <th className="min-w-72 border-b border-r border-border px-3 py-2">Latest package</th>
@@ -301,9 +334,12 @@ function ClientsTable({
                 <td className="border-b border-r border-border px-3 py-2 text-muted-foreground">{client.sector || "—"}</td>
                 <td className="border-b border-r border-border px-3 py-2 text-foreground">{client.contactPerson || "—"}</td>
                 <td className="border-b border-r border-border px-3 py-2 text-muted-foreground">{client.contactPosition || "—"}</td>
+                <td className="border-b border-r border-border px-3 py-2 text-muted-foreground">{client.accountOwner || "—"}</td>
+                <td className="border-b border-r border-border px-3 py-2 text-muted-foreground">{client.clientType || "—"}</td>
                 <td className="border-b border-r border-border px-3 py-2 text-muted-foreground">{client.email || "—"}</td>
                 <td className="border-b border-r border-border px-3 py-2 text-muted-foreground">{client.phone || "—"}</td>
                 <td className="max-w-80 whitespace-pre-wrap border-b border-r border-border px-3 py-2 leading-5 text-muted-foreground">{client.notes || "—"}</td>
+                <td className="max-w-72 whitespace-pre-wrap border-b border-r border-border px-3 py-2 leading-5 text-muted-foreground">{client.nextAction || "—"}</td>
                 <td className="border-b border-r border-border px-3 py-2 text-right font-mono text-foreground">{clientPackages.length}</td>
                 <td className="border-b border-r border-border px-3 py-2 text-right font-mono text-foreground">{clientSystemProposals.length}</td>
                 <td className="max-w-72 whitespace-normal border-b border-r border-border px-3 py-2 leading-5 text-muted-foreground">{latestPackage?.title || "—"}</td>
@@ -373,7 +409,7 @@ export function ClientsPageClient() {
     }
 
     return clients.filter((client) =>
-      [client.name, client.sector, client.contactPerson, client.contactPosition, client.email, client.phone, client.notes]
+      [client.name, client.sector, client.contactPerson, client.contactPosition, client.accountOwner, client.clientType, client.email, client.phone, client.relationshipHistory, client.nextAction, client.notes]
         .join(" ")
         .toLowerCase()
         .includes(normalized),
@@ -455,20 +491,16 @@ export function ClientDetailClient({ id }: { id: string }) {
   const router = useRouter();
   const deleteMutation = useDeleteClientMutation();
   const clientQuery = useClientQuery(id);
-  const opportunitiesQuery = useOpportunitiesQuery();
   const packagesQuery = useTrainingPackagesQuery();
   const proposalsQuery = useSolutionProposalsQuery();
   const client = clientQuery.data;
-  const opportunities = opportunitiesQuery.data ?? [];
   const packages = packagesQuery.data ?? [];
   const systemProposals = proposalsQuery.data ?? [];
   const isLoading = [
     clientQuery,
-    opportunitiesQuery,
     packagesQuery,
     proposalsQuery,
   ].some((query) => query.isPending);
-  const clientOpportunities = opportunities.filter((item) => item.clientId === id);
   const clientPackages = client ? packagesForClient(client, packages) : [];
   const clientSystemProposals = systemProposals.filter(
     (proposal) =>
@@ -508,10 +540,16 @@ export function ClientDetailClient({ id }: { id: string }) {
             </CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button asChild variant="gold">
-              <Link href={`/opportunities/new?clientId=${client.id}`}>
+            <Button asChild variant="outline">
+              <Link href={`/packages/new?client=${encodeURIComponent(client.name)}`}>
                 <Plus className="h-4 w-4" />
-                New Opportunity
+                Training Package
+              </Link>
+            </Button>
+            <Button asChild variant="outline">
+              <Link href="/solution-proposals/new">
+                <Plus className="h-4 w-4" />
+                System Proposal
               </Link>
             </Button>
             <Button type="button" variant="destructive" onClick={deleteClient} disabled={deleteMutation.isPending}>
@@ -521,9 +559,13 @@ export function ClientDetailClient({ id }: { id: string }) {
           </div>
         </CardHeader>
         <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
+          <InfoBlock label="Account owner" value={client.accountOwner || "-"} />
+          <InfoBlock label="Client type" value={client.clientType || "-"} />
           <InfoBlock label="Contact position" value={client.contactPosition || "-"} />
           <InfoBlock label="Email" value={client.email || "-"} />
           <InfoBlock label="Phone" value={client.phone || "-"} />
+          <InfoBlock label="Next action" value={client.nextAction || "-"} />
+          <InfoBlock label="Relationship history" value={client.relationshipHistory || "-"} />
           <InfoBlock label="Notes" value={client.notes || "-"} />
         </CardContent>
       </Card>
@@ -552,7 +594,7 @@ export function ClientDetailClient({ id }: { id: string }) {
                       {pkg.title}
                     </div>
                     <p className="mt-1 text-sm text-muted-foreground">
-                      {pkg.duration} · Updated {formatDateTime(pkg.updatedAt)}
+                      {pkg.duration} · {pkg.salesStatus} · Updated {formatDateTime(pkg.updatedAt)}
                     </p>
                     {pkg.proposalBrief.clientBackground ? (
                       <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
@@ -590,7 +632,7 @@ export function ClientDetailClient({ id }: { id: string }) {
                   <FileText className="mt-0.5 h-4 w-4 shrink-0 text-teal-200" />
                   <div className="min-w-0 flex-1">
                     <div className="line-clamp-1 font-semibold text-white">{proposal.title}</div>
-                    <p className="mt-1 text-sm text-muted-foreground">{proposal.status} · Updated {formatDateTime(proposal.updatedAt)}</p>
+                    <p className="mt-1 text-sm text-muted-foreground">{proposal.salesStatus} · Updated {formatDateTime(proposal.updatedAt)}</p>
                     <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{proposal.brief.projectGoal}</p>
                   </div>
                 </Link>
@@ -602,33 +644,6 @@ export function ClientDetailClient({ id }: { id: string }) {
         </CardContent>
       </Card>
 
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardHeader>
-          <CardTitle>Client Opportunities</CardTitle>
-          <CardDescription>
-            Active and historical training opportunities for this client.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {clientOpportunities.length ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {clientOpportunities.map((opportunity) => (
-                <OpportunityCard
-                  key={opportunity.id}
-                  opportunity={opportunity}
-                  client={client}
-                />
-              ))}
-            </div>
-          ) : (
-            <EmptyCrmState
-              title="No opportunities for this client"
-              href={`/opportunities/new?clientId=${client.id}`}
-              label="Create Opportunity"
-            />
-          )}
-        </CardContent>
-      </Card>
     </div>
   );
 }

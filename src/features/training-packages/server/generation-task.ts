@@ -4,11 +4,6 @@ import type {
   ProposalAgentOutput,
 } from "@/lib/brain/agents";
 import { routeBrainTask } from "@/lib/brain/routing/router";
-import { ensureDeliveryProjectForPackage } from "@/features/delivery/storage/delivery-storage";
-import {
-  ensureOpportunityForPackage,
-  linkDeliveryToOpportunity,
-} from "@/features/crm/server/sync";
 import { GenerationInputError } from "@/features/generation-jobs/domain/errors";
 
 import {
@@ -76,13 +71,6 @@ export async function generateAndSaveTrainingPackage(
     pricingInputs: current.pricingInputs,
   });
   const saved = await saveTrainingPackage(generated);
-  const opportunity = await ensureOpportunityForPackage(saved.package, actor).catch(
-    () => null,
-  );
-  const delivery = await ensureDeliveryProjectForPackage(saved.package);
-  if (opportunity) {
-    await linkDeliveryToOpportunity(delivery.project, opportunity.opportunity);
-  }
   await saveAuditLog({
     actor,
     action: "package_generated",

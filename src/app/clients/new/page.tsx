@@ -7,7 +7,7 @@ export default function NewClientPage() {
         <div className="page-eyebrow">Relationships</div>
         <h1 className="page-title">New client</h1>
         <p className="page-description">
-          Add a client before creating and tracking training opportunities.
+          Add a client to link training packages and intelligent-system proposals.
         </p>
       </div>
       <ClientForm />

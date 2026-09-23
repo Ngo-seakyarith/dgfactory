@@ -1,3 +1,5 @@
+import type { ProposalStage } from "@/features/pipeline/domain";
+
 export const solutionProposalStatuses = [
   "Draft",
   "Reviewing",
@@ -268,6 +270,7 @@ export type SolutionSourceFile = {
 
 export type DigitalSolutionProposal = {
   id: string;
+  salesStatus: ProposalStage;
   clientId: string | null;
   clientName: string;
   title: string;

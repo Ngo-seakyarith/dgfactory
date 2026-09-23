@@ -105,7 +105,6 @@ export function useDeleteTrainingPackageMutation() {
       queryClient.removeQueries({ queryKey: trainingPackageKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: trainingPackageKeys.list() });
       void queryClient.invalidateQueries({ queryKey: clientKeys.all });
-      void queryClient.invalidateQueries({ queryKey: ["opportunities"] });
     },
   });
 }
