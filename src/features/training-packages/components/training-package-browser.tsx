@@ -227,25 +227,25 @@ function SavedPackageGrid({
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="line-clamp-2 font-semibold leading-6 text-white">
+                    <div className="line-clamp-2 font-semibold leading-6 text-foreground">
                       {pkg.title}
                     </div>
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                      {pkg.proposalBrief.expectedLearningOutcomes ||
-                        pkg.proposalBrief.trainingNeed}
-                    </p>
+                    <p className="mt-1 text-sm text-muted-foreground">{pkg.client || "No client"}</p>
                   </div>
                   <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-[#a94b18]" />
                 </div>
-                <div className="mt-4 flex flex-wrap gap-2">
+                <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
                   {pkg.status === "Draft" ? (
                     <Badge variant="gold">Draft</Badge>
-                  ) : null}
-                  <Badge variant="outline">{pkg.client}</Badge>
-                  <Badge variant="outline">{pkg.salesStatus}</Badge>
-                  <Badge variant="outline">{pkg.duration}</Badge>
+                  ) : (
+                    <Badge variant="outline">{pkg.salesStatus}</Badge>
+                  )}
+                  <span>{pkg.duration}</span>
                 </div>
-                <div className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Training date: {pkg.proposalBrief.scheduleDate || "Not scheduled"}
+                </p>
+                <div className="mt-1 flex items-center gap-2 text-xs text-muted-foreground">
                   <Clock3 className="h-3.5 w-3.5" />
                   Updated {formatDateTime(pkg.updatedAt)}
                 </div>
@@ -255,7 +255,7 @@ function SavedPackageGrid({
         ) : (
           <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
             <FileText className="mx-auto h-8 w-8 text-[#20867d]" />
-            <div className="mt-4 text-base font-semibold text-white">{emptyTitle}</div>
+            <div className="mt-4 text-base font-semibold text-foreground">{emptyTitle}</div>
             <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-muted-foreground">
               {emptyDetail}
             </p>
@@ -280,16 +280,16 @@ function PackageGridSkeleton() {
           <div className="flex items-start justify-between gap-3">
             <div className="w-full space-y-3">
               <Skeleton className="h-5 w-2/3" />
-              <Skeleton className="h-4 w-full" />
-              <Skeleton className="h-4 w-4/5" />
+              <Skeleton className="h-4 w-1/3" />
             </div>
             <Skeleton className="h-4 w-4 shrink-0" />
           </div>
-          <div className="mt-4 flex gap-2">
+          <div className="mt-3 flex gap-2">
             <Skeleton className="h-6 w-24" />
-            <Skeleton className="h-6 w-16" />
+            <Skeleton className="h-5 w-16" />
           </div>
-          <Skeleton className="mt-4 h-3 w-40" />
+          <Skeleton className="mt-3 h-3 w-40" />
+          <Skeleton className="mt-2 h-3 w-32" />
         </div>
       ))}
     </div>

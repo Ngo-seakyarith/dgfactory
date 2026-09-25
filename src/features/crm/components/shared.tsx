@@ -56,20 +56,9 @@ export function Field({
 }) {
   return (
     <label className="block space-y-2">
-      <span className="text-sm font-medium text-white">{label}</span>
+      <span className="text-sm font-medium text-foreground">{label}</span>
       {children}
     </label>
-  );
-}
-
-export function InfoBlock({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-lg border border-white/10 bg-[#07111f]/55 p-4">
-      <div className="text-xs uppercase tracking-[0.16em] text-muted-foreground">
-        {label}
-      </div>
-      <div className="mt-2 text-sm font-medium leading-6 text-white">{value}</div>
-    </div>
   );
 }
 

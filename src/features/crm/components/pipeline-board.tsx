@@ -10,6 +10,7 @@ import { useSolutionProposalsQuery } from "@/features/digital-solution-proposals
 import { proposalStages, trainingOverview, type ProposalStage } from "@/features/pipeline/domain";
 import { ProposalStageControl } from "@/features/pipeline/proposal-stage-control";
 import { formatMoney } from "@/features/training-packages/domain/pricing";
+import { formatDateTime } from "@/lib/date-time";
 
 type PipelineItem = {
   id: string;
@@ -20,6 +21,7 @@ type PipelineItem = {
   ready: boolean;
   href: string;
   updatedAt: string;
+  scheduleDate?: string;
 };
 
 export function PipelineBoard() {
@@ -37,6 +39,7 @@ export function PipelineBoard() {
       ready: pkg.status === "Generated",
       href: `/packages/${pkg.id}`,
       updatedAt: pkg.updatedAt,
+      scheduleDate: pkg.proposalBrief.scheduleDate,
     })),
     ...(proposalsQuery.data ?? []).map((proposal) => ({
       id: proposal.id,
@@ -92,6 +95,12 @@ export function PipelineBoard() {
                     <Link href={item.href} className="block font-medium leading-5 hover:text-primary">{item.title}</Link>
                     <p className="mt-1 text-xs text-muted-foreground">{item.client || "No client"}</p>
                     <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">{item.kind === "training_package" ? <FileText className="h-3.5 w-3.5" /> : <MonitorCog className="h-3.5 w-3.5" />}{item.kind === "training_package" ? "Training" : "Intelligent system"}</p>
+                    {item.kind === "training_package" && (
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        Training date: {item.scheduleDate || "Not scheduled"}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs text-muted-foreground">Updated: {formatDateTime(item.updatedAt)}</p>
                     <div className="mt-3 border-t border-border pt-3"><ProposalStageControl id={item.id} kind={item.kind} status={item.status} disabled={!item.ready} /></div>
                   </div>
                 )) : <p className="py-5 text-center text-xs text-muted-foreground">No proposals</p>}

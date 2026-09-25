@@ -51,6 +51,7 @@ import { DeliveryChecklist } from "./delivery-checklist";
 import { useTrainingPackagesQuery } from "@/features/training-packages/queries";
 import { MarkdownPreview } from "@/features/training-packages/components/markdown-preview";
 import { errorMessage, requestJson } from "@/lib/api-client";
+import { formatDateTime } from "@/lib/date-time";
 import {
   isActiveGenerationJob,
   type GenerationJob,
@@ -178,19 +179,24 @@ export function DeliveryProjectsPageClient() {
                     <DeliveryStatusBadge status={project.deliveryStatus} />
                   </div>
                 </CardHeader>
-                <CardContent className="grid grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <div className="text-xs uppercase text-muted-foreground">Date</div>
-                    <div className="mt-1 font-medium">
-                      {project.trainingDate || "Not scheduled"}
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <div className="text-xs uppercase text-muted-foreground">Date</div>
+                      <div className="mt-1 font-medium">
+                        {project.trainingDate || "Not scheduled"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs uppercase text-muted-foreground">Trainer</div>
+                      <div className="mt-1 font-medium">
+                        {project.trainerName || "Not assigned"}
+                      </div>
                     </div>
                   </div>
-                  <div>
-                    <div className="text-xs uppercase text-muted-foreground">Trainer</div>
-                    <div className="mt-1 font-medium">
-                      {project.trainerName || "Not assigned"}
-                    </div>
-                  </div>
+                  <p className="mt-3 border-t border-border pt-3 text-xs text-muted-foreground">
+                    Updated <time dateTime={project.updatedAt}>{formatDateTime(project.updatedAt)}</time>
+                  </p>
                 </CardContent>
               </Card>
             </Link>
@@ -437,6 +443,7 @@ export function DeliveryProjectDetailClient({ id }: { id: string }) {
           <Link href="/delivery" className="mb-3 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-[#a94b18] focus-visible:text-[#a94b18]"><ArrowLeft className="h-4 w-4" /> Training Delivery</Link>
           <div className="flex flex-wrap items-center gap-3"><h1 className="text-3xl font-semibold">{project.title}</h1><DeliveryStatusBadge status={project.deliveryStatus} /></div>
           <p className="mt-2 text-sm text-muted-foreground">{client?.name || "No client linked"}{project.trainingDate ? ` · ${project.trainingDate}` : ""}</p>
+          <p className="mt-1 text-xs text-muted-foreground">Updated <time dateTime={project.updatedAt}>{formatDateTime(project.updatedAt)}</time></p>
           {project.packageId ? <Link href={`/packages/${project.packageId}`} className="mt-2 inline-block text-sm font-medium text-[#176a63] hover:underline">View training package</Link> : null}
         </div>
         <div className="flex items-center gap-2">

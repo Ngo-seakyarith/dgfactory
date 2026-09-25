@@ -72,12 +72,13 @@ export function SolutionProposalBrowser() {
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-[#a94b18]" />
               </div>
-              <div className="mt-5 flex flex-wrap gap-2">
-                <Badge variant="outline">{proposal.solutionType}</Badge>
-                <Badge variant="teal">{proposal.status}</Badge>
-                <Badge variant="outline">{proposal.salesStatus}</Badge>
-                <Badge variant="outline">Updated {formatDateTime(proposal.updatedAt)}</Badge>
+              <div className="mt-3 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+                <Badge variant={proposal.status === "Failed" ? "destructive" : proposal.status === "Generated" ? "outline" : "gold"}>
+                  {proposal.status === "Generated" ? proposal.salesStatus : proposal.status}
+                </Badge>
+                <span>{proposal.solutionType}</span>
               </div>
+              <p className="mt-3 text-xs text-muted-foreground">Updated {formatDateTime(proposal.updatedAt)}</p>
             </Link>
           ))}
         </div>
@@ -101,7 +102,8 @@ function SolutionProposalSkeleton() {
       {Array.from({ length: 4 }, (_, index) => (
         <div key={index} className="rounded-lg border border-border bg-card p-4">
           <div className="flex gap-3"><Skeleton className="h-9 w-9 shrink-0" /><div className="w-full space-y-3"><Skeleton className="h-5 w-2/3" /><Skeleton className="h-4 w-1/2" /></div></div>
-          <div className="mt-5 flex gap-2"><Skeleton className="h-6 w-28" /><Skeleton className="h-6 w-20" /></div>
+          <div className="mt-3 flex gap-2"><Skeleton className="h-6 w-20" /><Skeleton className="h-5 w-28" /></div>
+          <Skeleton className="mt-3 h-4 w-36" />
         </div>
       ))}
     </div>

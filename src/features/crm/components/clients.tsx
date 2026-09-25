@@ -5,9 +5,9 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import {
   ArrowRight,
-  FileText,
   LayoutGrid,
   Loader2,
+  Pencil,
   Plus,
   Rows3,
   Save,
@@ -15,8 +15,8 @@ import {
 } from "lucide-react";
 
 import { QueryErrorState } from "@/components/query-error-state";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Card,
   CardContent,
@@ -48,13 +48,20 @@ import {
   CrmGridSkeleton,
   EmptyCrmState,
   Field,
-  InfoBlock,
   LoadingCard,
   MissingCard,
   Toolbar,
 } from "./shared";
 
-export function ClientForm({ existingClient }: { existingClient?: Client }) {
+export function ClientForm({
+  existingClient,
+  onSaved,
+  onCancel,
+}: {
+  existingClient?: Client;
+  onSaved?: () => void;
+  onCancel?: () => void;
+}) {
   const router = useRouter();
   const saveMutation = useSaveClientMutation();
   const [client, setClient] = useState<Client>(
@@ -77,19 +84,17 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
     try {
       const payload = await saveMutation.mutateAsync(clientToSave);
 
-      router.push(`/clients/${payload.client.id}`);
+      if (onSaved) onSaved();
+      else router.push(`/clients/${payload.client.id}`);
     } catch (error) {
       setNotice(error instanceof Error ? error.message : "Client save failed.");
     }
   }
 
   return (
-    <Card className="border-white/10 bg-white/[0.04] shadow-executive">
+    <Card>
       <CardHeader>
         <CardTitle>{existingClient ? "Edit Client" : "New Client"}</CardTitle>
-        <CardDescription>
-          Keep the contact, account context, and next action together.
-        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Field label="Client name">
@@ -177,10 +182,13 @@ export function ClientForm({ existingClient }: { existingClient?: Client }) {
             {notice}
           </p>
         ) : null}
-        <Button type="button" variant="gold" onClick={saveClient} disabled={saveMutation.isPending}>
-          {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          Save Client
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          <Button type="button" variant="gold" onClick={saveClient} disabled={saveMutation.isPending}>
+            {saveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Save Client
+          </Button>
+          {onCancel ? <Button type="button" variant="outline" onClick={onCancel} disabled={saveMutation.isPending}>Cancel</Button> : null}
+        </div>
       </CardContent>
     </Card>
   );
@@ -222,7 +230,7 @@ export function ClientCard({
   packages: TrainingPackage[];
   systemProposals: DigitalSolutionProposal[];
 }) {
-  const { clientPackages, clientSystemProposals, latestPackage } = getClientActivity(
+  const { clientPackages, clientSystemProposals } = getClientActivity(
     client,
     packages,
     systemProposals,
@@ -231,38 +239,23 @@ export function ClientCard({
   return (
     <Link
       href={`/clients/${client.id}`}
-      className="group rounded-lg border border-white/10 bg-[#07111f]/55 p-4 transition hover:border-teal-300/35 hover:bg-teal-300/10"
+      className="group rounded-md border border-border bg-card p-4 transition hover:border-[#20867d]/50 hover:shadow-sm"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <div className="line-clamp-1 font-semibold text-white">{client.name}</div>
-          <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-            {client.contactPerson || "No contact person yet"}
+          <div className="line-clamp-1 font-semibold text-foreground">{client.name}</div>
+          <p className="mt-1 line-clamp-1 text-sm text-muted-foreground">
+            {client.contactPerson || "No contact person"}
             {client.contactPosition ? `, ${client.contactPosition}` : ""}
-            {client.sector ? ` - ${client.sector}` : ""}
           </p>
-          {client.accountOwner || client.clientType ? (
-            <p className="mt-1 text-xs text-muted-foreground">
-              {[client.clientType, client.accountOwner].filter(Boolean).join(" · ")}
-            </p>
-          ) : null}
+          {client.sector ? <p className="mt-1 text-xs text-muted-foreground">{client.sector}</p> : null}
         </div>
         <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition group-hover:text-[#176a63]" />
       </div>
-      <div className="mt-4 flex flex-wrap gap-2">
-        <Badge variant="teal">
-          {clientPackages.length} {clientPackages.length === 1 ? "package" : "packages"}
-        </Badge>
-        <Badge variant="outline">
-          {clientSystemProposals.length} solution {clientSystemProposals.length === 1 ? "proposal" : "proposals"}
-        </Badge>
-        {client.email ? <Badge variant="outline">{client.email}</Badge> : null}
-        {client.phone ? <Badge variant="outline">{client.phone}</Badge> : null}
-      </div>
-      {latestPackage ? (
-        <p className="mt-3 line-clamp-1 text-xs text-muted-foreground">Latest: {latestPackage.title}</p>
-      ) : null}
-      {client.nextAction ? <p className="mt-2 line-clamp-2 text-xs text-muted-foreground">Next: {client.nextAction}</p> : null}
+      <p className="mt-3 text-xs text-muted-foreground">
+        {clientPackages.length} training {clientPackages.length === 1 ? "package" : "packages"} · {clientSystemProposals.length} system {clientSystemProposals.length === 1 ? "proposal" : "proposals"}
+      </p>
+      {client.nextAction ? <p className="mt-2 line-clamp-1 text-xs text-muted-foreground">Next: {client.nextAction}</p> : null}
     </Link>
   );
 }
@@ -489,6 +482,7 @@ export function ClientsPageClient() {
 
 export function ClientDetailClient({ id }: { id: string }) {
   const router = useRouter();
+  const [editing, setEditing] = useState(false);
   const deleteMutation = useDeleteClientMutation();
   const clientQuery = useClientQuery(id);
   const packagesQuery = useTrainingPackagesQuery();
@@ -496,11 +490,6 @@ export function ClientDetailClient({ id }: { id: string }) {
   const client = clientQuery.data;
   const packages = packagesQuery.data ?? [];
   const systemProposals = proposalsQuery.data ?? [];
-  const isLoading = [
-    clientQuery,
-    packagesQuery,
-    proposalsQuery,
-  ].some((query) => query.isPending);
   const clientPackages = client ? packagesForClient(client, packages) : [];
   const clientSystemProposals = systemProposals.filter(
     (proposal) =>
@@ -519,131 +508,142 @@ export function ClientDetailClient({ id }: { id: string }) {
     } catch {}
   }
 
-  if (isLoading && !client) {
+  if (clientQuery.isPending && !client) {
     return <LoadingCard label="Loading client..." />;
   }
 
   if (!client) {
-    return <MissingCard label="Client not found" href="/clients" />;
+    return clientQuery.isError ? (
+      <QueryErrorState title="Client could not be loaded" detail={clientQuery.error.message} onRetry={() => void clientQuery.refetch()} />
+    ) : <MissingCard label="Client not found" href="/clients" />;
   }
 
   return (
-    <div className="space-y-5">
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardHeader className="gap-3 sm:flex-row sm:items-start sm:justify-between sm:space-y-0">
-          <div>
-            <CardTitle>{client.name}</CardTitle>
-            <CardDescription className="mt-2">
-              {client.contactPerson || "No contact person"}
-              {client.contactPosition ? `, ${client.contactPosition}` : ""}
-              {client.sector ? ` - ${client.sector}` : ""}
-            </CardDescription>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="outline">
-              <Link href={`/packages/new?client=${encodeURIComponent(client.name)}`}>
-                <Plus className="h-4 w-4" />
-                Training Package
-              </Link>
-            </Button>
-            <Button asChild variant="outline">
-              <Link href="/solution-proposals/new">
-                <Plus className="h-4 w-4" />
-                System Proposal
-              </Link>
-            </Button>
-            <Button type="button" variant="destructive" onClick={deleteClient} disabled={deleteMutation.isPending}>
-              <Trash2 className="h-4 w-4" />
-              Delete
-            </Button>
-          </div>
-        </CardHeader>
-        <CardContent className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <InfoBlock label="Account owner" value={client.accountOwner || "-"} />
-          <InfoBlock label="Client type" value={client.clientType || "-"} />
-          <InfoBlock label="Contact position" value={client.contactPosition || "-"} />
-          <InfoBlock label="Email" value={client.email || "-"} />
-          <InfoBlock label="Phone" value={client.phone || "-"} />
-          <InfoBlock label="Next action" value={client.nextAction || "-"} />
-          <InfoBlock label="Relationship history" value={client.relationshipHistory || "-"} />
-          <InfoBlock label="Notes" value={client.notes || "-"} />
-        </CardContent>
-      </Card>
-
-      <ClientForm existingClient={client} />
-
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardHeader>
-          <CardTitle>Training Packages</CardTitle>
-          <CardDescription>
-            Proposals and syllabi created for this client.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {clientPackages.length ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {clientPackages.map((pkg) => (
-                <Link
-                  key={pkg.id}
-                  href={`/packages/${pkg.id}`}
-                  className="group flex items-start gap-3 rounded-lg border border-white/10 bg-[#07111f]/55 p-4 transition hover:border-teal-300/35 hover:bg-teal-300/10"
-                >
-                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-teal-200" />
-                  <div className="min-w-0">
-                    <div className="line-clamp-1 font-semibold text-white">
-                      {pkg.title}
-                    </div>
-                    <p className="mt-1 text-sm text-muted-foreground">
-                      {pkg.duration} · {pkg.salesStatus} · Updated {formatDateTime(pkg.updatedAt)}
-                    </p>
-                    {pkg.proposalBrief.clientBackground ? (
-                      <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">
-                        {pkg.proposalBrief.clientBackground}
-                      </p>
-                    ) : null}
-                  </div>
-                </Link>
-              ))}
+    <div className="space-y-8">
+      <header className="border-b border-border pb-5">
+        <Link href="/clients" className="text-sm text-muted-foreground hover:text-foreground">Clients</Link>
+        <div className="mt-3 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
+          <h1 className="min-w-0 text-2xl font-semibold text-foreground">{client.name}</h1>
+          {!editing ? (
+            <div className="flex flex-wrap gap-2">
+              <Button type="button" variant="outline" onClick={() => setEditing(true)}><Pencil className="h-4 w-4" />Edit</Button>
+              <Button asChild variant="outline"><Link href={`/packages/new?client=${encodeURIComponent(client.name)}`}><Plus className="h-4 w-4" />Training Package</Link></Button>
+              <Button asChild variant="outline"><Link href="/solution-proposals/new"><Plus className="h-4 w-4" />System Proposal</Link></Button>
             </div>
-          ) : (
-            <EmptyCrmState
-              title="No packages for this client"
-              href={`/packages/new?client=${encodeURIComponent(client.name)}`}
-              label="Create Package"
-            />
-          )}
-        </CardContent>
-      </Card>
+          ) : null}
+        </div>
+      </header>
 
-      <Card className="border-white/10 bg-white/[0.04] shadow-executive">
-        <CardHeader>
-          <CardTitle>Intelligent System Proposals</CardTitle>
-          <CardDescription>Website, application, portal, data, and AI system proposals prepared for this client.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {clientSystemProposals.length ? (
-            <div className="grid gap-3 md:grid-cols-2">
-              {clientSystemProposals.map((proposal) => (
-                <Link
-                  key={proposal.id}
-                  href={`/solution-proposals/${proposal.id}`}
-                  className="group flex items-start gap-3 rounded-lg border border-white/10 bg-[#07111f]/55 p-4 transition hover:border-teal-300/35 hover:bg-teal-300/10"
-                >
-                  <FileText className="mt-0.5 h-4 w-4 shrink-0 text-teal-200" />
-                  <div className="min-w-0 flex-1">
-                    <div className="line-clamp-1 font-semibold text-white">{proposal.title}</div>
-                    <p className="mt-1 text-sm text-muted-foreground">{proposal.salesStatus} · Updated {formatDateTime(proposal.updatedAt)}</p>
-                    <p className="mt-2 line-clamp-2 text-sm leading-6 text-muted-foreground">{proposal.brief.projectGoal}</p>
-                  </div>
-                </Link>
-              ))}
-            </div>
-          ) : (
-            <EmptyCrmState title="No intelligent system proposals for this client" href="/solution-proposals/new" label="Create Intelligent System Proposal" />
-          )}
-        </CardContent>
-      </Card>
+      {editing ? (
+        <ClientForm key={client.updatedAt} existingClient={client} onSaved={() => setEditing(false)} onCancel={() => setEditing(false)} />
+      ) : (
+        <>
+          {client.nextAction ? (
+            <section aria-labelledby="client-next-action" className="border-l-2 border-primary pl-4">
+              <h2 id="client-next-action" className="text-sm font-semibold">Next action</h2>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-muted-foreground">{client.nextAction}</p>
+            </section>
+          ) : null}
 
+          <div className="grid gap-8 md:grid-cols-2">
+            <section aria-labelledby="client-contact">
+              <h2 id="client-contact" className="border-b border-border pb-2 text-base font-semibold">Contact</h2>
+              <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+                <ClientDetailField label="Person" value={client.contactPerson} />
+                <ClientDetailField label="Position" value={client.contactPosition} />
+                <ClientDetailField label="Email" value={client.email} href={client.email ? `mailto:${client.email}` : undefined} />
+                <ClientDetailField label="Phone" value={client.phone} href={client.phone ? `tel:${client.phone}` : undefined} />
+              </dl>
+              {!client.contactPerson && !client.contactPosition && !client.email && !client.phone ? <p className="mt-3 text-sm text-muted-foreground">No contact details yet.</p> : null}
+            </section>
+            <section aria-labelledby="client-account">
+              <h2 id="client-account" className="border-b border-border pb-2 text-base font-semibold">Account</h2>
+              <dl className="mt-3 grid gap-4 sm:grid-cols-2">
+                <ClientDetailField label="Sector" value={client.sector} />
+                <ClientDetailField label="Type" value={client.clientType} />
+                <ClientDetailField label="Owner" value={client.accountOwner} />
+              </dl>
+              {!client.sector && !client.clientType && !client.accountOwner ? <p className="mt-3 text-sm text-muted-foreground">No account details yet.</p> : null}
+            </section>
+          </div>
+
+          {client.relationshipHistory || client.notes ? (
+            <section aria-labelledby="client-context" className="border-t border-border pt-5">
+              <h2 id="client-context" className="text-base font-semibold">Relationship context</h2>
+              <dl className="mt-3 grid gap-6 md:grid-cols-2">
+                <ClientDetailField label="History" value={client.relationshipHistory} />
+                <ClientDetailField label="Notes" value={client.notes} />
+              </dl>
+            </section>
+          ) : null}
+        </>
+      )}
+
+      <section aria-labelledby="client-training-packages" className="border-t border-border pt-5">
+        <h2 id="client-training-packages" className="text-base font-semibold">Training Packages <span className="ml-1 font-normal text-muted-foreground">{packagesQuery.isPending ? "" : clientPackages.length}</span></h2>
+        {packagesQuery.isPending ? <ClientHistorySkeleton /> : packagesQuery.isError ? (
+          <QueryErrorState title="Training packages could not be loaded" detail={packagesQuery.error.message} onRetry={() => void packagesQuery.refetch()} />
+        ) : clientPackages.length ? (
+          <div className="mt-3 divide-y divide-border border-y border-border">
+            {clientPackages.map((pkg) => (
+              <Link key={pkg.id} href={`/packages/${pkg.id}`} className="group flex items-center justify-between gap-4 py-3 hover:text-primary">
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground group-hover:text-primary">{pkg.title}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{pkg.status === "Draft" ? "Draft" : pkg.salesStatus} · {pkg.duration} · Updated {formatDateTime(pkg.updatedAt)}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+            ))}
+          </div>
+        ) : <p className="mt-3 text-sm text-muted-foreground">No training packages yet.</p>}
+      </section>
+
+      <section aria-labelledby="client-system-proposals" className="border-t border-border pt-5">
+        <h2 id="client-system-proposals" className="text-base font-semibold">Intelligent System Proposals <span className="ml-1 font-normal text-muted-foreground">{proposalsQuery.isPending ? "" : clientSystemProposals.length}</span></h2>
+        {proposalsQuery.isPending ? <ClientHistorySkeleton /> : proposalsQuery.isError ? (
+          <QueryErrorState title="System proposals could not be loaded" detail={proposalsQuery.error.message} onRetry={() => void proposalsQuery.refetch()} />
+        ) : clientSystemProposals.length ? (
+          <div className="mt-3 divide-y divide-border border-y border-border">
+            {clientSystemProposals.map((proposal) => (
+              <Link key={proposal.id} href={`/solution-proposals/${proposal.id}`} className="group flex items-center justify-between gap-4 py-3 hover:text-primary">
+                <div className="min-w-0">
+                  <div className="font-medium text-foreground group-hover:text-primary">{proposal.title}</div>
+                  <p className="mt-1 text-xs text-muted-foreground">{proposal.status === "Generated" ? proposal.salesStatus : proposal.status} · Updated {formatDateTime(proposal.updatedAt)}</p>
+                </div>
+                <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+              </Link>
+            ))}
+          </div>
+        ) : <p className="mt-3 text-sm text-muted-foreground">No intelligent system proposals yet.</p>}
+      </section>
+
+      <div className="border-t border-border pt-5">
+        {deleteMutation.isError ? <p role="alert" className="mb-3 text-sm text-destructive">{deleteMutation.error.message}</p> : null}
+        <Button type="button" variant="destructive" onClick={deleteClient} disabled={deleteMutation.isPending}>
+          <Trash2 className="h-4 w-4" />Delete client
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function ClientDetailField({ label, value, href }: { label: string; value: string; href?: string }) {
+  if (!value.trim()) return null;
+  return (
+    <div className="min-w-0">
+      <dt className="text-xs font-medium text-muted-foreground">{label}</dt>
+      <dd className="mt-1 whitespace-pre-wrap break-words text-sm text-foreground">
+        {href ? <a href={href} className="text-primary underline-offset-2 hover:underline">{value}</a> : value}
+      </dd>
+    </div>
+  );
+}
+
+function ClientHistorySkeleton() {
+  return (
+    <div className="mt-3 space-y-3" aria-busy="true">
+      <Skeleton className="h-12 w-full" />
+      <Skeleton className="h-12 w-full" />
     </div>
   );
 }
