@@ -64,7 +64,7 @@ alter table public.clients enable row level security;
 
 create table if not exists public.training_packages (
   id uuid primary key default gen_random_uuid(),
-  sales_status text not null default 'Not Sent' check (sales_status in ('Not Sent', 'Sent', 'Won', 'Delivered', 'Lost')),
+  sales_status text not null default 'Prospects' check (sales_status in ('Prospects', 'Warm', 'Hot', 'Contracted', 'Delivered')),
   course_title text not null,
   target_learners text not null,
   duration text not null,
@@ -114,7 +114,7 @@ create index if not exists idx_training_packages_client_id
 
 create table if not exists public.intelligent_system_proposals (
   id uuid primary key default gen_random_uuid(),
-  sales_status text not null default 'Not Sent' check (sales_status in ('Not Sent', 'Sent', 'Won', 'Delivered', 'Lost')),
+  sales_status text not null default 'Prospects' check (sales_status in ('Prospects', 'Warm', 'Hot', 'Contracted', 'Delivered')),
   client_id uuid references public.clients(id) on delete set null,
   client_name text not null,
   title text not null,
@@ -159,6 +159,151 @@ create index if not exists idx_intelligent_system_proposals_status
   on public.intelligent_system_proposals(status);
 create index if not exists idx_intelligent_system_proposals_solution_type
   on public.intelligent_system_proposals(solution_type);
+
+-- Pipeline planning for training and system work; linked proposals represent the same item.
+create table if not exists public.client_projects (
+  id uuid primary key default gen_random_uuid(),
+  client_id uuid references public.clients(id) on delete set null,
+  title text not null check (length(btrim(title)) between 1 and 300),
+  project_type text not null default 'Training' check (project_type in ('Training', 'Intelligent System', 'Other')),
+  stage text not null default 'Prospects' check (stage in ('Prospects', 'Warm', 'Hot', 'Contracted', 'Delivered')),
+  expected_outcomes text not null default '',
+  target_value numeric(14,2) check (target_value >= 0),
+  actual_value numeric(14,2) check (actual_value >= 0),
+  payment_received_date date,
+  start_period text not null default '',
+  end_period text not null default '',
+  status_note text not null default '',
+  next_opportunities text not null default '',
+  next_action text not null default '',
+  notes text not null default '',
+  training_package_id uuid unique references public.training_packages(id) on delete set null,
+  system_proposal_id uuid unique references public.intelligent_system_proposals(id) on delete set null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  constraint client_projects_single_proposal check (num_nonnulls(training_package_id, system_proposal_id) <= 1),
+  constraint client_projects_proposal_type check (
+    (training_package_id is null or project_type = 'Training') and
+    (system_proposal_id is null or project_type = 'Intelligent System')
+  )
+);
+
+alter table public.client_projects enable row level security;
+revoke all on public.client_projects from anon, authenticated;
+grant all on public.client_projects to service_role;
+create index if not exists idx_client_projects_client on public.client_projects(client_id);
+create index if not exists idx_client_projects_updated on public.client_projects(updated_at desc);
+
+create or replace function public.sync_client_project_from_proposal()
+returns trigger language plpgsql set search_path = '' as $$
+declare
+  project_stage text;
+  source_title text;
+begin
+  project_stage := new.sales_status;
+  if tg_table_name = 'training_packages' then
+    source_title := new.course_title;
+    update public.client_projects set
+      client_id = new.client_id,
+      stage = project_stage,
+      title = case when title = old.course_title then source_title else title end,
+      updated_at = now()
+    where training_package_id = new.id;
+  else
+    source_title := new.title;
+    update public.client_projects set
+      client_id = new.client_id,
+      stage = project_stage,
+      title = case when title = old.title then source_title else title end,
+      updated_at = now()
+    where system_proposal_id = new.id;
+  end if;
+  return new;
+end;
+$$;
+
+create trigger sync_training_client_project
+after update on public.training_packages
+for each row execute function public.sync_client_project_from_proposal();
+create trigger sync_system_client_project
+after update on public.intelligent_system_proposals
+for each row execute function public.sync_client_project_from_proposal();
+
+-- Serialize linking on the proposal row so retries cannot create duplicate projects.
+create or replace function public.track_client_proposal(p_kind text, p_source_id uuid, p_project_id uuid default null)
+returns uuid language plpgsql set search_path = '' as $$
+declare
+  source_client uuid;
+  source_title text;
+  source_stage text;
+  source_fee numeric;
+  source_created timestamptz;
+  source_updated timestamptz;
+  existing_project uuid;
+  linked_project public.client_projects%rowtype;
+begin
+  if p_kind = 'training_package' then
+    select client_id, course_title, sales_status, professional_fee, created_at, updated_at
+    into source_client, source_title, source_stage, source_fee, source_created, source_updated
+    from public.training_packages where id = p_source_id for update;
+    select id into existing_project from public.client_projects where training_package_id = p_source_id;
+  elsif p_kind = 'system_proposal' then
+    select client_id, title, sales_status, null, created_at, updated_at
+    into source_client, source_title, source_stage, source_fee, source_created, source_updated
+    from public.intelligent_system_proposals where id = p_source_id for update;
+    select id into existing_project from public.client_projects where system_proposal_id = p_source_id;
+  else
+    raise exception 'Invalid proposal type.' using errcode = '22023';
+  end if;
+  if source_title is null then raise exception 'Proposal not found.' using errcode = '22023'; end if;
+  if existing_project is not null then
+    if p_project_id is not null and p_project_id <> existing_project then
+      raise exception 'This proposal already belongs to another project.' using errcode = '23514';
+    end if;
+    return existing_project;
+  end if;
+  if p_project_id is not null then
+    select * into linked_project from public.client_projects where id = p_project_id for update;
+    if not found then raise exception 'Project not found.' using errcode = '22023'; end if;
+    if linked_project.client_id is distinct from source_client then
+      raise exception 'The project and proposal must use the same client.' using errcode = '23514';
+    end if;
+    if linked_project.training_package_id is not null or linked_project.system_proposal_id is not null then
+      raise exception 'This project already has a proposal.' using errcode = '23514';
+    end if;
+    if linked_project.stage = 'Delivered' then
+      raise exception 'A delivered project cannot create another proposal.' using errcode = '23514';
+    end if;
+    if p_kind = 'training_package' then
+      update public.training_packages set sales_status = linked_project.stage where id = p_source_id;
+    else
+      update public.intelligent_system_proposals set sales_status = linked_project.stage where id = p_source_id;
+    end if;
+    update public.client_projects set
+      project_type = case p_kind when 'training_package' then 'Training' else 'Intelligent System' end,
+      training_package_id = case when p_kind = 'training_package' then p_source_id end,
+      system_proposal_id = case when p_kind = 'system_proposal' then p_source_id end,
+      stage = linked_project.stage,
+      updated_at = now()
+    where id = p_project_id;
+    return p_project_id;
+  end if;
+  insert into public.client_projects (client_id, title, project_type, stage, target_value, training_package_id, system_proposal_id, created_at, updated_at)
+  values (
+    source_client, source_title,
+    case p_kind when 'training_package' then 'Training' else 'Intelligent System' end,
+    source_stage,
+    source_fee,
+    case when p_kind = 'training_package' then p_source_id end,
+    case when p_kind = 'system_proposal' then p_source_id end,
+    coalesce(source_created, now()), coalesce(source_updated, now())
+  ) returning id into existing_project;
+  return existing_project;
+end;
+$$;
+
+revoke all on function public.track_client_proposal(text, uuid, uuid) from public, anon, authenticated;
+grant execute on function public.track_client_proposal(text, uuid, uuid) to service_role;
 
 create table if not exists public.intelligent_system_files (
   id uuid primary key default gen_random_uuid(),
@@ -336,55 +481,55 @@ alter table public.delivery_projects enable row level security;
 create unique index if not exists idx_delivery_projects_package_unique
   on public.delivery_projects(package_id);
 
-create or replace function public.require_won_delivery_package()
-returns trigger language plpgsql as $$
+create or replace function public.require_contracted_delivery_package()
+returns trigger language plpgsql set search_path = '' as $$
 begin
   if not exists (
     select 1 from public.training_packages
-    where id = new.package_id and sales_status in ('Won', 'Delivered')
+    where id = new.package_id and sales_status in ('Contracted', 'Delivered')
   ) then
-    raise exception 'Delivery requires a Won training package.' using errcode = '23514';
+    raise exception 'Delivery requires a Contracted training package.' using errcode = '23514';
   end if;
   return new;
 end;
 $$;
 
-create trigger require_won_delivery_package
+create trigger require_contracted_delivery_package
 before insert or update of package_id on public.delivery_projects
-for each row execute function public.require_won_delivery_package();
+for each row execute function public.require_contracted_delivery_package();
 
-create or replace function public.keep_won_package_with_delivery()
-returns trigger language plpgsql as $$
+create or replace function public.keep_contracted_package_with_delivery()
+returns trigger language plpgsql set search_path = '' as $$
 begin
-  if new.sales_status not in ('Won', 'Delivered') and exists (
+  if new.sales_status not in ('Contracted', 'Delivered') and exists (
     select 1 from public.delivery_projects where package_id = old.id
   ) then
-    raise exception 'Delete the linked delivery before moving this proposal out of Won or Delivered.' using errcode = '23514';
+    raise exception 'Delete the linked delivery before moving this proposal out of Contracted or Delivered.' using errcode = '23514';
   end if;
   if new.sales_status = 'Delivered' and not exists (
     select 1 from public.delivery_projects where package_id = old.id and delivery_status = 'Delivered'
   ) then
     raise exception 'Complete the linked delivery before marking this proposal Delivered.' using errcode = '23514';
   end if;
-  if new.sales_status = 'Won' and exists (
+  if new.sales_status = 'Contracted' and exists (
     select 1 from public.delivery_projects where package_id = old.id and delivery_status = 'Delivered'
   ) then
-    raise exception 'Reopen the linked delivery before moving this proposal back to Won.' using errcode = '23514';
+    raise exception 'Reopen the linked delivery before moving this proposal back to Contracted.' using errcode = '23514';
   end if;
   return new;
 end;
 $$;
 
-create trigger keep_won_package_with_delivery
+create trigger keep_contracted_package_with_delivery
 before update of sales_status on public.training_packages
-for each row execute function public.keep_won_package_with_delivery();
+for each row execute function public.keep_contracted_package_with_delivery();
 
 create or replace function public.sync_package_from_delivery()
-returns trigger language plpgsql as $$
+returns trigger language plpgsql set search_path = '' as $$
 begin
   if tg_op = 'DELETE' then
     if old.delivery_status = 'Delivered' then
-      update public.training_packages set sales_status = 'Won', updated_at = now() where id = old.package_id;
+      update public.training_packages set sales_status = 'Contracted', updated_at = now() where id = old.package_id;
     end if;
     return old;
   end if;
@@ -397,7 +542,7 @@ begin
   if new.delivery_status = 'Delivered' then
     update public.training_packages set sales_status = 'Delivered', updated_at = now() where id = new.package_id;
   elsif old.delivery_status = 'Delivered' then
-    update public.training_packages set sales_status = 'Won', updated_at = now() where id = new.package_id;
+    update public.training_packages set sales_status = 'Contracted', updated_at = now() where id = new.package_id;
   end if;
   return new;
 end;

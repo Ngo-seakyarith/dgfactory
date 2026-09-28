@@ -39,6 +39,7 @@ import { isActiveGenerationJob } from "@/features/generation-jobs/domain/types";
 import { requestJson } from "@/lib/api-client";
 import { useAutosave } from "@/hooks/use-autosave";
 import { trainingPackageKeys } from "../queries";
+import { projectKeys } from "@/features/pipeline/project-keys";
 import type { ExportFormat, ExportTarget } from "@/features/training-packages";
 import type { Client, ClientProfileInput } from "@/features/crm/domain";
 import { useClientsQuery } from "@/features/crm/queries";
@@ -249,12 +250,14 @@ export function PackageForm({
     value: editorState,
     enabled:
       Boolean(form.courseTitle.trim() && form.client.trim()) &&
+      (!(initialPackage?.clientId || searchParams.get("clientId")) || initialClientResolved.current) &&
       !generateMutation.isPending &&
       !activeJobId,
     async onSave(snapshot) {
       const payload = await saveMutation.mutateAsync({
         package: buildEditablePackage(snapshot),
         client: snapshot.clientProfile,
+        projectId: searchParams.get("projectId") || undefined,
       });
       setCurrentPackage(payload.package);
       queryClient.setQueryData(
@@ -297,6 +300,8 @@ export function PackageForm({
       setCurrentPackage(generated);
       queryClient.setQueryData(trainingPackageKeys.detail(generated.id), generated);
       void queryClient.invalidateQueries({ queryKey: trainingPackageKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: projectKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["delivery"] });
       onPackageSaved?.(generated);
       setNotice("");
       requestAnimationFrame(() => {
@@ -311,18 +316,19 @@ export function PackageForm({
     if (initialClientResolved.current || !clientsQuery.data || clientsQuery.isFetching) return;
     initialClientResolved.current = true;
 
-    const linked = initialPackage?.clientId
-      ? clientsQuery.data.find((client) => client.id === initialPackage.clientId)
+    const requestedClientId = initialPackage?.clientId || searchParams.get("clientId");
+    const linked = requestedClientId
+      ? clientsQuery.data.find((client) => client.id === requestedClientId)
       : clientsQuery.data.find(
           (client) =>
             client.name.trim().toLowerCase() ===
-            (initialPackage?.client ?? "").trim().toLowerCase(),
+            (initialPackage?.client || searchParams.get("client") || "").trim().toLowerCase(),
         );
     if (linked) {
       setClientProfile(profileFromClient(linked));
       setForm((current) => ({ ...current, client: linked.name }));
     }
-  }, [clientsQuery.data, clientsQuery.isFetching, initialPackage]);
+  }, [clientsQuery.data, clientsQuery.isFetching, initialPackage, searchParams]);
 
   useEffect(() => {
     if (clientsQuery.isError) {
@@ -353,7 +359,7 @@ export function PackageForm({
       if (prefill.client) {
         setClientProfile((current) => ({
           ...current,
-          id: undefined,
+          id: current.id,
           name: prefill.client,
         }));
       }
@@ -481,6 +487,7 @@ export function PackageForm({
     const payload = await saveMutation.mutateAsync({
       package: packageToSave,
       client: clientProfile,
+      projectId: searchParams.get("projectId") || undefined,
     });
 
     setClientProfile(profileFromClient(payload.client));

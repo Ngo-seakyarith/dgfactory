@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import {
+  ArrowLeft,
   ArrowRight,
   Clock3,
   FileText,
@@ -116,14 +117,21 @@ export function PackageDetailClient({ id }: { id: string }) {
   const deleteMutation = useDeleteTrainingPackageMutation();
   const pkg = packageQuery.data ?? null;
   const error = packageQuery.error?.message ?? deleteMutation.error?.message ?? "";
+  const backLink = (
+    <Link href="/packages" className="inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring">
+      <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+      Back to Saved Packages
+    </Link>
+  );
 
   if (packageQuery.isPending && !pkg) {
-    return <LoadingState label="Loading package..." />;
+    return <div className="space-y-5">{backLink}<LoadingState label="Loading package..." /></div>;
   }
 
   if (!pkg) {
     return (
       <>
+        {backLink}
         <QueryErrorState
           title="Package not found"
           detail={error || "Training package was not found."}
@@ -153,8 +161,9 @@ export function PackageDetailClient({ id }: { id: string }) {
 
   return (
     <div className="space-y-5">
-      <div className="border-y border-border py-4">
-        <ProposalStageControl id={pkg.id} kind="training_package" status={pkg.salesStatus} disabled={pkg.status !== "Generated"} />
+      <div className="flex flex-wrap items-center justify-between gap-3 border-y border-border py-4">
+        {backLink}
+        <ProposalStageControl id={pkg.id} kind="training_package" status={pkg.salesStatus} />
       </div>
       <PackageForm
         initialPackage={pkg}

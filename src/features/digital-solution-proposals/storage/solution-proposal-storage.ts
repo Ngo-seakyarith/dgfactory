@@ -1,4 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
+import { trackClientProposal, validateProjectForProposal } from "@/features/pipeline/server/track-proposal";
 import { isProposalStage, type ProposalStage } from "@/features/pipeline/domain";
 
 import {
@@ -133,7 +134,7 @@ function proposalFromRow(
 ): DigitalSolutionProposal {
   return {
     id: row.id,
-    salesStatus: isProposalStage(row.sales_status) ? row.sales_status : "Not Sent",
+    salesStatus: isProposalStage(row.sales_status) ? row.sales_status : "Prospects",
     clientId: row.client_id,
     clientName: row.client_name,
     title: row.title,
@@ -191,18 +192,22 @@ export async function getSolutionProposal(id: string) {
   );
 }
 
-export async function saveSolutionProposal(proposal: DigitalSolutionProposal) {
+export async function saveSolutionProposal(proposal: DigitalSolutionProposal, projectId?: string) {
   const supabase = requireSupabase();
   const updated = { ...proposal, updatedAt: new Date().toISOString() };
+  await validateProjectForProposal(projectId, proposal.clientId, proposal.id);
   const { data: existing, error: lookupError } = await supabase
     .from("intelligent_system_proposals").select("id").eq("id", proposal.id).maybeSingle();
   if (lookupError) throw new Error(lookupError.message);
-  const { data, error } = await (existing
+  const { error } = await (existing
     ? supabase.from("intelligent_system_proposals").update(proposalToRow(updated)).eq("id", proposal.id)
     : supabase.from("intelligent_system_proposals").insert(proposalToRow(updated))
   ).select("*").single();
   if (error) throw new Error(error.message);
-  return proposalFromRow(data as ProposalRow, proposal.files);
+  await trackClientProposal("system_proposal", proposal.id, projectId);
+  const saved = await getSolutionProposal(proposal.id);
+  if (!saved) throw new Error("The saved proposal could not be loaded.");
+  return saved;
 }
 
 export async function deleteSolutionProposal(id: string) {

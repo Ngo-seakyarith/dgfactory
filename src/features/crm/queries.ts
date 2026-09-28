@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { requestJson } from "@/lib/api-client";
 import type { Client } from "@/features/crm/domain";
+import { projectKeys } from "@/features/pipeline/project-keys";
 
 export const clientKeys = {
   all: ["clients"] as const,
@@ -21,17 +22,6 @@ export function useClientsQuery() {
   });
 }
 
-export function useClientQuery(id: string) {
-  return useQuery({
-    queryKey: clientKeys.detail(id),
-    queryFn: async () => {
-      const payload = await requestJson<{ client: Client }>(`/api/clients/${id}`);
-      return payload.client;
-    },
-    enabled: Boolean(id),
-  });
-}
-
 export function useSaveClientMutation() {
   const queryClient = useQueryClient();
 
@@ -44,7 +34,9 @@ export function useSaveClientMutation() {
       }),
     onSuccess(payload) {
       queryClient.setQueryData(clientKeys.detail(payload.client.id), payload.client);
+      queryClient.setQueryData<Client[]>(clientKeys.list(), (clients) => clients ? [...clients.filter((client) => client.id !== payload.client.id), payload.client] : undefined);
       void queryClient.invalidateQueries({ queryKey: clientKeys.list() });
+      void queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
 }
@@ -57,9 +49,11 @@ export function useDeleteClientMutation() {
       requestJson<{ deleted: boolean }>(`/api/clients/${id}`, { method: "DELETE" }),
     onSuccess(_payload, id) {
       queryClient.removeQueries({ queryKey: clientKeys.detail(id) });
+      queryClient.setQueryData<Client[]>(clientKeys.list(), (clients) => clients?.filter((client) => client.id !== id));
       void queryClient.invalidateQueries({ queryKey: clientKeys.list() });
       void queryClient.invalidateQueries({ queryKey: ["training-packages"] });
       void queryClient.invalidateQueries({ queryKey: ["solution-proposals"] });
+      void queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
 }

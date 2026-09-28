@@ -7,8 +7,8 @@ import { usePathname } from "next/navigation";
 import {
   Archive,
   BriefcaseBusiness,
-  Building2,
   CalendarCheck,
+  ChartNoAxesCombined,
   FileCog,
   FileInput,
   Menu,
@@ -30,8 +30,8 @@ export type SidebarItem = {
 };
 
 const icons: Record<string, LucideIcon> = {
-  Clients: Building2,
-  Pipeline: BriefcaseBusiness,
+  "Clients & Pipeline": BriefcaseBusiness,
+  Dashboard: ChartNoAxesCombined,
   Delivery: CalendarCheck,
   "Training Packages": Archive,
   "Syllabus Imports": FileInput,

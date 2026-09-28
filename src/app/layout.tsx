@@ -17,8 +17,8 @@ export const metadata: Metadata = {
 };
 
 const navItems: SidebarItem[] = [
-  { label: "Pipeline", href: "/pipeline", section: "Business" },
-  { label: "Clients", href: "/clients", section: "Business" },
+  { label: "Dashboard", href: "/dashboard", section: "Business" },
+  { label: "Clients & Pipeline", href: "/pipeline", section: "Business" },
   { label: "Training Packages", href: "/packages", section: "Training" },
   { label: "Syllabus Imports", href: "/packages/from-syllabus", section: "Training" },
   { label: "Delivery", href: "/delivery", section: "Training" },

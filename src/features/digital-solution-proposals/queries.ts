@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { clientKeys } from "@/features/crm/queries";
+import { projectKeys } from "@/features/pipeline/project-keys";
 import { requestJson } from "@/lib/api-client";
 import type { Client, ClientProfileInput } from "@/features/crm/domain";
 
@@ -47,17 +48,19 @@ export function useSaveSolutionProposalMutation() {
       id,
       proposal,
       client,
+      projectId,
     }: {
       id?: string;
       proposal: DigitalSolutionProposal;
       client: ClientProfileInput;
+      projectId?: string;
     }) =>
       requestJson<{ proposal: DigitalSolutionProposal; client: Client }>(
         id ? `/api/solution-proposals/${id}` : "/api/solution-proposals",
         {
           method: id ? "PATCH" : "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ proposal, client }),
+          body: JSON.stringify({ proposal, client, projectId }),
         },
       ),
     onSuccess(payload) {
@@ -67,6 +70,7 @@ export function useSaveSolutionProposalMutation() {
       );
       void queryClient.invalidateQueries({ queryKey: solutionProposalKeys.list() });
       void queryClient.invalidateQueries({ queryKey: clientKeys.all });
+      void queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
 }
@@ -83,6 +87,7 @@ export function useDeleteSolutionProposalMutation() {
       queryClient.removeQueries({ queryKey: solutionProposalKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: solutionProposalKeys.list() });
       void queryClient.invalidateQueries({ queryKey: clientKeys.all });
+      void queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
 }
@@ -94,4 +99,5 @@ export function setSolutionProposalQueryData(
   queryClient.setQueryData(solutionProposalKeys.detail(proposal.id), proposal);
   void queryClient.invalidateQueries({ queryKey: solutionProposalKeys.list() });
   void queryClient.invalidateQueries({ queryKey: clientKeys.all });
+  void queryClient.invalidateQueries({ queryKey: projectKeys.all });
 }

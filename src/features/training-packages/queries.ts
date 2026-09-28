@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { clientKeys } from "@/features/crm/queries";
+import { projectKeys } from "@/features/pipeline/project-keys";
 import {
   setGenerationJobQueryData,
 } from "@/features/generation-jobs/queries";
@@ -50,16 +51,18 @@ export function useSaveTrainingPackageMutation() {
     mutationFn: async ({
       package: trainingPackage,
       client,
+      projectId,
     }: {
       package: TrainingPackage;
       client: ClientProfileInput;
+      projectId?: string;
     }) =>
       requestJson<{ package: TrainingPackage; client: Client }>(
         "/api/training-packages",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ package: trainingPackage, client }),
+          body: JSON.stringify({ package: trainingPackage, client, projectId }),
         },
       ),
     onSuccess(payload) {
@@ -73,6 +76,8 @@ export function useSaveTrainingPackageMutation() {
       ]);
       void queryClient.invalidateQueries({ queryKey: trainingPackageKeys.list() });
       void queryClient.invalidateQueries({ queryKey: clientKeys.all });
+      void queryClient.invalidateQueries({ queryKey: projectKeys.all });
+      void queryClient.invalidateQueries({ queryKey: ["delivery"] });
     },
   });
 }
@@ -105,6 +110,7 @@ export function useDeleteTrainingPackageMutation() {
       queryClient.removeQueries({ queryKey: trainingPackageKeys.detail(id) });
       void queryClient.invalidateQueries({ queryKey: trainingPackageKeys.list() });
       void queryClient.invalidateQueries({ queryKey: clientKeys.all });
+      void queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
 }

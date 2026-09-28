@@ -4,7 +4,7 @@ import { isProposalStage, proposalStages } from "@/features/pipeline/domain";
 
 describe("simple proposal pipeline", () => {
   test("uses five pipeline stages", () => {
-    expect(proposalStages).toEqual(["Not Sent", "Sent", "Won", "Delivered", "Lost"]);
+    expect(proposalStages).toEqual(["Prospects", "Warm", "Hot", "Contracted", "Delivered"]);
     expect(isProposalStage("Prepared")).toBe(false);
   });
 

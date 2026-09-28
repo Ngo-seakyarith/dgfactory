@@ -72,7 +72,7 @@ export async function saveTrainingPackageRequest(request: Request) {
   try {
     const body = (await request.json()) as
       | TrainingPackage
-      | { package: TrainingPackage; client?: ClientProfileInput };
+      | { package: TrainingPackage; client?: ClientProfileInput; projectId?: string };
     const packageInput = "package" in body ? body.package : body;
     const clientInput =
       "package" in body
@@ -105,7 +105,7 @@ export async function saveTrainingPackageRequest(request: Request) {
       ...packageInput,
       clientId: clientResult.client.id,
       client: clientResult.client.name,
-    });
+    }, "package" in body ? body.projectId : undefined);
     await saveAuditLog({
       actor: auth.user.actor,
       action: "client_saved_from_package",

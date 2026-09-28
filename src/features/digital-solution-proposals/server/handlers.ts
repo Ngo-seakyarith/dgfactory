@@ -102,6 +102,7 @@ async function upsertSolutionProposalRequest(request: Request, expectedId?: stri
     const body = (await request.json()) as {
       proposal?: DigitalSolutionProposal;
       client?: ClientProfileInput;
+      projectId?: string;
     };
     const proposal = body.proposal ?? createSolutionProposal({}, auth.user.userId ?? null);
     if (expectedId && proposal.id !== expectedId) {
@@ -124,7 +125,7 @@ async function upsertSolutionProposalRequest(request: Request, expectedId?: stri
       solutionReview: resetReview ? null : proposal.solutionReview,
       proposalContent: resetReview ? null : proposal.proposalContent,
       createdBy: proposal.createdBy ?? auth.user.userId ?? null,
-    });
+    }, body.projectId);
 
     await Promise.all(
       proposal.files.map((file) =>

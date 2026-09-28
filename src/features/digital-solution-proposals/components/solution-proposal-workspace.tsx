@@ -11,7 +11,7 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 
 import { AutosaveIndicator } from "@/components/autosave-indicator";
@@ -80,6 +80,7 @@ function profileFromResponse(client: ClientProfileInput & { id: string }) {
 
 export function SolutionProposalWorkspace({ id }: { id?: string }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const [resourceId, setResourceId] = useState(id ?? "");
   const resourceIdRef = useRef(id ?? "");
@@ -90,10 +91,10 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
   const loadedProposal = useRef(false);
   const loadedClientProfile = useRef(false);
   const [proposal, setProposal] = useState<DigitalSolutionProposal>(() =>
-    createSolutionProposal(),
+    createSolutionProposal({ title: searchParams.get("title") ?? "", clientName: searchParams.get("client") ?? "", clientId: searchParams.get("clientId") || null }),
   );
   const [clientProfile, setClientProfile] =
-    useState<ClientProfileInput>(emptyClientProfile);
+    useState<ClientProfileInput>(() => ({ ...emptyClientProfile, name: searchParams.get("client") ?? "" }));
   const [stage, setStage] = useState<Stage>("brief");
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState<{ text: string; error: boolean }>({
@@ -142,6 +143,7 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
     value: autosaveValue,
     enabled:
       Boolean(proposal.title.trim() && clientProfile.name.trim()) &&
+      (!proposal.clientId || loadedClientProfile.current) &&
       !busy &&
       !activeJob,
     async onSave(snapshot) {
@@ -149,6 +151,7 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
         id: resourceIdRef.current || undefined,
         proposal: snapshot.proposal,
         client: snapshot.client,
+        projectId: searchParams.get("projectId") || undefined,
       });
       setSolutionProposalQueryData(queryClient, data.proposal);
       if (!resourceIdRef.current) {
@@ -260,6 +263,7 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
         id: currentResourceId || undefined,
         proposal,
         client: clientProfile,
+        projectId: searchParams.get("projectId") || undefined,
       });
       setProposal(data.proposal);
       const savedClient = profileFromResponse(data.client);
@@ -486,7 +490,7 @@ export function SolutionProposalWorkspace({ id }: { id?: string }) {
         </div>
         <div className="flex items-center gap-2">
           {resourceId ? <Badge variant="teal">{proposal.status}</Badge> : null}
-          {resourceId ? <ProposalStageControl id={proposal.id} kind="system_proposal" status={proposalQuery.data?.salesStatus ?? proposal.salesStatus} disabled={proposal.status !== "Generated"} /> : null}
+          {resourceId ? <ProposalStageControl id={proposal.id} kind="system_proposal" status={proposalQuery.data?.salesStatus ?? proposal.salesStatus} /> : null}
           <AutosaveIndicator status={autosave.status} />
           {resourceId ? (
             <Button variant="destructive" size="icon" title="Delete proposal" onClick={() => void deleteProject()} disabled={Boolean(busy)}>

@@ -1,6 +1,8 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { scopeAppData, withAppScope } from "@/lib/request-scope";
+import { trackClientProposal, validateProjectForProposal } from "@/features/pipeline/server/track-proposal";
 import { isProposalStage, type ProposalStage } from "@/features/pipeline/domain";
+import { ensureDeliveryProjectForPackage } from "@/features/delivery/storage/delivery-storage";
 import type { TrainingPackage } from "@/features/training-packages";
 import {
   normalizeProposalBrief,
@@ -140,7 +142,7 @@ function fromRow(row: PackageRow): TrainingPackage {
 
   return {
     id: row.id,
-    salesStatus: isProposalStage(row.sales_status) ? row.sales_status : "Not Sent",
+    salesStatus: isProposalStage(row.sales_status) ? row.sales_status : "Prospects",
     status: proposalContent.generationStatus,
     title: row.course_title,
     audience: row.target_learners,
@@ -200,7 +202,7 @@ export async function getTrainingPackage(id: string) {
   throw new Error("Supabase is required to load training packages.");
 }
 
-export async function saveTrainingPackage(pkg: TrainingPackage) {
+export async function saveTrainingPackage(pkg: TrainingPackage, projectId?: string) {
   const packageToSave = {
     ...pkg,
     updatedAt: new Date().toISOString(),
@@ -213,6 +215,7 @@ export async function saveTrainingPackage(pkg: TrainingPackage) {
   }
 
   const scopedRow = withAppScope(toRow(packageToSave));
+  await validateProjectForProposal(projectId, pkg.clientId, pkg.id);
   const { data: existing, error: lookupError } = await scopeAppData(
     supabase.from("training_packages").select("id").eq("id", pkg.id),
   ).maybeSingle();
@@ -226,8 +229,14 @@ export async function saveTrainingPackage(pkg: TrainingPackage) {
     throw new Error(result.error.message);
   }
 
+  await trackClientProposal("training_package", pkg.id, projectId);
+  const savedPackage = await getTrainingPackage(pkg.id);
+  if (savedPackage.status === "Generated" && savedPackage.salesStatus === "Contracted") {
+    await ensureDeliveryProjectForPackage(savedPackage);
+  }
+
   return {
-    package: fromRow(result.data as PackageRow),
+    package: savedPackage,
     storage: "supabase" as const,
   };
 }

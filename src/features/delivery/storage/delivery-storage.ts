@@ -317,8 +317,8 @@ export async function findDeliveryProjectByPackageId(packageId: string) {
 }
 
 export async function ensureDeliveryProjectForPackage(pkg: TrainingPackage) {
-  if (pkg.salesStatus !== "Won") {
-    throw new Error("Mark the training proposal Won before creating delivery.");
+  if (pkg.salesStatus !== "Contracted") {
+    throw new Error("Mark the training proposal Contracted before creating delivery.");
   }
 
   const existing = await findDeliveryProjectByPackageId(pkg.id);

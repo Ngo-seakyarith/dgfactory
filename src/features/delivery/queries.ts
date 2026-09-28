@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { requestJson } from "@/lib/api-client";
+import { projectKeys } from "@/features/pipeline/project-keys";
 import type { GenerationJob } from "@/features/generation-jobs/domain/types";
 import { setGenerationJobQueryData } from "@/features/generation-jobs/queries";
 
@@ -92,6 +93,7 @@ export function useSaveDeliveryProjectMutation() {
       );
       void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
       void queryClient.invalidateQueries({ queryKey: ["training-packages"] });
+      void queryClient.invalidateQueries({ queryKey: projectKeys.all });
       // Keep this literal to avoid a circular import with the clients feature.
     },
   });
@@ -110,6 +112,7 @@ export function useDeleteDeliveryProjectMutation() {
       queryClient.removeQueries({ queryKey: deliveryKeys.tasks(id) });
       void queryClient.invalidateQueries({ queryKey: deliveryKeys.projects() });
       void queryClient.invalidateQueries({ queryKey: ["training-packages"] });
+      void queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },
   });
 }

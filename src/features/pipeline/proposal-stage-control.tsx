@@ -39,7 +39,7 @@ export function ProposalStageControl({
           <option
             key={stage}
             value={stage}
-            disabled={kind === "training_package" && stage === "Delivered" && status !== "Won" && status !== "Delivered"}
+            disabled={kind === "training_package" && stage === "Delivered" && status !== "Contracted" && status !== "Delivered"}
           >
             {stage}
           </option>

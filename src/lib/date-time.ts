@@ -14,3 +14,12 @@ export function formatDateTime(value: string | Date) {
     .format(date)
     .replace(/\b(am|pm)\b/gi, (period) => period.toUpperCase());
 }
+
+const dateFormatter = new Intl.DateTimeFormat("en-GB", {
+  day: "2-digit", month: "short", year: "numeric", timeZone: "UTC",
+});
+
+export function formatDate(value: string) {
+  const date = new Date(`${value}T00:00:00Z`);
+  return Number.isNaN(date.getTime()) ? "Unknown date" : dateFormatter.format(date);
+}

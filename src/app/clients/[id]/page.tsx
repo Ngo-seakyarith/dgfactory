@@ -1,4 +1,4 @@
-import { ClientDetailClient } from "@/features/crm/components/clients";
+import { redirect } from "next/navigation";
 
 export default async function ClientDetailPage({
   params,
@@ -7,5 +7,5 @@ export default async function ClientDetailPage({
 }) {
   const { id } = await params;
 
-  return <ClientDetailClient id={id} />;
+  redirect(`/pipeline?${new URLSearchParams({ clientId: id })}`);
 }

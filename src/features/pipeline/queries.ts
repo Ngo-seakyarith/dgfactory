@@ -6,6 +6,7 @@ import { trainingPackageKeys } from "@/features/training-packages/queries";
 import { solutionProposalKeys } from "@/features/digital-solution-proposals/queries";
 import { deliveryKeys } from "@/features/delivery/queries";
 import type { ProposalStage } from "./domain";
+import { projectKeys } from "./project-keys";
 
 export function useSetProposalStageMutation() {
   const queryClient = useQueryClient();
@@ -21,6 +22,7 @@ export function useSetProposalStageMutation() {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: keys.all }),
         queryClient.invalidateQueries({ queryKey: deliveryKeys.all }),
+        queryClient.invalidateQueries({ queryKey: projectKeys.all }),
       ]);
     },
   });
