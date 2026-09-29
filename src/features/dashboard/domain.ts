@@ -71,6 +71,46 @@ export function collectTrainingFees(packages: readonly TrainingPackage[], projec
   });
 }
 
+export type TrainingPaymentReminder = {
+  id: string;
+  title: string;
+  client: string;
+  status: FeeStatus;
+  href: string;
+  amount: number | null;
+  amountLabel: "Proposal fee" | "Actual" | "Target" | null;
+};
+
+export function collectTrainingPaymentReminders(trainings: readonly TrainingFee[], projects: readonly ClientProject[]): TrainingPaymentReminder[] {
+  const feeByPackage = new Map(trainings.map((training) => [training.package.id, training]));
+  const linkedPackages = new Set(projects.flatMap((project) => project.trainingPackageId ? [project.trainingPackageId] : []));
+  const reminders: TrainingPaymentReminder[] = [];
+  const validAmount = (value: number | null) => value !== null && Number.isFinite(value) && value >= 0 ? value : null;
+
+  for (const project of projects) {
+    if (project.projectType !== "Training" || (project.stage !== "Contracted" && project.stage !== "Delivered")) continue;
+    if (normalizePaymentReceivedDate(project.paymentReceivedDate ?? "")) continue;
+    const training = project.trainingPackageId ? feeByPackage.get(project.trainingPackageId) : undefined;
+    const actual = validAmount(project.actualValue);
+    const target = validAmount(project.targetValue);
+    reminders.push({
+      id: project.id, title: project.title, client: project.clientName, status: project.stage,
+      href: `/pipeline?projectId=${project.id}`,
+      amount: training?.fee ?? actual ?? target,
+      amountLabel: training ? "Proposal fee" : actual !== null ? "Actual" : target !== null ? "Target" : null,
+    });
+  }
+
+  for (const training of trainings) {
+    if (linkedPackages.has(training.package.id) || training.paymentReceivedDate) continue;
+    reminders.push({
+      id: training.package.id, title: training.package.title, client: training.package.client, status: training.status,
+      href: `/packages/${training.package.id}`, amount: training.fee, amountLabel: "Proposal fee",
+    });
+  }
+  return reminders;
+}
+
 const monthFormatter = new Intl.DateTimeFormat("en-GB", { month: "short", timeZone: "UTC" });
 
 export function monthlyTrainingFees(trainings: readonly TrainingFee[], year: number): MonthlyTrainingFees[] {

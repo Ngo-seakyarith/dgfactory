@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { createEmptyClient } from "@/features/crm/domain";
 import { emptyClientProject, type ClientProject } from "@/features/pipeline/project-domain";
 import { buildPackageFromParts, type TrainingPackage } from "@/features/training-packages/domain/training-package";
-import { clientPerformance, collectTrainingFees, dashboardOwnerOptions, feeTotal, filterDashboardByOwner, monthlyTrainingFees, normalizePaymentReceivedDate, projectStageCounts, rankClients } from "./domain";
+import { clientPerformance, collectTrainingFees, collectTrainingPaymentReminders, dashboardOwnerOptions, feeTotal, filterDashboardByOwner, monthlyTrainingFees, normalizePaymentReceivedDate, projectStageCounts, rankClients } from "./domain";
 
 function training(overrides: Partial<TrainingPackage> = {}): TrainingPackage {
   return {
@@ -162,6 +162,65 @@ describe("training fees dashboard", () => {
     expect(filterDashboardByOwner(fees, projects, [client], "owner:missing").trainings).toHaveLength(0);
     expect(filterDashboardByOwner(fees, projects, [client], "unassigned").trainings).toHaveLength(0);
     expect(filterDashboardByOwner(fees, projects, [client], "owner:unassigned").trainings).toEqual(fees);
+  });
+});
+
+describe("missing payment dates", () => {
+  test("includes imported Contracted and Delivered training without generated proposals", () => {
+    const projects = [
+      project({ stage: "Contracted", title: "AI Agent and Automation", targetValue: 1000 }),
+      project({ stage: "Delivered", title: "Sales training", targetValue: 1800, actualValue: 1500 }),
+      ...(["Prospects", "Warm", "Hot"] as const).map((stage) => project({ stage })),
+      project({ stage: "Contracted", projectType: "Intelligent System" }),
+      project({ stage: "Delivered", projectType: "Other" }),
+    ];
+    const reminders = collectTrainingPaymentReminders([], projects);
+    expect(reminders.map((row) => [row.title, row.status, row.amount, row.amountLabel])).toEqual([
+      ["AI Agent and Automation", "Contracted", 1000, "Target"],
+      ["Sales training", "Delivered", 1500, "Actual"],
+    ]);
+    expect(reminders[0].href).toBe(`/pipeline?projectId=${projects[0].id}`);
+  });
+
+  test("counts linked proposals once and keeps proposal fees separate from imported amounts", () => {
+    const pkg = training({ salesStatus: "Contracted" });
+    const source = project({ stage: "Contracted", trainingPackageId: pkg.id, targetValue: 2000, actualValue: 100 });
+    const fees = collectTrainingFees([pkg], [source]);
+    const reminders = collectTrainingPaymentReminders(fees, [source]);
+    expect(reminders).toHaveLength(1);
+    expect(reminders[0].amount).toBe(1200);
+    expect(reminders[0].amountLabel).toBe("Proposal fee");
+    expect(feeTotal(fees)).toBe(1200);
+    expect(monthlyTrainingFees(fees, 2026).every((row) => row.fee === 0)).toBe(true);
+  });
+
+  test("removes records once their payment dates are recorded and does not substitute planning dates", () => {
+    const source = project({ stage: "Contracted", startPeriod: "2026-09-01", targetValue: 1000 });
+    expect(collectTrainingPaymentReminders([], [source])).toHaveLength(1);
+    expect(collectTrainingPaymentReminders([], [{ ...source, paymentReceivedDate: "2026-09-29" }])).toEqual([]);
+    expect(collectTrainingPaymentReminders([], [{ ...source, paymentReceivedDate: "2026-02-30" }])).toHaveLength(1);
+  });
+
+  test("preserves missing amounts and legitimate zero amounts without inventing fees", () => {
+    const projects = [
+      project({ stage: "Contracted" }),
+      project({ stage: "Delivered", actualValue: 0, targetValue: 1000 }),
+      project({ stage: "Delivered", actualValue: NaN, targetValue: -1 }),
+    ];
+    expect(collectTrainingPaymentReminders([], projects).map((row) => [row.amount, row.amountLabel])).toEqual([
+      [null, null], [0, "Actual"], [null, null],
+    ]);
+  });
+
+  test("keeps eligible unlinked packages and respects the selected client owner", () => {
+    const clients = ["Somaly Phin", "Sok Kong"].map((accountOwner) => ({ ...createEmptyClient(), accountOwner }));
+    const pkg = training({ clientId: clients[0].id });
+    const fees = collectTrainingFees([pkg], []);
+    const projects = clients.map((client) => project({ clientId: client.id, stage: "Contracted" }));
+    const filtered = filterDashboardByOwner(fees, projects, clients, "owner:somaly phin");
+    const reminders = collectTrainingPaymentReminders(filtered.trainings, filtered.projects);
+    expect(reminders.map((row) => row.id)).toEqual([projects[0].id, pkg.id]);
+    expect(reminders[1].href).toBe(`/packages/${pkg.id}`);
   });
 });
 
