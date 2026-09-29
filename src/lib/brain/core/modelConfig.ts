@@ -12,7 +12,7 @@ const runtimeState =
     lastError: null,
   });
 
-export const brainModel = "openai/gpt-5.6-terra";
+export const brainModel = "openai/gpt-6-sol";
 export const brainReasoningEffort = "medium" as const;
 
 export function isBrainApiKeyConfigured() {

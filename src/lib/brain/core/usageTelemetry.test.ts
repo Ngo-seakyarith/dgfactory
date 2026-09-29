@@ -12,11 +12,11 @@ describe("DGFactory AI usage telemetry", () => {
     expect(extractOpenRouterUsage({
       usage: {
         cost: 0.0123456789,
-        prompt_tokens: 120,
-        completion_tokens: 45,
-        total_tokens: 165,
-        prompt_tokens_details: { cached_tokens: 20 },
-        completion_tokens_details: { reasoning_tokens: 12 },
+        promptTokens: 120,
+        completionTokens: 45,
+        totalTokens: 165,
+        promptTokensDetails: { cachedTokens: 20 },
+        completionTokensDetails: { reasoningTokens: 12 },
       },
     })).toEqual({
       costUsd: 0.0123456789,
@@ -35,6 +35,9 @@ describe("DGFactory AI usage telemetry", () => {
   test("keeps only safe failure categories", () => {
     expect(classifyAiError({ status: 429, message: "private provider detail" })).toBe("RATE_LIMIT");
     expect(classifyAiError({ status: 502, message: "upstream failed" })).toBe("PROVIDER_ERROR");
+    expect(classifyAiError({ statusCode: 429, message: "private provider detail" })).toBe("RATE_LIMIT");
+    expect(classifyAiError(new Error("OpenRouter request failed", { cause: { statusCode: 502 } }))).toBe("PROVIDER_ERROR");
+    expect(classifyAiError({ name: "ResponseValidationError", message: "Invalid response" })).toBe("INVALID_RESPONSE");
     expect(classifyAiError(new Error("Schema validation failed: private output detail"))).toBe("INVALID_RESPONSE");
   });
 

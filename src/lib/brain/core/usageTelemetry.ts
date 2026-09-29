@@ -1,3 +1,5 @@
+import type { ChatResult } from "@openrouter/sdk/models";
+
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 
 export type AiUsage = {
@@ -38,25 +40,15 @@ export function emptyAiUsage(): AiUsage {
   };
 }
 
-export function extractOpenRouterUsage(completion: unknown): AiUsage {
-  const response = completion as {
-    usage?: {
-      cost?: unknown;
-      prompt_tokens?: unknown;
-      completion_tokens?: unknown;
-      total_tokens?: unknown;
-      prompt_tokens_details?: { cached_tokens?: unknown };
-      completion_tokens_details?: { reasoning_tokens?: unknown };
-    };
-  };
-  const usage = response?.usage;
+export function extractOpenRouterUsage(completion: Pick<ChatResult, "usage">): AiUsage {
+  const usage = completion.usage;
   return {
     costUsd: optionalNumber(usage?.cost),
-    inputTokens: optionalNumber(usage?.prompt_tokens),
-    outputTokens: optionalNumber(usage?.completion_tokens),
-    reasoningTokens: optionalNumber(usage?.completion_tokens_details?.reasoning_tokens),
-    cachedInputTokens: optionalNumber(usage?.prompt_tokens_details?.cached_tokens),
-    totalTokens: optionalNumber(usage?.total_tokens),
+    inputTokens: optionalNumber(usage?.promptTokens),
+    outputTokens: optionalNumber(usage?.completionTokens),
+    reasoningTokens: optionalNumber(usage?.completionTokensDetails?.reasoningTokens),
+    cachedInputTokens: optionalNumber(usage?.promptTokensDetails?.cachedTokens),
+    totalTokens: optionalNumber(usage?.totalTokens),
   };
 }
 
@@ -75,15 +67,15 @@ export function classifyAiError(error: unknown) {
     statusCode?: number;
     name?: string;
     message?: string;
-    cause?: { status?: number; message?: string };
+    cause?: { status?: number; statusCode?: number; message?: string };
   };
-  const status = candidate?.status ?? candidate?.statusCode ?? candidate?.cause?.status;
+  const status = candidate?.status ?? candidate?.statusCode ?? candidate?.cause?.status ?? candidate?.cause?.statusCode;
   const detail = `${candidate?.name ?? ""} ${candidate?.message ?? ""} ${candidate?.cause?.message ?? ""}`.toLowerCase();
   if (detail.includes("openrouter_api_key")) return "CONFIGURATION";
   if (status === 401 || status === 403) return "AUTHENTICATION";
   if (status === 408 || detail.includes("timeout")) return "TIMEOUT";
   if (status === 429 || detail.includes("rate limit")) return "RATE_LIMIT";
-  if (detail.includes("schema validation") || detail.includes("json") || detail.includes("empty")) {
+  if (detail.includes("validation") || detail.includes("json") || detail.includes("empty")) {
     return "INVALID_RESPONSE";
   }
   if (typeof status === "number" && status >= 500) return "PROVIDER_ERROR";

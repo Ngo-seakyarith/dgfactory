@@ -1,4 +1,5 @@
-import OpenAI, { type APIError } from "openai";
+import type { OpenRouter } from "@openrouter/sdk";
+import { OpenRouterError, ResponseValidationError } from "@openrouter/sdk/models/errors";
 
 import {
   brainSchemaToJsonSchema,
@@ -48,8 +49,8 @@ function normalizeJsonSchema(schema: BrainOutputSchema) {
   };
 }
 
-function providerErrorMessage(error: APIError) {
-  const body = error.error as {
+function providerErrorMessage(error: OpenRouterError) {
+  let body: {
     message?: unknown;
     metadata?: {
       error_type?: unknown;
@@ -57,6 +58,11 @@ function providerErrorMessage(error: APIError) {
       raw?: unknown;
     };
   } | undefined;
+  try {
+    body = (JSON.parse(error.body) as { error?: typeof body }).error;
+  } catch {
+    // Non-JSON HTTP errors still carry the SDK's status and message.
+  }
   const metadata = body?.metadata;
   let rawMessage = "";
 
@@ -89,22 +95,22 @@ function providerErrorMessage(error: APIError) {
     ? `/${metadata.provider_code}`
     : "";
 
-  return `OpenRouter request failed (${error.status ?? "unknown"}${errorType}${providerCode}): ${message}`;
+  return `OpenRouter request failed (${error.statusCode}${errorType}${providerCode}): ${message}`;
 }
 
 function normalizeOpenRouterError(error: unknown) {
-  if (!(error instanceof OpenAI.APIError)) return error;
+  if (!(error instanceof OpenRouterError) || error instanceof ResponseValidationError) return error;
   return new Error(providerErrorMessage(error), { cause: error });
 }
 
 function shouldRetryOpenRouterError(error: unknown) {
-  if (!(error instanceof OpenAI.APIError) || error.status === undefined) {
+  if (!(error instanceof OpenRouterError) || error instanceof ResponseValidationError) {
     return true;
   }
-  return error.status === 408 ||
-    error.status === 409 ||
-    error.status === 429 ||
-    error.status >= 500;
+  return error.statusCode === 408 ||
+    error.statusCode === 409 ||
+    error.statusCode === 429 ||
+    error.statusCode >= 500;
 }
 
 async function callOpenRouter<TInput>({
@@ -114,40 +120,43 @@ async function callOpenRouter<TInput>({
   model,
   schema,
 }: {
-  client: OpenAI;
+  client: OpenRouter;
   agent: BrainAgentDefinition<TInput, unknown>;
   input: TInput;
   model: string;
   schema: BrainOutputSchema;
 }) {
   const prompt = await resolveAgentPrompt({ agent, input });
-  const request = {
-    model,
-    reasoning: {
-      effort: brainReasoningEffort,
-    },
-    provider: {
-      require_parameters: true,
-    },
-    response_format: {
-      type: "json_schema",
-      json_schema: normalizeJsonSchema(schema),
-    } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming["response_format"],
-    messages: [
-      {
-        role: "system",
-        content: prompt.systemPrompt,
+  const completion = await client.chat.send({
+    xOpenRouterMetadata: "enabled",
+    chatRequest: {
+      model,
+      stream: false,
+      reasoning: {
+        effort: brainReasoningEffort,
       },
-      {
-        role: "user",
-        content: prompt.userPrompt,
+      provider: {
+        requireParameters: true,
       },
-    ],
-  } as OpenAI.Chat.Completions.ChatCompletionCreateParamsNonStreaming & {
-    provider: { require_parameters: true };
-    reasoning: { effort: typeof brainReasoningEffort };
-  };
-  const completion = await client.chat.completions.create(request);
+      responseFormat: {
+        type: "json_schema",
+        jsonSchema: normalizeJsonSchema(schema),
+      },
+      messages: [
+        {
+          role: "system",
+          content: prompt.systemPrompt,
+        },
+        {
+          role: "user",
+          content: prompt.userPrompt,
+        },
+      ],
+    },
+  });
+  if (!("choices" in completion)) {
+    throw new Error("OpenRouter returned a stream instead of a structured response.");
+  }
   return { raw: completion.choices[0]?.message.content, completion };
 }
 
@@ -201,12 +210,16 @@ export async function generateStructuredOutput<TInput, TOutput>({
       });
       usage = extractOpenRouterUsage(generated.completion);
       responseModel = generated.completion.model || requestedModel;
-      const responseProvider = (generated.completion as { provider?: unknown }).provider;
+      const responseProvider = generated.completion.openrouterMetadata?.endpoints.available
+        .find((endpoint) => endpoint.selected)?.provider;
       if (typeof responseProvider === "string" && responseProvider.trim()) {
         provider = responseProvider.trim();
       }
       if (!generated.raw) {
         throw new Error("OpenRouter returned an empty Brain Layer response.");
+      }
+      if (typeof generated.raw !== "string") {
+        throw new Error("OpenRouter returned non-text JSON content.");
       }
       const validation = schema.safeParse(JSON.parse(generated.raw) as unknown);
 
