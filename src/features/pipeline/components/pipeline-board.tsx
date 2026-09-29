@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from "react";
-import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, Columns3, FileText, MonitorCog, Pencil, Plus, Search, Trash2 } from "lucide-react";
-import { useTable, type ColumnVisibilityState, type ExpandedState, type PaginationState, type ReactTable } from "@tanstack/react-table";
+import { ArrowDown, ArrowUp, ArrowUpDown, ArrowUpRight, ChevronLeft, ChevronRight, FileText, MonitorCog, Pencil, Plus, Search, Trash2 } from "lucide-react";
+import { useTable, type ExpandedState, type PaginationState, type ReactTable } from "@tanstack/react-table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
@@ -94,7 +94,10 @@ function ClientGroup({ row, table, visible, visibleProjects, open, selectedProje
     if (!open) onSelect(group.id);
   }
   return <>
-    <tr id={`client-group-${group.id}`} hidden={!visible} className="border-b border-border align-top hover:bg-muted/30">
+    <tr id={`client-group-${group.id}`} hidden={!visible} className="cursor-pointer border-b border-border align-top hover:bg-muted/30" onClick={(event) => {
+      if (event.defaultPrevented || !(event.target instanceof Element) || event.target.closest("button, a, input, select, textarea, summary, [role='button'], [contenteditable='true']")) return;
+      toggle();
+    }}>
       {row.getVisibleCells().map((cell) => <td key={cell.id} className={cell.column.id === "client" ? "min-w-0 px-1 py-4" : cell.column.id === "expand" ? "w-10 py-3 text-right" : "hidden break-words px-3 py-4 text-sm text-muted-foreground md:table-cell"}>
         {cell.column.id === "client" ? <>
           <button type="button" aria-expanded={open} aria-controls={`client-${group.id}`} onClick={toggle} className="max-w-full break-words text-left font-semibold hover:text-primary">{name}</button>
@@ -133,9 +136,8 @@ export function ClientPipelineWorkspace() {
   const [filters, setFilters] = useState<ClientPipelineFilters>(initialPipelineFilters);
   const [pagination, setPagination] = useState<PaginationState>({ pageIndex: 0, pageSize: 25 });
   const [expanded, setExpanded] = useState<ExpandedState>({});
-  const [visibleColumns, setVisibleColumns] = useState<ColumnVisibilityState>(pipelineTableOptions.initialState.columnVisibility);
   const narrowLayout = useSyncExternalStore(subscribeToNarrowLayout, isNarrowLayout, desktopServerLayout);
-  const columnVisibility = useMemo(() => narrowLayout ? { ...visibleColumns, owner: false, contact: false, target: false, actual: false, updated: false } : visibleColumns, [narrowLayout, visibleColumns]);
+  const columnVisibility = useMemo(() => narrowLayout ? { ...pipelineTableOptions.initialState.columnVisibility, owner: false, contact: false } : pipelineTableOptions.initialState.columnVisibility, [narrowLayout]);
   const [newClient, setNewClient] = useState(searchParams.get("newClient") === "1");
   const groups = useMemo(() => groupClientPipeline(clientsQuery.data ?? [], projectsQuery.data ?? []), [clientsQuery.data, projectsQuery.data]);
   const owners = useMemo(() => [...new Set((clientsQuery.data ?? []).map((client) => client.accountOwner.trim() || "Unassigned"))].sort(), [clientsQuery.data]);
@@ -147,7 +149,6 @@ export function ClientPipelineWorkspace() {
     ...pipelineTableOptions, data: groups,
     state: { globalFilter: filters, pagination, expanded, columnVisibility },
     onGlobalFilterChange: setFilters, onPaginationChange: setPagination, onExpandedChange: setExpanded,
-    onColumnVisibilityChange: setVisibleColumns,
   });
   const matchingRows = table.getPrePaginatedRowModel().rows;
   const matchingIds = new Set(matchingRows.map((row) => row.id));
@@ -211,7 +212,6 @@ export function ClientPipelineWorkspace() {
       <Select aria-label="Filter by owner" value={filters.owner} onChange={(event) => updateFilters({ owner: event.target.value })} className="w-full sm:w-44"><option value="All">All owners</option>{owners.map((owner) => <option key={owner}>{owner}</option>)}</Select>
       <Select aria-label="Filter by stage" value={filters.stage} onChange={(event) => updateFilters({ stage: event.target.value as ProjectStage | "All" })} className="w-full sm:w-44"><option value="All">All stages</option>{projectStages.map((stage) => <option key={stage}>{stage}</option>)}</Select>
       <Select aria-label="Sort clients" value={`${table.state.sorting[0]?.id ?? "client"}:${table.state.sorting[0]?.desc ? "desc" : "asc"}`} onChange={(event) => { const [id, direction] = event.target.value.split(":"); table.setSorting([{ id, desc: direction === "desc" }]); }} className="w-full sm:w-52 md:hidden"><option value="client:asc">Client: A to Z</option><option value="client:desc">Client: Z to A</option><option value="owner:asc">Owner: A to Z</option><option value="owner:desc">Owner: Z to A</option><option value="updated:desc">Recently updated</option><option value="updated:asc">Oldest update</option><option value="actual:desc">Actual total: highest</option><option value="actual:asc">Actual total: lowest</option><option value="target:desc">Target total: highest</option><option value="target:asc">Target total: lowest</option><option value="contact:asc">Contact: A to Z</option><option value="contact:desc">Contact: Z to A</option></Select>
-      <details className="relative hidden md:block" onBlur={(event) => { if (!event.currentTarget.contains(event.relatedTarget)) event.currentTarget.open = false; }} onKeyDown={(event) => { if (event.key === "Escape") { event.currentTarget.open = false; event.currentTarget.querySelector("summary")?.focus(); } }}><summary className="flex h-10 cursor-pointer list-none items-center gap-2 rounded-md border border-input px-3 text-sm hover:bg-muted"><Columns3 className="h-4 w-4" />Columns</summary><fieldset className="absolute right-0 z-20 mt-2 w-52 rounded-md border border-border bg-popover p-3 shadow-md"><legend className="sr-only">Visible columns</legend>{table.getAllLeafColumns().filter((column) => column.getCanHide()).map((column) => <label key={column.id} className="flex cursor-pointer items-center gap-2 py-2 text-sm"><input type="checkbox" checked={column.getIsVisible()} onChange={(event) => column.toggleVisibility(event.target.checked)} />{String(column.columnDef.header)}</label>)}</fieldset></details>
     </div>
     {failed ? <QueryErrorState title="Clients and pipeline could not be loaded" detail={clientsQuery.error?.message ?? projectsQuery.error?.message ?? "Try again."} onRetry={() => { void clientsQuery.refetch(); void projectsQuery.refetch(); }} /> : null}
     {!ready && loading && !failed ? <ListLoadingSkeleton /> : null}

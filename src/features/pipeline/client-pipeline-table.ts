@@ -83,6 +83,7 @@ export const pipelineTableOptions = {
   getRowCanExpand: () => true,
   getColumnCanGlobalFilter: (column: { id: string }) => column.id === "client",
   globalFilterFn: (row: PipelineTableRow, _columnId: string, filters: ClientPipelineFilters) => filterClientPipeline(row.original, filters).visible,
+  enableHiding: false,
   enableSortingRemoval: false,
   autoResetPageIndex: false,
   autoResetExpanded: false,

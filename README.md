@@ -37,7 +37,7 @@ Generated training packages create Delivery only when Contracted. Contracted dra
 
 Project queries use the `client-projects` TanStack Query key family. Proposal, client, delivery, and project mutations invalidate these caches. Project edits use the existing debounced autosave, with editable fields kept in React state.
 
-Clients & Pipeline uses TanStack Table for client sorting, combined search/owner/stage filtering, detail expansion, optional columns, and client-level pagination. Client IDs remain stable row keys; previously visited editors remain mounted while filtered or paginated out, preserving unsaved drafts. Autosave and background refetches do not reset the page or expansion state. Incoming bookmarks and newly created records reveal their containing page. Mobile uses a two-column summary without overwriting desktop column preferences.
+Clients & Pipeline uses TanStack Table for client sorting, combined search/owner/stage filtering, detail expansion, and client-level pagination. Click anywhere on a client row to expand or collapse its details. Client IDs remain stable row keys; previously visited editors remain mounted while filtered or paginated out, preserving unsaved drafts. Autosave and background refetches do not reset the page or expansion state. Incoming bookmarks and newly created records reveal their containing page. Desktop shows client, owner, and contact columns; mobile uses a two-column summary.
 
 ## Intelligent System Proposals
 

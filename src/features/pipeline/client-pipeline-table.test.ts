@@ -88,13 +88,13 @@ describe("Clients & Pipeline table", () => {
     expect(table.getRowModel().rows.map((row) => row.id)).toEqual(["b", "a", "c"]);
   });
 
-  test("optional columns can change without hiding the client or detail controls", () => {
+  test("uses fixed desktop columns and a compact mobile summary", () => {
     const table = createTable([client("a")]);
     expect(table.getVisibleLeafColumns().map((column) => column.id)).toEqual(["client", "owner", "contact", "expand"]);
-    table.getColumn("actual")!.toggleVisibility(true);
-    table.getColumn("owner")!.toggleVisibility(false);
-    expect(table.getVisibleLeafColumns().map((column) => column.id)).toEqual(["client", "contact", "actual", "expand"]);
-    expect(table.getColumn("client")!.getCanHide()).toBe(false);
-    expect(table.getColumn("expand")!.getCanHide()).toBe(false);
+    expect(table.getAllLeafColumns().every((column) => !column.getCanHide())).toBe(true);
+    table.setColumnVisibility({ ...pipelineTableOptions.initialState.columnVisibility, owner: false, contact: false });
+    expect(table.getVisibleLeafColumns().map((column) => column.id)).toEqual(["client", "expand"]);
+    table.setColumnVisibility(pipelineTableOptions.initialState.columnVisibility);
+    expect(table.getVisibleLeafColumns().map((column) => column.id)).toEqual(["client", "owner", "contact", "expand"]);
   });
 });
