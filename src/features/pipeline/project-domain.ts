@@ -49,6 +49,11 @@ export type ClientProject = Omit<ClientProjectInput, "clientId"> & {
   updatedAt: string;
 };
 
+export type ClientProjectDeletion = {
+  trainingPackageId: string | null;
+  deliveryProjectIds: string[];
+};
+
 export function emptyClientProject(clientId = ""): ClientProjectInput {
   return {
     clientId, title: "", projectType: "Training", stage: "Prospects",

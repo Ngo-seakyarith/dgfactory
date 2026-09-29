@@ -105,7 +105,11 @@ export function ProjectEditor({ project, clientId, projectType = "Training", onC
   }, [project?.updatedAt]);
 
   async function remove() {
-    if (!project || !window.confirm(`Delete project "${project.title}"?`)) return;
+    if (!project) return;
+    const warning = project.trainingPackageId
+      ? `Delete training "${project.title}" and its linked proposal? Any linked delivery, checklist, materials, evaluation forms, and responses will also be permanently deleted. This cannot be undone.`
+      : `Delete ${project.projectType === "Training" ? "training" : "project"} "${project.title}"? This cannot be undone.`;
+    if (!window.confirm(warning)) return;
     autosave.cancel();
     await autosave.waitForPending();
     removed.current = true;
@@ -151,7 +155,7 @@ export function ProjectEditor({ project, clientId, projectType = "Training", onC
       {project.trainingPackageId ? <Button type="button" variant="outline" onClick={() => void openProposal(`/packages/${project.trainingPackageId}`)}><FileText className="h-4 w-4" />Training proposal</Button> : project.systemProposalId ? <Button type="button" variant="outline" onClick={() => void openProposal(`/solution-proposals/${project.systemProposalId}`)}><MonitorCog className="h-4 w-4" />System proposal</Button> : canCreateProposal ? <>
         {values.projectType === "Training" ? <Button type="button" variant="outline" disabled={!valid} onClick={() => void openProposal(trainingHref)}><Plus className="h-4 w-4" />Create training proposal</Button> : values.projectType === "Intelligent System" ? <Button type="button" variant="outline" disabled={!valid} onClick={() => void openProposal(systemHref)}><Plus className="h-4 w-4" />Create system proposal</Button> : null}
       </> : null}
-      {!linked ? <Button type="button" variant="outline" className="sm:ml-auto" disabled={deleteMutation.isPending} onClick={() => void remove()}><Trash2 className="h-4 w-4" />Delete</Button> : null}
+      {!project.systemProposalId ? <Button type="button" variant="outline" className="sm:ml-auto" disabled={deleteMutation.isPending} onClick={() => void remove()}><Trash2 className="h-4 w-4" />Delete</Button> : null}
     </section> : null}
   </div>;
 }

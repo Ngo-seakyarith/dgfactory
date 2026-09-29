@@ -1,5 +1,5 @@
 import { getSupabaseServerClient } from "@/lib/supabase/server";
-import type { ClientProject, ClientProjectInput } from "../project-domain";
+import type { ClientProject, ClientProjectDeletion, ClientProjectInput } from "../project-domain";
 import { setProposalStage } from "./proposal-stage";
 import { ProjectRequestError } from "./errors";
 
@@ -97,11 +97,11 @@ export async function saveClientProject(input: ClientProjectInput, id?: string) 
 }
 
 export async function deleteClientProject(id: string) {
-  const project = await getClientProject(id);
-  if (!project) throw new ProjectRequestError("Project not found.", 404);
-  if (project.trainingPackageId || project.systemProposalId) {
-    throw new ProjectRequestError("Delete the linked proposal first. Project deletion never deletes proposals or deliveries.", 409);
+  const { data, error } = await database().rpc("delete_client_project", { p_project_id: id });
+  if (error) {
+    if (error.code === "P0002") throw new ProjectRequestError(error.message, 404);
+    if (error.code === "23514") throw new ProjectRequestError(error.message, 409);
+    throw new Error(error.message);
   }
-  const { error } = await database().from("client_projects").delete().eq("id", id);
-  if (error) throw new Error(error.message);
+  return data as ClientProjectDeletion;
 }

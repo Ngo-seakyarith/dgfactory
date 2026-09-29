@@ -53,8 +53,8 @@ export async function deleteProjectRequest(request: Request, context: Context) {
   if (!auth.ok) return auth.response;
   try {
     const id = databaseIdSchema.parse((await context.params).id);
-    await deleteClientProject(id);
-    await saveAuditLog({ actor: auth.user.actor, action: "client_project_deleted", entityType: "client_project", entityId: id, metadata: {} });
-    return NextResponse.json({ deleted: true });
+    const deleted = await deleteClientProject(id);
+    await saveAuditLog({ actor: auth.user.actor, action: "client_project_deleted", entityType: "client_project", entityId: id, metadata: deleted });
+    return NextResponse.json({ deleted: true, ...deleted });
   } catch (error) { return errorResponse(error); }
 }

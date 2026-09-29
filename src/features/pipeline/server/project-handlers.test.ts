@@ -22,7 +22,7 @@ beforeEach(() => {
   spyOn(auth, "requireApproved").mockResolvedValue({ ok: true, user: { actor: "Test user", role: "Approved" } });
   spyOn(storage, "getClientProject").mockResolvedValue(importedProject);
   spyOn(storage, "saveClientProject").mockImplementation(async (input, id) => ({ ...importedProject, ...input, id: id ?? importedId }));
-  spyOn(storage, "deleteClientProject").mockResolvedValue(undefined);
+  spyOn(storage, "deleteClientProject").mockResolvedValue({ trainingPackageId: null, deliveryProjectIds: [] });
   spyOn(audit, "saveAuditLog").mockImplementation(async (input) => ({ log: audit.normalizeAuditLog(input), storage: "supabase" }));
 });
 afterEach(() => mock.restore());
@@ -56,6 +56,15 @@ describe("imported Pipeline record API", () => {
     expect(storage.deleteClientProject).toHaveBeenCalledWith(importedId);
   });
 
+  test("deletion reports and audits the removed proposal and deliveries", async () => {
+    const deleted = { trainingPackageId: "6254157e-5efa-4b83-9aea-559a687af9e9", deliveryProjectIds: ["c6eb4eff-76b1-48ff-a319-e5c1e93183fa"] };
+    spyOn(storage, "deleteClientProject").mockResolvedValue(deleted);
+    const response = await deleteProjectRequest(new Request(`https://example.test/api/client-projects/${importedId}`, { method: "DELETE" }), context());
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ deleted: true, ...deleted });
+    expect(audit.saveAuditLog).toHaveBeenCalledWith(expect.objectContaining({ action: "client_project_deleted", metadata: deleted }));
+  });
+
   test("malformed IDs and invalid fields still return 400 without saving", async () => {
     const invalidId = await saveProjectRequest(request({ stage: "Delivered" }), context("not-an-id"));
     expect(invalidId.status).toBe(400);
@@ -71,5 +80,12 @@ describe("imported Pipeline record API", () => {
     const response = await saveProjectRequest(request({ stage: "Delivered" }), context());
     expect(response.status).toBe(403);
     expect(storage.saveClientProject).not.toHaveBeenCalled();
+  });
+
+  test("Pending users cannot delete a training or linked content", async () => {
+    spyOn(auth, "requireApproved").mockResolvedValue({ ok: false, user: { actor: "Test user", role: "Pending" }, response: NextResponse.json({ error: "Pending approval." }, { status: 403 }) });
+    const response = await deleteProjectRequest(new Request(`https://example.test/api/client-projects/${importedId}`, { method: "DELETE" }), context());
+    expect(response.status).toBe(403);
+    expect(storage.deleteClientProject).not.toHaveBeenCalled();
   });
 });

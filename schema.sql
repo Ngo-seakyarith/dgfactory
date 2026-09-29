@@ -799,6 +799,44 @@ create index if not exists idx_delivery_tasks_project_id
 create index if not exists idx_delivery_tasks_status
   on public.delivery_tasks(status);
 
+-- Delete a Pipeline training and its owned content in one transaction.
+create or replace function public.delete_client_project(p_project_id uuid)
+returns jsonb language plpgsql security invoker set search_path = '' as $$
+declare
+  project public.client_projects%rowtype;
+  delivery_ids uuid[];
+begin
+  select * into project from public.client_projects where id = p_project_id for update;
+  if not found then raise exception 'Project not found.' using errcode = 'P0002'; end if;
+  if project.system_proposal_id is not null then
+    raise exception 'Delete the linked system proposal first.' using errcode = '23514';
+  end if;
+
+  select coalesce(array_agg(id), '{}'::uuid[]) into delivery_ids
+  from public.delivery_projects where package_id = project.training_package_id;
+
+  if project.training_package_id is not null then
+    if exists (
+      select 1 from public.generation_jobs where status in ('Queued', 'Running') and (
+        (resource_id = project.training_package_id and job_type in ('training_package', 'syllabus_proposal')) or
+        (resource_id = any(delivery_ids) and job_type in ('delivery_material', 'evaluation_questions', 'delivery_report'))
+      )
+    ) then
+      raise exception 'Generation is still running. Wait for it to finish before deleting this training.' using errcode = '23514';
+    end if;
+    -- Foreign keys cascade the delivery checklist, materials, forms, and responses.
+    delete from public.delivery_projects where package_id = project.training_package_id;
+    delete from public.training_packages where id = project.training_package_id;
+  end if;
+  delete from public.client_projects where id = p_project_id;
+
+  return jsonb_build_object('trainingPackageId', project.training_package_id, 'deliveryProjectIds', delivery_ids);
+end;
+$$;
+
+revoke all on function public.delete_client_project(uuid) from public, anon, authenticated;
+grant execute on function public.delete_client_project(uuid) to service_role;
+
 create table if not exists public.audit_logs (
   id uuid primary key default gen_random_uuid(),
   actor text not null,
