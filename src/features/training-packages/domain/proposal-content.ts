@@ -4,6 +4,8 @@ import {
   type ProposalBrief,
 } from "./proposal-brief";
 import type { ProposalNarrative } from "./proposal-narrative";
+import type { MarkdownDocument } from "@tanstack/markdown";
+import { markdownBlockText, markdownInlineText, parseAppMarkdown } from "@/lib/markdown";
 
 export type ProposalSchedule = {
   duration: string;
@@ -120,37 +122,27 @@ function section(title: string, body: string | string[]) {
   return [`## ${title}`, "", content.trim()].filter(Boolean).join("\n");
 }
 
-function extractSection(markdown: string, title: string) {
-  const lines = markdown.split(/\r?\n/);
-  const headingPattern = /^#{1,3}\s+(.+?)\s*$/;
+function sectionLines(document: MarkdownDocument, title: string) {
   let capturing = false;
   const captured: string[] = [];
 
-  for (const line of lines) {
-    const heading = line.match(headingPattern)?.[1];
-
-    if (heading) {
+  for (const node of document.children) {
+    if (node.type === "heading") {
       if (capturing) {
         break;
       }
 
-      capturing = heading.toLowerCase() === title.toLowerCase();
+      capturing = markdownInlineText(node.children).trim().toLowerCase() === title.toLowerCase();
       continue;
     }
 
     if (capturing) {
-      captured.push(line);
+      captured.push(markdownBlockText(node));
     }
   }
 
-  return captured.join("\n").trim();
-}
-
-function sectionLines(markdown: string, title: string) {
-  const raw = extractSection(markdown, title);
-  return raw
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^[-*]\s*/, "").trim())
+  return captured.join("\n").split("\n")
+    .map((line) => line.trim())
     .filter(Boolean);
 }
 
@@ -241,6 +233,7 @@ export function proposalContentFromMarkdown(
   meta: ProposalFallbackMeta,
 ): ProposalContent {
   const brief = meta.proposalBrief;
+  const document = parseAppMarkdown(markdown);
 
   return {
     generationStatus: "Generated",
@@ -252,34 +245,34 @@ export function proposalContentFromMarkdown(
     courseOverview:
       brief?.clientBackground || brief?.trainingNeed
         ? [brief.clientBackground, brief.trainingNeed].filter(Boolean)
-        : sectionLines(markdown, "Course Overview").length > 0
-          ? sectionLines(markdown, "Course Overview")
+        : sectionLines(document, "Course Overview").length > 0
+          ? sectionLines(document, "Course Overview")
           : [
               `${meta.client} is preparing ${meta.audience} to apply ${meta.title} in practical business situations.`,
               `The program is structured around the expected learning outcomes and the client's stated training need.`,
             ],
-    courseObjectives: sectionLines(markdown, "Course Objectives"),
+    courseObjectives: sectionLines(document, "Course Objectives"),
     expectedLearningOutcomes:
       briefLines(brief?.expectedLearningOutcomes).length > 0
         ? briefLines(brief?.expectedLearningOutcomes)
-        : sectionLines(markdown, "Expected Learning Outcomes"),
+        : sectionLines(document, "Expected Learning Outcomes"),
     contentOutlines:
       briefLines(brief?.contentPriorities).length > 0
         ? briefLines(brief?.contentPriorities)
-        : sectionLines(markdown, "Content Outlines"),
-    whoShouldAttend: sectionLines(markdown, "Who Should Attend"),
+        : sectionLines(document, "Content Outlines"),
+    whoShouldAttend: sectionLines(document, "Who Should Attend"),
     trainingMethodology:
       briefLines(brief?.methodology).length > 0
         ? briefLines(brief?.methodology)
-        : sectionLines(markdown, "Training Methodology"),
+        : sectionLines(document, "Training Methodology"),
     trainingTools:
       briefLines(brief?.trainingTools).length > 0
         ? briefLines(brief?.trainingTools)
-        : sectionLines(markdown, "Training and Coaching Tools"),
+        : sectionLines(document, "Training and Coaching Tools"),
     trainingEvaluation:
       briefLines(brief?.evaluationApproach).length > 0
         ? briefLines(brief?.evaluationApproach)
-        : sectionLines(markdown, "Training Evaluation"),
+        : sectionLines(document, "Training Evaluation"),
     schedule: {
       duration: meta.duration,
       date: brief?.scheduleDate || "TBC",
@@ -294,7 +287,7 @@ export function proposalContentFromMarkdown(
       bio:
         briefLines(brief?.trainerBio).length > 0
           ? briefLines(brief?.trainerBio)
-          : sectionLines(markdown, "Trainer"),
+          : sectionLines(document, "Trainer"),
       experience: briefLines(brief?.trainerExperience),
       qualifications: briefLines(brief?.trainerQualifications),
     },
@@ -312,7 +305,7 @@ export function proposalContentFromMarkdown(
       included:
         briefLines(brief?.includedItems).length > 0
           ? briefLines(brief?.includedItems)
-          : sectionLines(markdown, "Professional Fee"),
+          : sectionLines(document, "Professional Fee"),
       totalFee: "Professional fee to be confirmed from Commercial Setup.",
       vatStatus: "Excluding VAT",
       clientResponsibilities:

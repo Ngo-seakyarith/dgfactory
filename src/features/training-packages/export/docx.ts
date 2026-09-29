@@ -34,7 +34,8 @@ import {
   type ProposalTrainer,
 } from "@/features/training-packages/domain/proposal-content";
 import { isTrustedTrainerImageUrl } from "@/features/training-packages/domain/trainers";
-import { contentForTarget, docTitle, markdownToLines, wrapText } from "./content";
+import { contentForTarget, docTitle, wrapText } from "./content";
+import { markdownToDocx } from "@/lib/documents/markdown-docx";
 import { createStructuredMaterialDocx } from "./material-docx";
 import type { ExportTarget } from "./types";
 import {
@@ -434,42 +435,6 @@ function proposalScheduleBullet(label: string, value: string) {
     tabStops: [{ type: TabStopType.LEFT, position: 2880 }],
     spacing: { after: 100, line: 336, lineRule: LineRuleType.AT_LEAST },
   });
-}
-
-function markdownToDocxChildren(markdown: string) {
-  const children: Paragraph[] = [];
-
-  markdownToLines(markdown).forEach((line) => {
-    const trimmed = line.trim();
-
-    if (!trimmed) {
-      children.push(emptyParagraph());
-      return;
-    }
-
-    const heading = trimmed.match(/^(#{1,3})\s+(.+)/);
-    if (heading) {
-      children.push(
-        docxHeading(
-          heading[2],
-          heading[1].length === 1
-            ? HeadingLevel.HEADING_1
-            : HeadingLevel.HEADING_2,
-        ),
-      );
-      return;
-    }
-
-    const bullet = trimmed.match(/^[-*]\s+(.+)/);
-    if (bullet) {
-      children.push(docxBullet(bullet[1]));
-      return;
-    }
-
-    children.push(docxParagraph(trimmed));
-  });
-
-  return children;
 }
 
 function proposalTrainerChildren(
@@ -891,8 +856,10 @@ export async function createDocx(
           pkg.pricingOutputs.finalPrice,
         )}.`
       : proposalContent.professionalFee.totalFee;
+  const structuredProposal = (target === "proposal" || target === "syllabus") && pkg.proposalContent;
+  const markdownDocument = structuredProposal ? null : markdownToDocx(body);
   const children =
-    (target === "proposal" || target === "syllabus") && pkg.proposalContent
+    structuredProposal
       ? proposalDocxChildren(
           proposalContent,
           deterministicFee,
@@ -909,12 +876,13 @@ export async function createDocx(
           docxParagraph(`Client: ${pkg.client}`),
           docxParagraph(`Date generated: ${new Date().toLocaleDateString("en-US")}`),
           pageBreakParagraph(),
-          ...markdownToDocxChildren(body),
+          ...(markdownDocument?.children ?? []),
         ];
 
   const document = new Document({
     creator: "DG Academy",
     title: `${pkg.title} - ${docTitle(target)}`,
+    numbering: markdownDocument?.numbering,
     sections: [
       {
         footers: dgAcademyFooters(),

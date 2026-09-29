@@ -84,6 +84,45 @@ textarea {
   background: rgba(244, 119, 46, 0.28);
 }
 
+.markdown-preview {
+  min-width: 0;
+  color: hsl(var(--foreground));
+  font-size: 0.875rem;
+  line-height: 1.75;
+  overflow-wrap: anywhere;
+}
+
+.markdown-preview :is(h1, h2, h3, h4, h5, h6) {
+  margin: 1.25rem 0 0.5rem;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+.markdown-preview h1 { font-size: 1.5rem; }
+.markdown-preview h2 { font-size: 1.125rem; }
+.markdown-preview :is(h3, h4, h5, h6) { font-size: 1rem; }
+.markdown-preview > :first-child { margin-top: 0; }
+.markdown-preview p { margin: 0.75rem 0; }
+.markdown-preview :is(ul, ol) { margin: 0.75rem 0; padding-left: 1.5rem; }
+.markdown-preview ul { list-style: disc; }
+.markdown-preview ol { list-style: decimal; }
+.markdown-preview li + li { margin-top: 0.25rem; }
+.markdown-preview li :is(p, ul, ol) { margin: 0.25rem 0; }
+.markdown-preview strong { font-weight: 650; }
+.markdown-preview a { color: hsl(var(--accent-foreground)); text-decoration: underline; }
+.markdown-preview a:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 3px; }
+.markdown-preview code { font-family: Consolas, monospace; font-size: 0.85em; }
+.markdown-preview :not(pre) > code { background: hsl(var(--muted)); padding: 0.125rem 0.25rem; border-radius: 3px; }
+.markdown-preview pre { max-width: 100%; overflow-x: auto; white-space: pre; background: hsl(var(--muted)); border: 1px solid hsl(var(--border)); border-radius: 4px; padding: 1rem; margin: 1rem 0; }
+.markdown-preview blockquote { border-left: 3px solid hsl(var(--border)); padding-left: 1rem; margin: 1rem 0; color: hsl(var(--muted-foreground)); }
+.markdown-preview hr { border-top: 1px solid hsl(var(--border)); margin: 1.25rem 0; }
+.markdown-preview input[type="checkbox"] { margin-right: 0.5rem; accent-color: hsl(var(--accent-foreground)); }
+.markdown-table-scroll { max-width: 100%; overflow-x: auto; margin: 1rem 0; }
+.markdown-table-scroll:focus-visible { outline: 2px solid hsl(var(--ring)); outline-offset: 2px; }
+.markdown-preview table { width: 100%; border-collapse: collapse; font-size: 0.8125rem; line-height: 1.5; }
+.markdown-preview :is(th, td) { border: 1px solid hsl(var(--border)); padding: 0.5rem 0.75rem; text-align: left; vertical-align: top; min-width: 6rem; }
+.markdown-preview th { background: hsl(var(--muted)); font-weight: 650; }
+
 /* Page shell. The cap grows by whatever the collapsed rail handed back, so the
    reclaimed width lands in the content instead of the centring margins. */
 .app-shell {

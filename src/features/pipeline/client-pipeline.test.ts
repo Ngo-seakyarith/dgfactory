@@ -46,20 +46,14 @@ describe("combined clients and pipeline", () => {
     expect(filterClientPipeline(group, { ...filters, owner: "Unassigned", search: "website" }).visible).toBe(true);
     expect(filterClientPipeline(group, { ...filters, owner: "MD" }).visible).toBe(false);
   });
-  test("orders clients alphabetically while keeping their work newest first without mutating inputs", () => {
+  test("groups clients and keeps their work newest first without mutating inputs", () => {
     const clients = [client("z"), client("a"), client("b")];
     const projects = [project("old", "b", { createdAt: "2026-09-01" }), project("new", "b", { createdAt: "2026-09-28" })];
     const groups = groupClientPipeline(clients, projects);
-    expect(groups.map((group) => group.id)).toEqual(["a", "b", "z"]);
+    expect(groups.map((group) => group.id)).toEqual(["z", "a", "b"]);
     expect(groups.find((group) => group.id === "b")?.projects.map((project) => project.id)).toEqual(["new", "old"]);
     expect(projects.map((project) => project.id)).toEqual(["old", "new"]);
     expect(clients.map((client) => client.id)).toEqual(["z", "a", "b"]);
-  });
-  test("alphabetical sorting ignores case, outer spaces, and recent work", () => {
-    const groups = groupClientPipeline([
-      client("z", { name: "Zuellig" }), client("b", { name: " borey " }), client("a", { name: "Angkor" }),
-    ], [project("latest", "z")]);
-    expect(groups.map((group) => group.id)).toEqual(["a", "b", "z"]);
   });
   test("autosaving an older training does not move it above newer work", () => {
     const projects = [project("older", "a", { createdAt: "2026-09-01" }), project("newer", "a", { createdAt: "2026-09-20" })];

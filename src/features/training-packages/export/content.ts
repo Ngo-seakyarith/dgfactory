@@ -65,10 +65,6 @@ export function wrapText(value: string, maxLength = 92) {
   return lines.length > 0 ? lines : [value];
 }
 
-export function markdownToLines(value: string) {
-  return value.replace(/\r\n/g, "\n").split("\n");
-}
-
 export function contentForTarget(pkg: TrainingPackage, target: ExportTarget) {
   const summary = [
     `# ${pkg.title}`,

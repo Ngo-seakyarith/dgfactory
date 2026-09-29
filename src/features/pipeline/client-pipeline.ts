@@ -7,6 +7,8 @@ export type ClientPipelineGroup = {
   projects: ClientProject[];
 };
 
+export type ClientPipelineFilters = { search: string; owner: string; stage: ProjectStage | "All" };
+
 export function groupClientPipeline(clients: readonly Client[], projects: readonly ClientProject[]): ClientPipelineGroup[] {
   const groups = new Map(clients.map((client) => [client.id, { id: client.id, client, projects: [] as ClientProject[] }]));
   const unassigned: ClientPipelineGroup = { id: "unassigned", client: null, projects: [] };
@@ -17,14 +19,10 @@ export function groupClientPipeline(clients: readonly Client[], projects: readon
   const result: ClientPipelineGroup[] = [...groups.values()];
   if (unassigned.projects.length) result.push(unassigned);
   for (const group of result) group.projects.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
-  return result.sort((a, b) => {
-    return (a.client?.name ?? "Client not selected").trim().localeCompare(
-      (b.client?.name ?? "Client not selected").trim(), "en", { sensitivity: "base", numeric: true },
-    ) || a.id.localeCompare(b.id);
-  });
+  return result;
 }
 
-export function filterClientPipeline(group: ClientPipelineGroup, filters: { search: string; owner: string; stage: ProjectStage | "All" }) {
+export function filterClientPipeline(group: ClientPipelineGroup, filters: ClientPipelineFilters) {
   const owner = group.client?.accountOwner.trim() || "Unassigned";
   if (filters.owner !== "All" && owner !== filters.owner) return { visible: false, projects: [] };
   const search = filters.search.trim().toLowerCase();

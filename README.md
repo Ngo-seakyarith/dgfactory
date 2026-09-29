@@ -37,6 +37,8 @@ Generated training packages create Delivery only when Contracted. Contracted dra
 
 Project queries use the `client-projects` TanStack Query key family. Proposal, client, delivery, and project mutations invalidate these caches. Project edits use the existing debounced autosave, with editable fields kept in React state.
 
+Clients & Pipeline uses TanStack Table for client sorting, combined search/owner/stage filtering, detail expansion, optional columns, and client-level pagination. Client IDs remain stable row keys; previously visited editors remain mounted while filtered or paginated out, preserving unsaved drafts. Autosave and background refetches do not reset the page or expansion state. Incoming bookmarks and newly created records reveal their containing page. Mobile uses a two-column summary without overwriting desktop column preferences.
+
 ## Intelligent System Proposals
 
 `/solution-proposals` creates proposals for websites, web applications, internal systems, customer portals, e-commerce, data systems, and AI-enabled systems. Client, project title, and solution type are searchable columns; evolving discovery requirements remain in the existing `brief` JSONB column.
@@ -54,6 +56,12 @@ Existing `/system-proposals` browser links redirect to the renamed feature.
 `/packages/from-syllabus` accepts one English `.docx`, `.pptx`, or text-based `.pdf` syllabus up to 10 MB. The server normalizes Word headings, paragraphs, lists, tables, headers, and footers; PowerPoint slide text, tables, and speaker notes; and readable PDF page text into the same source-block contract before the existing background generation job runs.
 
 Images are ignored. Legacy Office files, macro-enabled files, encrypted documents, corrupted files, scanned PDFs, and image-only PDFs are rejected with a readable error. Uploaded source files remain private in the `syllabus-proposal-inputs` Supabase Storage bucket and follow the existing import cleanup lifecycle.
+
+## Markdown Rendering
+
+Markdown previews, Markdown-based DOCX materials and reports, and legacy proposal/slide readers share TanStack Markdown parsing through `src/lib/markdown.ts`. The React renderer and DOCX adapter consume the same semantic nodes for headings, nested lists, tables, and inline formatting. Raw HTML is disabled, unsafe links are removed, remote images remain text labels, and leading DG material metadata stays hidden.
+
+Structured training proposals, intelligent-system proposals, and version-2 slide/material plans keep their existing schemas, stored markers, and branded exporters. TanStack Markdown is pinned to `0.0.15` while its API is pre-1.0; parser and export regression tests should pass before upgrading it.
 
 ## Brain Layer
 

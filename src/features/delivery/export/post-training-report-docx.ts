@@ -3,7 +3,6 @@ import {
   BorderStyle,
   Document,
   HeadingLevel,
-  LevelFormat,
   LineRuleType,
   Packer,
   PageBreak,
@@ -14,7 +13,9 @@ import {
   TableRow,
   TextRun,
   WidthType,
+  type ParagraphChild,
 } from "docx";
+import type { InlineNode, ParagraphNode } from "@tanstack/markdown";
 
 import {
   dgAcademyFooters,
@@ -22,7 +23,9 @@ import {
   dgAcademyPageProperties,
   loadDgAcademyLogo,
 } from "@/lib/documents/dg-academy-docx";
-import { markdownToLines, wrapText } from "@/features/training-packages/export/content";
+import { wrapText } from "@/features/training-packages/export/content";
+import { markdownInlineText } from "@/lib/markdown";
+import { markdownInlineRuns, markdownToDocx } from "@/lib/documents/markdown-docx";
 
 export type PostTrainingReportDocument = {
   title: string;
@@ -55,28 +58,12 @@ function reportRun(
   });
 }
 
-function reportInlineRuns(
-  text: string,
-  options: { color?: string; size?: number; bold?: boolean } = {},
-) {
-  return text
-    .split(/(\*\*[^*]+\*\*)/g)
-    .filter(Boolean)
-    .map((part) => {
-      const emphasized = /^\*\*[^*]+\*\*$/.test(part);
-      return reportRun(emphasized ? part.slice(2, -2) : part, {
-        ...options,
-        bold: options.bold || emphasized,
-      });
-    });
-}
-
-function reportHeading(text: string, level: 1 | 2 | 3) {
+function reportHeading(text: string, level: 1 | 2 | 3, nodes?: InlineNode[]) {
   const size = level === 1 ? 32 : level === 2 ? 27 : 24;
   const color = level === 1 ? "0070C0" : level === 2 ? "1F4E79" : "252525";
 
   return new Paragraph({
-    children: reportInlineRuns(text, { bold: true, color, size }),
+    children: nodes ? markdownInlineRuns(nodes, { bold: true, color, size }) : [reportRun(text, { bold: true, color, size })],
     heading:
       level === 1
         ? HeadingLevel.HEADING_1
@@ -102,23 +89,24 @@ function reportHeading(text: string, level: 1 | 2 | 3) {
   });
 }
 
-function reportBodyParagraph(text: string) {
-  const label = text.match(/^([^:]{2,42}):\s+(.+)$/);
+function reportBodyParagraph(node: ParagraphNode, runs: ParagraphChild[]) {
+  const first = node.children[0];
+  const label = first?.type === "text" ? first.value.match(/^([^:]{2,42}:\s+)(.*)$/) : null;
 
   return new Paragraph({
     children: label
       ? [
-          reportRun(`${label[1]}: `, { bold: true, color: "1F4E79" }),
-          ...reportInlineRuns(label[2]),
+          reportRun(label[1], { bold: true, color: "1F4E79" }),
+          ...markdownInlineRuns([{ type: "text", value: label[2] }, ...node.children.slice(1)]),
         ]
-      : reportInlineRuns(text),
+      : runs,
     spacing: { after: 120, line: 276, lineRule: LineRuleType.AUTO },
   });
 }
 
-function reportResultCallout(text: string) {
+function reportResultCallout(nodes: InlineNode[]) {
   return new Paragraph({
-    children: reportInlineRuns(text, {
+    children: markdownInlineRuns(nodes, {
       bold: true,
       color: "1F4E79",
       size: 23,
@@ -135,63 +123,6 @@ function reportResultCallout(text: string) {
     indent: { left: 180, right: 180 },
     spacing: { before: 80, after: 160, line: 290, lineRule: LineRuleType.AUTO },
   });
-}
-
-function reportBullet(text: string) {
-  return new Paragraph({
-    children: reportInlineRuns(text),
-    numbering: { reference: "report-bullets", level: 0 },
-    spacing: { after: 90, line: 280, lineRule: LineRuleType.AUTO },
-  });
-}
-
-function reportNumberedItem(text: string) {
-  return new Paragraph({
-    children: reportInlineRuns(text),
-    numbering: { reference: "report-numbering", level: 0 },
-    spacing: { after: 100, line: 280, lineRule: LineRuleType.AUTO },
-  });
-}
-
-function reportMarkdownChildren(markdown: string) {
-  const children: Paragraph[] = [];
-
-  markdownToLines(markdown).forEach((line) => {
-    const trimmed = line.trim();
-    if (!trimmed) return;
-
-    const heading = trimmed.match(/^(#{1,3})\s+(.+)/);
-    if (heading) {
-      if (/post[- ]training report/i.test(heading[2])) return;
-      children.push(reportHeading(heading[2], heading[1].length as 1 | 2 | 3));
-      return;
-    }
-
-    const bullet = trimmed.match(/^[-*]\s+(.+)/);
-    if (bullet) {
-      children.push(reportBullet(bullet[1]));
-      return;
-    }
-
-    const numbered = trimmed.match(/^\d+[.)]\s+(.+)/);
-    if (numbered) {
-      children.push(reportNumberedItem(numbered[1]));
-      return;
-    }
-
-    if (
-      /average (satisfaction|rating)|\bparticipants? attended\b|response count/i.test(
-        trimmed,
-      )
-    ) {
-      children.push(reportResultCallout(trimmed));
-      return;
-    }
-
-    children.push(reportBodyParagraph(trimmed));
-  });
-
-  return children;
 }
 
 function reportMetadataCell(
@@ -277,6 +208,7 @@ function reportMetadataTable(input: PostTrainingReportDocument) {
 function reportChildren(
   input: PostTrainingReportDocument,
   logoData: Buffer | null,
+  markdownChildren: (Paragraph | Table)[],
 ) {
   const generatedDate = new Date(input.updatedAt).toLocaleDateString("en-US", {
     year: "numeric",
@@ -327,7 +259,7 @@ function reportChildren(
     reportHeading("Program at a Glance", 1),
     reportMetadataTable(input),
     new Paragraph({ text: "", spacing: { after: 100 } }),
-    ...reportMarkdownChildren(input.reportMarkdown),
+    ...markdownChildren,
   ];
 }
 
@@ -335,48 +267,28 @@ export async function createPostTrainingReportDocx(
   input: PostTrainingReportDocument,
 ) {
   const logoData = await loadDgAcademyLogo();
+  const report = markdownToDocx(input.reportMarkdown, {
+    heading(node) {
+      const text = markdownInlineText(node.children);
+      if (/post[- ]training report/i.test(text)) return null;
+      return reportHeading(text, Math.min(node.depth, 3) as 1 | 2 | 3, node.children);
+    },
+    paragraph(node, runs) {
+      const text = markdownInlineText(node.children);
+      return /average (satisfaction|rating)|\bparticipants? attended\b|response count/i.test(text)
+        ? reportResultCallout(node.children)
+        : reportBodyParagraph(node, runs);
+    },
+  });
   const document = new Document({
     creator: "DG Academy",
     title: `${input.title} - Post-Training Report`,
-    numbering: {
-      config: [
-        {
-          reference: "report-bullets",
-          levels: [
-            {
-              level: 0,
-              format: LevelFormat.BULLET,
-              text: "•",
-              alignment: AlignmentType.LEFT,
-              style: {
-                paragraph: { indent: { left: 720, hanging: 360 } },
-                run: { font: "Arial", size: 22 },
-              },
-            },
-          ],
-        },
-        {
-          reference: "report-numbering",
-          levels: [
-            {
-              level: 0,
-              format: LevelFormat.DECIMAL,
-              text: "%1.",
-              alignment: AlignmentType.LEFT,
-              style: {
-                paragraph: { indent: { left: 720, hanging: 360 } },
-                run: { font: "Arial", size: 22 },
-              },
-            },
-          ],
-        },
-      ],
-    },
+    numbering: report.numbering,
     sections: [
       {
         footers: dgAcademyFooters(),
         properties: dgAcademyPageProperties(),
-        children: reportChildren(input, logoData),
+        children: reportChildren(input, logoData, report.children),
       },
     ],
   });

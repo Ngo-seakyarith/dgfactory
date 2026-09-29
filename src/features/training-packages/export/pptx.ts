@@ -17,6 +17,8 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import PptxGenJS from "pptxgenjs";
+import type { BlockNode } from "@tanstack/markdown";
+import { markdownBlockText, markdownInlineText, markdownText, parseAppMarkdown } from "@/lib/markdown";
 
 import {
   parseSlideDeckPlan,
@@ -153,13 +155,7 @@ function addVisualIcon(
 }
 
 function cleanMarkdown(value: string) {
-  return value
-    .replace(/!\[([^\]]*)\]\([^)]*\)/g, "$1")
-    .replace(/\[([^\]]+)\]\([^)]*\)/g, "$1")
-    .replace(/\*\*([^*]+)\*\*/g, "$1")
-    .replace(/__([^_]+)__/g, "$1")
-    .replace(/`([^`]+)`/g, "$1")
-    .replace(/^[>*_\s]+|[*_\s]+$/g, "")
+  return markdownText(value)
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -171,55 +167,53 @@ function cleanSlideTitle(value: string) {
     .trim();
 }
 
-function itemFromLine(line: string): DeckItem | null {
-  const bullet = line.match(/^[-*\u2022]\s+(.+)/);
-  if (bullet) {
-    return { kind: "bullet", text: cleanMarkdown(bullet[1]) };
-  }
-
-  const numbered = line.match(/^\d+[.)]\s+(.+)/);
-  if (numbered) {
-    return { kind: "number", text: cleanMarkdown(numbered[1]) };
-  }
-
-  const text = cleanMarkdown(line);
-  return text ? { kind: "paragraph", text } : null;
-}
-
-function parseDeckSections(deckOutline: string): DeckSection[] {
-  const lines = deckOutline.split(/\r?\n/).map((line) => line.trim());
+export function parseDeckSections(deckOutline: string): DeckSection[] {
   const sections: DeckSection[] = [];
   let current: DeckSection | null = null;
+  const allItems: DeckItem[] = [];
 
-  for (const line of lines) {
-    if (!line) continue;
-
-    const markdownHeading = line.match(/^#{2,4}\s+(.+)/)?.[1];
-    const explicitSlide = line.match(
-      /^slide\s+\d+\s*[:.)\-\u2013\u2014]\s*(.+)/i,
-    )?.[1];
-    const firstHeading = line.match(/^#\s+(.+)/)?.[1];
-    const heading = markdownHeading ?? explicitSlide;
-
-    if (heading) {
-      current = { title: cleanSlideTitle(heading), items: [] };
-      sections.push(current);
-      continue;
-    }
-
-    if (firstHeading && sections.length === 0) {
-      continue;
-    }
-
-    const item = itemFromLine(line);
-    if (!item) continue;
-
+  function addItem(text: string, kind: DeckItem["kind"]) {
+    text = text.replace(/\s+/g, " ").trim();
+    if (!text) return;
     if (!current) {
       current = { title: "Training Overview", items: [] };
       sections.push(current);
     }
+    const item = { kind, text };
     current.items.push(item);
+    allItems.push(item);
   }
+
+  function visit(nodes: BlockNode[]) {
+    for (const node of nodes) {
+      if (node.type === "heading") {
+        if (node.depth === 1 && sections.length === 0) continue;
+        current = { title: cleanSlideTitle(markdownInlineText(node.children)), items: [] };
+        sections.push(current);
+      } else if (node.type === "list") {
+        for (const item of node.items) {
+          const first = item.children[0];
+          if (first) addItem(markdownBlockText(first), node.ordered ? "number" : "bullet");
+          visit(item.children.slice(1));
+        }
+      } else if (node.type === "blockquote" || node.type === "callout" || node.type === "component") {
+        visit(node.children);
+      } else {
+        for (const line of markdownBlockText(node).split("\n")) {
+          const explicitSlide = node.type === "paragraph"
+            ? line.match(/^slide\s+\d+\s*[:.)\-\u2013\u2014]\s*(.+)/i)?.[1] : null;
+          if (explicitSlide) {
+            current = { title: cleanSlideTitle(explicitSlide), items: [] };
+            sections.push(current);
+          } else {
+            const legacyBullet = node.type === "paragraph" ? line.match(/^\u2022\s+(.+)/)?.[1] : null;
+            addItem(legacyBullet ?? line, legacyBullet ? "bullet" : "paragraph");
+          }
+        }
+      }
+    }
+  }
+  visit(parseAppMarkdown(deckOutline).children);
 
   const usefulSections = sections.filter(
     (section) =>
@@ -231,10 +225,7 @@ function parseDeckSections(deckOutline: string): DeckSection[] {
     return usefulSections.slice(0, 24);
   }
 
-  const fallbackItems = lines
-    .map(itemFromLine)
-    .filter((item): item is DeckItem => Boolean(item));
-  return [{ title: "Training Overview", items: fallbackItems }];
+  return [{ title: "Training Overview", items: allItems }];
 }
 
 function chunkSection(section: DeckSection, sectionNumber: number) {
