@@ -10,6 +10,13 @@ describe("spreadsheet-aligned projects", () => {
   test("a project can exist without any generated proposal", () => {
     expect(projectInputSchema.parse(base()).trainingPackageId).toBeNull();
   });
+  test("imported client IDs remain valid when editing a stage or linking a proposal", () => {
+    const importedClientId = "887625ad-c0b3-b055-3eac-70191dc1b84a";
+    const input = { ...emptyClientProject(importedClientId), title: "Imported training", stage: "Delivered", actualValue: 4500 };
+    expect(projectInputSchema.parse(input)).toMatchObject({ clientId: importedClientId, stage: "Delivered", actualValue: 4500 });
+    expect(projectInputSchema.parse({ ...input, trainingPackageId: "20400ae5-851a-dec2-89fa-c84c77222028" }).trainingPackageId).toBe("20400ae5-851a-dec2-89fa-c84c77222028");
+    expect(projectInputSchema.safeParse({ ...input, clientId: "not-an-id" }).success).toBe(false);
+  });
   test("owner is not a separate editable project field", () => {
     expect(projectInputSchema.parse({ ...base(), owner: "Other owner", clientOwner: "MD" })).not.toHaveProperty("owner");
     expect(projectInputSchema.parse({ ...base(), clientOwner: "MD" })).not.toHaveProperty("clientOwner");

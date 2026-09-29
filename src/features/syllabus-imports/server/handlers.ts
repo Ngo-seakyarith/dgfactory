@@ -9,6 +9,7 @@ import {
   type PricingInputs,
 } from "@/features/training-packages";
 import { saveAuditLog } from "@/lib/audit";
+import { databaseIdSchema } from "@/lib/database-id";
 import { requireApproved } from "@/lib/route-guards";
 
 import { defaultSyllabusMimeType } from "../domain/file-types";
@@ -22,7 +23,7 @@ import {
 import { validateSyllabusUpload } from "./parse-syllabus";
 
 const correctionSchema = z.strictObject({
-  clientId: z.string().uuid().nullable().optional(),
+  clientId: databaseIdSchema.nullable().optional(),
   clientName: z.string().max(200).optional(),
   trainerId: z.string().max(160).optional(),
   secondTrainerId: z.string().max(160).optional(),

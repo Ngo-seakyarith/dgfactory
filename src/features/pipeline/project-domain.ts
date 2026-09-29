@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { databaseIdSchema } from "@/lib/database-id";
 
 import { proposalStages } from "./domain";
 
@@ -10,7 +11,7 @@ const money = z.number().finite().nonnegative().max(999999999999.99).nullable();
 const text = z.string().trim().max(10000);
 
 export const projectInputSchema = z.object({
-  clientId: z.uuid(),
+  clientId: databaseIdSchema,
   title: z.string().trim().min(1, "Project title is required.").max(300),
   projectType: z.enum(projectTypes),
   stage: z.enum(projectStages),
@@ -24,8 +25,8 @@ export const projectInputSchema = z.object({
   nextOpportunities: text,
   nextAction: text,
   notes: text,
-  trainingPackageId: z.uuid().nullable(),
-  systemProposalId: z.uuid().nullable(),
+  trainingPackageId: databaseIdSchema.nullable(),
+  systemProposalId: databaseIdSchema.nullable(),
 }).superRefine((value, context) => {
   if (value.trainingPackageId && value.systemProposalId) {
     context.addIssue({ code: "custom", path: ["systemProposalId"], message: "Link only one proposal to a project." });

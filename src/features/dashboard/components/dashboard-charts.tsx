@@ -20,7 +20,7 @@ export function createMonthlyFeesChart(rows: readonly MonthlyTrainingFees[]) {
     marks: [barY(rows, { x: "month", y: "fee", z: "status", key: "id", layout: group({ padding: 0.12 }), maxThickness: 22, radius: { end: 3 } })],
     scales: {
       x: { scale: () => scaleBand().padding(0.24), axis: { ticks: { size: 0 }, tickLabels: { fontSize: 12 } } },
-      y: { scale: scaleLinear, nice: true, grid: true, axis: { label: "Proposal fees (USD)", ticks: { format: (value) => compactMoney.format(value) } } },
+      y: { scale: scaleLinear, nice: true, grid: true, axis: { label: "Training fees (USD)", ticks: { format: (value) => compactMoney.format(value) } } },
     },
     color: { scale: scaleOrdinal(feeStatuses, feeColors) },
     theme,
@@ -46,7 +46,7 @@ export function MonthlyFeesChart({ rows, onFocus, onMonthSelect }: {
   const definition = useMemo(() => createMonthlyFeesChart(rows), [rows]);
   return <Chart definition={definition} height={320} initialWidth={720}
     ariaLabel={`Monthly training fees by payment received date in ${rows[0]?.year ?? "the selected year"}, comparing Delivered and Contracted training in US dollars`}
-    ariaDescription="Months without recorded payment dates have zero fees. Amounts are proposal fees."
+    ariaDescription="Months without recorded payment dates have zero fees. Amounts use Actual, or the proposal fee when Actual is not recorded."
     onFocusChange={(point) => onFocus(point?.datum ?? null)}
     onSelect={(point) => { if (point) onMonthSelect(point.datum.monthIndex); }} />;
 }

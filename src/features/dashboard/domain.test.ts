@@ -17,11 +17,11 @@ function training(overrides: Partial<TrainingPackage> = {}): TrainingPackage {
 }
 
 function project(overrides: Partial<ClientProject> = {}): ClientProject {
-  return { ...emptyClientProject(), id: crypto.randomUUID(), clientName: "Example client", clientOwner: "", createdAt: "", updatedAt: "", ...overrides };
+  return { ...emptyClientProject(), id: crypto.randomUUID(), stage: "Delivered", clientName: "Example client", clientOwner: "", createdAt: "", updatedAt: "", ...overrides };
 }
 
 describe("training fees dashboard", () => {
-  test("includes only generated Delivered and Contracted training", () => {
+  test("keeps eligible unlinked generated proposals in the overview", () => {
     const packages = [training(), training({ salesStatus: "Contracted" }), ...(["Prospects", "Warm", "Hot"] as const).map((salesStatus) => training({ salesStatus })), training({ status: "Draft", salesStatus: "Contracted" })];
     const fees = collectTrainingFees(packages, []);
     expect(fees.map((fee) => fee.status)).toEqual(["Delivered", "Contracted"]);
@@ -65,7 +65,7 @@ describe("training fees dashboard", () => {
 
   test("groups separate fees into all twelve months and only the selected year", () => {
     const packages = [training(), training({ salesStatus: "Contracted", pricingInputs: { professionalFee: 900, numberOfParticipants: 10, vatStatus: "Including VAT" } }), training(), training()];
-    const projects = ["2026-01-01", "2026-01-31", "2026-12-31", "2027-01-01"].map((paymentReceivedDate, index) => project({ trainingPackageId: packages[index].id, paymentReceivedDate }));
+    const projects = ["2026-01-01", "2026-01-31", "2026-12-31", "2027-01-01"].map((paymentReceivedDate, index) => project({ stage: index === 1 ? "Contracted" : "Delivered", trainingPackageId: packages[index].id, paymentReceivedDate }));
     const fees = collectTrainingFees(packages, projects);
     const rows = monthlyTrainingFees(fees, 2026);
     expect(rows).toHaveLength(24);
@@ -182,15 +182,15 @@ describe("missing payment dates", () => {
     expect(reminders[0].href).toBe(`/pipeline?projectId=${projects[0].id}`);
   });
 
-  test("counts linked proposals once and keeps proposal fees separate from imported amounts", () => {
+  test("counts linked training once and uses its Actual value in reminders and totals", () => {
     const pkg = training({ salesStatus: "Contracted" });
     const source = project({ stage: "Contracted", trainingPackageId: pkg.id, targetValue: 2000, actualValue: 100 });
     const fees = collectTrainingFees([pkg], [source]);
     const reminders = collectTrainingPaymentReminders(fees, [source]);
     expect(reminders).toHaveLength(1);
-    expect(reminders[0].amount).toBe(1200);
-    expect(reminders[0].amountLabel).toBe("Proposal fee");
-    expect(feeTotal(fees)).toBe(1200);
+    expect(reminders[0].amount).toBe(100);
+    expect(reminders[0].amountLabel).toBe("Actual");
+    expect(feeTotal(fees)).toBe(100);
     expect(monthlyTrainingFees(fees, 2026).every((row) => row.fee === 0)).toBe(true);
   });
 

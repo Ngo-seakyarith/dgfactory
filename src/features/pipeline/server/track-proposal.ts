@@ -1,10 +1,10 @@
-import { z } from "zod";
+import { databaseIdSchema } from "@/lib/database-id";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { ProjectRequestError } from "./errors";
 
 export async function validateProjectForProposal(projectId: string | undefined, clientId: string | null, sourceId: string) {
   if (!projectId) return;
-  z.uuid().parse(projectId);
+  databaseIdSchema.parse(projectId);
   const supabase = getSupabaseServerClient();
   if (!supabase) throw new Error("Project storage is unavailable.");
   const { data, error } = await supabase.from("client_projects").select("client_id,stage,training_package_id,system_proposal_id").eq("id", projectId).maybeSingle();

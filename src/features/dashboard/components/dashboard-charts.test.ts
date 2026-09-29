@@ -43,7 +43,7 @@ describe("dashboard charts", () => {
     pkg.status = "Generated";
     pkg.salesStatus = "Delivered";
     pkg.proposalBrief.scheduleDate = "2026-01-01";
-    const project = { ...emptyClientProject(), id: "one", trainingPackageId: pkg.id, paymentReceivedDate: "2026-11-15", clientName: "Example", clientOwner: "", createdAt: "", updatedAt: "" };
+    const project = { ...emptyClientProject(), id: "one", stage: "Delivered" as const, trainingPackageId: pkg.id, paymentReceivedDate: "2026-11-15", clientName: "Example", clientOwner: "", createdAt: "", updatedAt: "" };
     const fees = collectTrainingFees([pkg], [project]);
     const rows = monthlyTrainingFees(fees, 2026);
     const scene = createChartScene(createMonthlyFeesChart(rows), { width: 1100, height: 320 });
@@ -51,6 +51,28 @@ describe("dashboard charts", () => {
     expect(november?.datum.fee).toBe(1200);
     expect(november?.datum.trainings[0].project).toBe(project);
     expect(scene.points.filter((point) => point.datum.month === "Jan").every((point) => point.datum.fee === 0)).toBe(true);
+  });
+
+  test("manual Actual revenue renders in monthly and ranking charts without generated proposals", () => {
+    const client = { ...createEmptyClient(), name: "External training client" };
+    const project = {
+      ...emptyClientProject(client.id), id: "manual", title: "External training", stage: "Delivered" as const,
+      actualValue: 2750, paymentReceivedDate: "2026-09-29", clientName: client.name, clientOwner: "",
+      createdAt: "", updatedAt: "",
+    };
+    const fees = collectTrainingFees([], [project]);
+    const monthly = createChartScene(createMonthlyFeesChart(monthlyTrainingFees(fees, 2026)), { width: 350, height: 320 });
+    const september = monthly.points.find((point) => point.datum.monthIndex === 8 && point.datum.status === "Delivered")!;
+    expect(september.datum.fee).toBe(2750);
+    expect(september.datum.trainings[0].project).toBe(project);
+    expect(september.datum.trainings[0].package).toBeNull();
+    expect(renderChartSvg(monthly, { ariaLabel: "Training fees" })).not.toMatch(/NaN|Infinity/);
+    const ranked = rankClients(clientPerformance(fees, [project], [client]), "revenue", 5);
+    const ranking = createChartScene<RankedClient, number, string>(createTopClientsChart(ranked, "revenue").chart({ width: 350, height: 200, defaultTheme: defaultChartTheme }), { width: 350, height: 200 });
+    expect(ranking.points[0].datum).toBe(ranked[0]);
+    expect(ranking.points[0].datum.value).toBe(2750);
+    expect(ranking.points[0].datum.client).toBe(client);
+    expect(renderChartSvg(ranking, { ariaLabel: "Top clients" })).toContain("External");
   });
 
   test("project stage scene preserves project evidence and readable stage labels", () => {

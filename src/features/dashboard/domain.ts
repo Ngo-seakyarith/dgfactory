@@ -7,7 +7,13 @@ export const feeStatuses = ["Delivered", "Contracted"] as const;
 export type FeeStatus = (typeof feeStatuses)[number];
 
 export type TrainingFee = {
-  package: TrainingPackage;
+  id: string;
+  title: string;
+  clientId: string | null;
+  client: string;
+  href: string;
+  amountLabel: "Actual" | "Proposal fee";
+  package: TrainingPackage | null;
   project: ClientProject | null;
   status: FeeStatus;
   paymentReceivedDate: string | null;
@@ -36,7 +42,7 @@ export function filterDashboardByOwner(trainings: readonly TrainingFee[], projec
   };
   return {
     projects: projects.filter((project) => matches(project.clientId)),
-    trainings: trainings.filter((training) => matches(training.package.clientId)),
+    trainings: trainings.filter((training) => matches(training.clientId)),
   };
 }
 
@@ -57,18 +63,37 @@ export function normalizePaymentReceivedDate(value: string): string | null {
   return Number.isFinite(parsed.getTime()) && parsed.toISOString().slice(0, 10) === date ? date : null;
 }
 
+const validAmount = (value: number | null | undefined) => value != null && Number.isFinite(value) && value >= 0 ? value : null;
+
 export function collectTrainingFees(packages: readonly TrainingPackage[], projects: readonly ClientProject[]): TrainingFee[] {
-  const projectByPackage = new Map(projects.filter((project) => project.trainingPackageId).map((project) => [project.trainingPackageId, project]));
-  return packages.flatMap((pkg): TrainingFee[] => {
-    if (pkg.status !== "Generated" || (pkg.salesStatus !== "Delivered" && pkg.salesStatus !== "Contracted")) return [];
-    const project = projectByPackage.get(pkg.id) ?? null;
-    const fee = pkg.pricingInputs.professionalFee;
-    if (!Number.isFinite(fee) || fee < 0) return [];
-    return [{
-      package: pkg, project, status: pkg.salesStatus, fee,
-      paymentReceivedDate: normalizePaymentReceivedDate(project?.paymentReceivedDate ?? ""),
-    }];
-  });
+  const packageById = new Map(packages.map((pkg) => [pkg.id, pkg]));
+  const linkedPackages = new Set(projects.flatMap((project) => project.trainingPackageId ? [project.trainingPackageId] : []));
+  const fees: TrainingFee[] = [];
+  for (const project of projects) {
+    if (project.projectType !== "Training" || (project.stage !== "Delivered" && project.stage !== "Contracted")) continue;
+    const pkg = project.trainingPackageId ? packageById.get(project.trainingPackageId) ?? null : null;
+    const actual = validAmount(project.actualValue);
+    const fee = actual ?? (pkg?.status === "Generated" ? validAmount(pkg.pricingInputs.professionalFee) : null);
+    if (fee === null) continue;
+    fees.push({
+      id: project.id, title: project.title, clientId: project.clientId, client: project.clientName,
+      href: `/pipeline?projectId=${project.id}`, amountLabel: actual !== null ? "Actual" : "Proposal fee",
+      package: pkg, project, status: project.stage, fee,
+      paymentReceivedDate: normalizePaymentReceivedDate(project.paymentReceivedDate ?? ""),
+    });
+  }
+  // Unlinked proposals remain visible, but a linked training is counted only through its Pipeline row.
+  for (const pkg of packages) {
+    if (linkedPackages.has(pkg.id) || pkg.status !== "Generated" || (pkg.salesStatus !== "Delivered" && pkg.salesStatus !== "Contracted")) continue;
+    const fee = validAmount(pkg.pricingInputs.professionalFee);
+    if (fee === null) continue;
+    fees.push({
+      id: pkg.id, title: pkg.title, clientId: pkg.clientId, client: pkg.client,
+      href: `/packages/${pkg.id}`, amountLabel: "Proposal fee",
+      package: pkg, project: null, status: pkg.salesStatus, fee, paymentReceivedDate: null,
+    });
+  }
+  return fees;
 }
 
 export type TrainingPaymentReminder = {
@@ -82,30 +107,28 @@ export type TrainingPaymentReminder = {
 };
 
 export function collectTrainingPaymentReminders(trainings: readonly TrainingFee[], projects: readonly ClientProject[]): TrainingPaymentReminder[] {
-  const feeByPackage = new Map(trainings.map((training) => [training.package.id, training]));
-  const linkedPackages = new Set(projects.flatMap((project) => project.trainingPackageId ? [project.trainingPackageId] : []));
+  const feeByProject = new Map(trainings.flatMap((training) => training.project ? [[training.project.id, training] as const] : []));
   const reminders: TrainingPaymentReminder[] = [];
-  const validAmount = (value: number | null) => value !== null && Number.isFinite(value) && value >= 0 ? value : null;
 
   for (const project of projects) {
     if (project.projectType !== "Training" || (project.stage !== "Contracted" && project.stage !== "Delivered")) continue;
     if (normalizePaymentReceivedDate(project.paymentReceivedDate ?? "")) continue;
-    const training = project.trainingPackageId ? feeByPackage.get(project.trainingPackageId) : undefined;
+    const training = feeByProject.get(project.id);
     const actual = validAmount(project.actualValue);
     const target = validAmount(project.targetValue);
     reminders.push({
       id: project.id, title: project.title, client: project.clientName, status: project.stage,
       href: `/pipeline?projectId=${project.id}`,
       amount: training?.fee ?? actual ?? target,
-      amountLabel: training ? "Proposal fee" : actual !== null ? "Actual" : target !== null ? "Target" : null,
+      amountLabel: training?.amountLabel ?? (actual !== null ? "Actual" : target !== null ? "Target" : null),
     });
   }
 
   for (const training of trainings) {
-    if (linkedPackages.has(training.package.id) || training.paymentReceivedDate) continue;
+    if (training.project || training.paymentReceivedDate) continue;
     reminders.push({
-      id: training.package.id, title: training.package.title, client: training.package.client, status: training.status,
-      href: `/packages/${training.package.id}`, amount: training.fee, amountLabel: "Proposal fee",
+      id: training.id, title: training.title, client: training.client, status: training.status,
+      href: training.href, amount: training.fee, amountLabel: training.amountLabel,
     });
   }
   return reminders;
@@ -175,7 +198,7 @@ export function clientPerformance(trainings: readonly TrainingFee[], projects: r
     } else if (project.projectType === "Intelligent System") row.systems++;
   }
   for (const fee of trainings) {
-    const row = fee.package.clientId ? rows.get(fee.package.clientId) : undefined;
+    const row = fee.clientId ? rows.get(fee.clientId) : undefined;
     if (!row) continue;
     row.fees.push(fee);
     row.revenue += fee.fee;

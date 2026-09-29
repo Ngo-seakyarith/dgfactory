@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { requireApproved } from "@/lib/route-guards";
 import { saveAuditLog } from "@/lib/audit";
+import { databaseIdSchema } from "@/lib/database-id";
 import { projectInputSchema, projectStages } from "../project-domain";
 import { deleteClientProject, getClientProject, listClientProjects, saveClientProject } from "./project-storage";
 import { ProjectRequestError } from "./errors";
@@ -25,7 +26,7 @@ export async function getProjectRequest(request: Request, context: Context) {
   const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
   try {
-    const id = z.uuid().parse((await context.params).id);
+    const id = databaseIdSchema.parse((await context.params).id);
     const project = await getClientProject(id);
     return project ? NextResponse.json({ project }) : NextResponse.json({ error: "Project not found." }, { status: 404 });
   } catch (error) { return errorResponse(error); }
@@ -35,7 +36,7 @@ export async function saveProjectRequest(request: Request, context?: Context) {
   const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
   try {
-    const id = context ? z.uuid().parse((await context.params).id) : undefined;
+    const id = context ? databaseIdSchema.parse((await context.params).id) : undefined;
     const body = await request.json();
     const stageOnly = z.object({ stage: z.enum(projectStages) }).strict().safeParse(body);
     const previous = id && stageOnly.success ? await getClientProject(id) : null;
@@ -51,7 +52,7 @@ export async function deleteProjectRequest(request: Request, context: Context) {
   const auth = await requireApproved(request);
   if (!auth.ok) return auth.response;
   try {
-    const id = z.uuid().parse((await context.params).id);
+    const id = databaseIdSchema.parse((await context.params).id);
     await deleteClientProject(id);
     await saveAuditLog({ actor: auth.user.actor, action: "client_project_deleted", entityType: "client_project", entityId: id, metadata: {} });
     return NextResponse.json({ deleted: true });
