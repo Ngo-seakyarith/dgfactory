@@ -19,7 +19,11 @@ export function useSaveClientProjectMutation() {
       }),
     onSuccess({ project }) {
       client.setQueryData(projectKeys.detail(project.id), project);
-      client.setQueryData<ClientProject[]>(projectKeys.list(), (projects) => projects ? [...projects.filter((item) => item.id !== project.id), project] : undefined);
+      client.setQueryData<ClientProject[]>(projectKeys.list(), (projects) => projects
+        ? projects.some((item) => item.id === project.id)
+          ? projects.map((item) => item.id === project.id ? project : item)
+          : [...projects, project]
+        : undefined);
       void client.invalidateQueries({ queryKey: projectKeys.list() });
       for (const key of ["training-packages", "solution-proposals", "delivery"]) void client.invalidateQueries({ queryKey: [key] });
     },

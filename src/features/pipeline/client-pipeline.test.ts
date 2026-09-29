@@ -17,7 +17,7 @@ describe("combined clients and pipeline", () => {
   test("does not merge similar names or lose unmatched client IDs", () => {
     const groups = groupClientPipeline([client("a", { name: "ABC" }), client("b", { name: "ABC" })], [project("one", "a"), project("two", null), project("three", "missing")]);
     expect(groups).toHaveLength(3);
-    expect(groups.find((group) => group.id === "unassigned")?.projects.map((project) => project.id)).toEqual(["two", "three"]);
+    expect(groups.find((group) => group.id === "unassigned")?.projects.map((project) => project.id)).toEqual(["three", "two"]);
   });
   test("stages stay independent for work under the same client", () => {
     const [group] = groupClientPipeline([client("a")], [project("one", "a", { stage: "Hot", paymentReceivedDate: "2026-09-27", actualValue: 900 }), project("two", "a", { stage: "Prospects" })]);
@@ -48,7 +48,7 @@ describe("combined clients and pipeline", () => {
   });
   test("orders clients alphabetically while keeping their work newest first without mutating inputs", () => {
     const clients = [client("z"), client("a"), client("b")];
-    const projects = [project("old", "b", { updatedAt: "2026-09-01" }), project("new", "b")];
+    const projects = [project("old", "b", { createdAt: "2026-09-01" }), project("new", "b", { createdAt: "2026-09-28" })];
     const groups = groupClientPipeline(clients, projects);
     expect(groups.map((group) => group.id)).toEqual(["a", "b", "z"]);
     expect(groups.find((group) => group.id === "b")?.projects.map((project) => project.id)).toEqual(["new", "old"]);
@@ -60,5 +60,17 @@ describe("combined clients and pipeline", () => {
       client("z", { name: "Zuellig" }), client("b", { name: " borey " }), client("a", { name: "Angkor" }),
     ], [project("latest", "z")]);
     expect(groups.map((group) => group.id)).toEqual(["a", "b", "z"]);
+  });
+  test("autosaving an older training does not move it above newer work", () => {
+    const projects = [project("older", "a", { createdAt: "2026-09-01" }), project("newer", "a", { createdAt: "2026-09-20" })];
+    const before = groupClientPipeline([client("a")], projects)[0].projects.map((item) => item.id);
+    const after = groupClientPipeline([client("a")], projects.map((item) => item.id === "older" ? { ...item, updatedAt: "2026-09-29", title: "Edited title" } : item))[0].projects.map((item) => item.id);
+    expect(before).toEqual(["newer", "older"]);
+    expect(after).toEqual(before);
+  });
+  test("equal creation dates have deterministic order after cache refetches", () => {
+    const projects = [project("b", "a"), project("a", "a")];
+    expect(groupClientPipeline([client("a")], projects)[0].projects.map((item) => item.id)).toEqual(["a", "b"]);
+    expect(groupClientPipeline([client("a")], [...projects].reverse())[0].projects.map((item) => item.id)).toEqual(["a", "b"]);
   });
 });

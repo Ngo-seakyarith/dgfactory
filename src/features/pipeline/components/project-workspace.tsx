@@ -1,20 +1,55 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { formOptions, useSelector } from "@tanstack/react-form";
+import { memo, useEffect, useRef, useState } from "react";
 import { FileText, MonitorCog, Plus, RotateCcw, Save, Trash2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
+import { useAppForm, withForm } from "@/components/ui/form";
 import { QueryErrorState } from "@/components/query-error-state";
 import { AutosaveIndicator } from "@/components/autosave-indicator";
 import { useAutosave } from "@/hooks/use-autosave";
 import { useClientsQuery } from "@/features/crm/queries";
-import { Field } from "@/features/crm/components/shared";
+import type { Client } from "@/features/crm/domain";
 import { formatDateTime } from "@/lib/date-time";
 import { clientProjectInput, emptyClientProject, projectInputSchema, projectStages, projectTypes, type ClientProject, type ClientProjectInput } from "../project-domain";
 import { useDeleteClientProjectMutation, useSaveClientProjectMutation } from "../project-queries";
+
+const projectFormOptions = formOptions({
+  defaultValues: emptyClientProject(),
+  validators: { onChange: projectInputSchema, onSubmit: projectInputSchema },
+});
+
+const ProjectFields = memo(withForm({
+  ...projectFormOptions,
+  props: { clientId: "", linked: false, linkedClient: false, clients: [] as Client[], pendingClients: false, pendingSave: false },
+  render: function ProjectFields({ form, clientId, linked, linkedClient, clients, pendingClients, pendingSave }) {
+    return <>
+      <section className="grid gap-4 md:grid-cols-2">
+        {!clientId ? <form.AppField name="clientId">{(field) => <field.SelectField label="Client" required disabled={linkedClient || pendingClients}><option value="">Select client</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</field.SelectField>}</form.AppField> : null}
+        <form.AppField name="title">{(field) => <field.TextField label="Title" required maxLength={300} />}</form.AppField>
+        <form.AppField name="projectType">{(field) => <field.SelectField label="Type" disabled={linked}>{projectTypes.map((type) => <option key={type}>{type}</option>)}</field.SelectField>}</form.AppField>
+        <form.AppField name="stage">{(field) => <field.SelectField label="Stage" disabled={pendingSave}>{projectStages.map((stage) => <option key={stage}>{stage}</option>)}</field.SelectField>}</form.AppField>
+        <form.AppField name="statusNote">{(field) => <field.TextField label="Status notes" />}</form.AppField>
+      </section>
+      <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <form.AppField name="targetValue">{(field) => <field.NumberField label="Target (USD)" min={0} step="0.01" />}</form.AppField>
+        <form.AppField name="actualValue">{(field) => <field.NumberField label="Actual (USD)" min={0} step="0.01" />}</form.AppField>
+        <form.AppField name="paymentReceivedDate">{(field) => <field.DateField label="Payment received date" />}</form.AppField>
+      </section>
+      <details className="border-t border-border pt-4"><summary className="cursor-pointer text-sm font-medium">Timing and additional details</summary><section className="mt-4 grid gap-4 md:grid-cols-2">
+        <form.AppField name="startPeriod">{(field) => <field.TextField label="Start" placeholder="Q4, October, or a date" />}</form.AppField>
+        <form.AppField name="endPeriod">{(field) => <field.TextField label="End" placeholder="Q4, October, or a date" />}</form.AppField>
+        <div className="md:col-span-2"><form.AppField name="expectedOutcomes">{(field) => <field.TextareaField label="Expected revenue and additional work" rows={2} />}</form.AppField></div>
+        <form.AppField name="nextAction">{(field) => <field.TextareaField label="Next action" rows={3} />}</form.AppField>
+        <form.AppField name="nextOpportunities">{(field) => <field.TextareaField label="Next opportunities" rows={3} />}</form.AppField>
+        <div className="md:col-span-2"><form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={3} />}</form.AppField></div>
+      </section></details>
+    </>;
+  },
+}));
+
+const noClients: Client[] = [];
 
 export function ProjectEditor({ project, clientId, projectType = "Training", onCreated, onClose }: {
   project?: ClientProject;
@@ -27,14 +62,27 @@ export function ProjectEditor({ project, clientId, projectType = "Training", onC
   const clientsQuery = useClientsQuery();
   const saveMutation = useSaveClientProjectMutation();
   const deleteMutation = useDeleteClientProjectMutation();
-  const [form, setForm] = useState<ClientProjectInput>(() => project ? clientProjectInput(project) : { ...emptyClientProject(clientId), projectType });
+  const [initialValues] = useState<ClientProjectInput>(() => project ? clientProjectInput(project) : { ...emptyClientProject(clientId), projectType });
   const [error, setError] = useState("");
-  const lastSaved = useRef(JSON.stringify(form));
+  const form = useAppForm({
+    ...projectFormOptions,
+    defaultValues: initialValues,
+    async onSubmit({ value }) {
+      if (project) { await autosave.flush(); return; }
+      setError("");
+      try {
+        const { project: saved } = await saveMutation.mutateAsync({ input: projectInputSchema.parse(value) });
+        onCreated?.(saved);
+      } catch (error) { setError(error instanceof Error ? error.message : "Project could not be created."); }
+    },
+  });
+  const values = useSelector(form.store, (state) => state.values);
+  const lastSaved = useRef(JSON.stringify(initialValues));
   const removed = useRef(false);
   const linked = Boolean(project?.trainingPackageId || project?.systemProposalId);
-  const valid = projectInputSchema.safeParse(form).success;
+  const valid = projectInputSchema.safeParse(values).success;
   const autosave = useAutosave({
-    value: form, enabled: Boolean(project) && valid && !deleteMutation.isPending,
+    value: values, enabled: Boolean(project) && valid && !deleteMutation.isPending,
     async onSave(input) {
       setError("");
       await saveMutation.mutateAsync({ id: project?.id, input });
@@ -46,26 +94,16 @@ export function ProjectEditor({ project, clientId, projectType = "Training", onC
   flushRef.current = autosave.flush;
   useEffect(() => () => { if (!removed.current) void flushRef.current(); }, []);
   useEffect(() => {
-    if (!project || JSON.stringify(form) !== lastSaved.current) return;
+    if (!project || JSON.stringify(form.state.values) !== lastSaved.current) return;
     const incoming = clientProjectInput(project);
     // Only replace local fields when no unsaved edits would be lost.
     lastSaved.current = JSON.stringify(incoming);
-    setForm(incoming);
+    form.reset(incoming, { keepDefaultValues: true });
     autosave.markSaved(incoming);
   // Changes to server data should not reinitialize an actively edited form.
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [project?.updatedAt]);
 
-  function update<K extends keyof ClientProjectInput>(key: K, value: ClientProjectInput[K]) {
-    setForm((current) => ({ ...current, [key]: value }));
-  }
-  async function create() {
-    const parsed = projectInputSchema.safeParse(form);
-    if (!parsed.success) { setError(parsed.error.issues[0]?.message ?? "Check the project details."); return; }
-    setError("");
-    try { const { project: saved } = await saveMutation.mutateAsync({ input: parsed.data }); onCreated?.(saved); }
-    catch (error) { setError(error instanceof Error ? error.message : "Project could not be created."); }
-  }
   async function remove() {
     if (!project || !window.confirm(`Delete project "${project.title}"?`)) return;
     autosave.cancel();
@@ -77,7 +115,7 @@ export function ProjectEditor({ project, clientId, projectType = "Training", onC
   async function openProposal(href: string) {
     await autosave.flush();
     await autosave.waitForPending();
-    if (JSON.stringify(form) !== lastSaved.current) {
+    if (JSON.stringify(form.state.values) !== lastSaved.current) {
       setError("Save the project changes before creating its proposal.");
       return;
     }
@@ -87,15 +125,15 @@ export function ProjectEditor({ project, clientId, projectType = "Training", onC
     if (project) {
       await autosave.flush();
       await autosave.waitForPending();
-      if (JSON.stringify(form) !== lastSaved.current) { setError("Check and save your changes before closing."); return; }
-    } else if (JSON.stringify(form) !== lastSaved.current && !window.confirm("Discard this unsaved training or system?")) return;
+      if (JSON.stringify(form.state.values) !== lastSaved.current) { setError("Check and save your changes before closing."); return; }
+    } else if (JSON.stringify(form.state.values) !== lastSaved.current && !window.confirm("Discard this unsaved training or system?")) return;
     onClose();
   }
-  const client = clientsQuery.data?.find((client) => client.id === form.clientId);
+  const client = clientsQuery.data?.find((client) => client.id === values.clientId);
   const clientName = client?.name ?? project?.clientName ?? "";
-  const trainingHref = project ? `/packages/new?${new URLSearchParams({ projectId: project.id, clientId: form.clientId, client: clientName, courseTitle: form.title })}` : "";
-  const systemHref = project ? `/solution-proposals/new?${new URLSearchParams({ projectId: project.id, clientId: form.clientId, client: clientName, title: form.title })}` : "";
-  const canCreateProposal = project && form.clientId && form.stage !== "Delivered";
+  const trainingHref = project ? `/packages/new?${new URLSearchParams({ projectId: project.id, clientId: values.clientId, client: clientName, courseTitle: values.title })}` : "";
+  const systemHref = project ? `/solution-proposals/new?${new URLSearchParams({ projectId: project.id, clientId: values.clientId, client: clientName, title: values.title })}` : "";
+  const canCreateProposal = project && values.clientId && values.stage !== "Delivered";
   return <div className="space-y-5 border-t border-border py-5">
     <header className="flex flex-wrap items-center gap-3">
       <h3 className="mr-auto font-semibold">{project ? "Edit details" : `New ${projectType === "Intelligent System" ? "system" : "training"}`}</h3>
@@ -105,34 +143,13 @@ export function ProjectEditor({ project, clientId, projectType = "Training", onC
     {project ? <p className="text-xs text-muted-foreground">Created {formatDateTime(project.createdAt)}</p> : null}
     {error ? <div role="alert" className="flex flex-wrap items-center gap-3 rounded-md border border-destructive/30 bg-destructive/5 p-3 text-sm text-destructive"><p className="flex-1">{error}</p>{project ? <Button type="button" variant="outline" onClick={() => void autosave.flush()}><RotateCcw className="h-4 w-4" />Retry</Button> : null}</div> : null}
     {clientsQuery.isError ? <QueryErrorState title="Clients could not be loaded" detail={clientsQuery.error.message} onRetry={() => void clientsQuery.refetch()} /> : null}
-    <form className="space-y-6" onSubmit={(event) => { event.preventDefault(); void (project ? autosave.flush() : create()); }}>
-      <section className="grid gap-4 md:grid-cols-2">
-        {!clientId ? <Field label="Client"><Select required value={form.clientId} disabled={Boolean(linked && project?.clientId) || clientsQuery.isPending} onChange={(event) => update("clientId", event.target.value)}><option value="">Select client</option>{clientsQuery.data?.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</Select></Field> : null}
-        <Field label="Title"><Input required maxLength={300} value={form.title} onChange={(event) => update("title", event.target.value)} /></Field>
-        <Field label="Type"><Select value={form.projectType} disabled={linked} onChange={(event) => update("projectType", event.target.value as ClientProjectInput["projectType"])}>{projectTypes.map((type) => <option key={type}>{type}</option>)}</Select></Field>
-        <Field label="Stage"><Select value={form.stage} disabled={saveMutation.isPending} onChange={(event) => update("stage", event.target.value as ClientProjectInput["stage"])}>{projectStages.map((stage) => <option key={stage}>{stage}</option>)}</Select></Field>
-        <Field label="Status notes"><Input value={form.statusNote} onChange={(event) => update("statusNote", event.target.value)} /></Field>
-      </section>
-      <section className="space-y-4">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Field label="Target (USD)"><Input type="number" min={0} step="0.01" value={form.targetValue ?? ""} onChange={(event) => update("targetValue", event.target.value === "" ? null : Number(event.target.value))} /></Field>
-          <Field label="Actual (USD)"><Input type="number" min={0} step="0.01" value={form.actualValue ?? ""} onChange={(event) => update("actualValue", event.target.value === "" ? null : Number(event.target.value))} /></Field>
-          <Field label="Payment received date"><Input type="date" value={form.paymentReceivedDate ?? ""} onChange={(event) => update("paymentReceivedDate", event.target.value || null)} /></Field>
-        </div>
-      </section>
-      <details className="border-t border-border pt-4"><summary className="cursor-pointer text-sm font-medium">Timing and additional details</summary><section className="mt-4 grid gap-4 md:grid-cols-2">
-        <Field label="Start"><Input placeholder="Q4, October, or a date" value={form.startPeriod} onChange={(event) => update("startPeriod", event.target.value)} /></Field>
-        <Field label="End"><Input placeholder="Q4, October, or a date" value={form.endPeriod} onChange={(event) => update("endPeriod", event.target.value)} /></Field>
-        <div className="md:col-span-2"><Field label="Expected revenue and additional work"><Textarea rows={2} value={form.expectedOutcomes} onChange={(event) => update("expectedOutcomes", event.target.value)} /></Field></div>
-        <Field label="Next action"><Textarea rows={3} value={form.nextAction} onChange={(event) => update("nextAction", event.target.value)} /></Field>
-        <Field label="Next opportunities"><Textarea rows={3} value={form.nextOpportunities} onChange={(event) => update("nextOpportunities", event.target.value)} /></Field>
-        <div className="md:col-span-2"><Field label="Notes"><Textarea rows={3} value={form.notes} onChange={(event) => update("notes", event.target.value)} /></Field></div>
-      </section></details>
-      {!project ? <Button type="submit" variant="gold" disabled={saveMutation.isPending || clientsQuery.isPending}><Save className="h-4 w-4" />{saveMutation.isPending ? "Adding..." : "Add to pipeline"}</Button> : null}
+    <form className="space-y-6" noValidate onSubmit={(event) => { event.preventDefault(); void form.handleSubmit(); }}>
+      <ProjectFields form={form} clientId={clientId ?? ""} linked={linked} linkedClient={Boolean(linked && project?.clientId)} clients={clientsQuery.data ?? noClients} pendingClients={clientsQuery.isPending} pendingSave={saveMutation.isPending} />
+      {!project ? <form.Subscribe selector={(state) => state.isSubmitting}>{(isSubmitting) => <Button type="submit" variant="gold" disabled={isSubmitting || clientsQuery.isPending}><Save className="h-4 w-4" />{isSubmitting ? "Adding..." : "Add to pipeline"}</Button>}</form.Subscribe> : null}
     </form>
     {project ? <section className="flex flex-wrap items-center gap-3 border-t border-border pt-5">
       {project.trainingPackageId ? <Button type="button" variant="outline" onClick={() => void openProposal(`/packages/${project.trainingPackageId}`)}><FileText className="h-4 w-4" />Training proposal</Button> : project.systemProposalId ? <Button type="button" variant="outline" onClick={() => void openProposal(`/solution-proposals/${project.systemProposalId}`)}><MonitorCog className="h-4 w-4" />System proposal</Button> : canCreateProposal ? <>
-        {form.projectType === "Training" ? <Button type="button" variant="outline" disabled={!valid} onClick={() => void openProposal(trainingHref)}><Plus className="h-4 w-4" />Create training proposal</Button> : form.projectType === "Intelligent System" ? <Button type="button" variant="outline" disabled={!valid} onClick={() => void openProposal(systemHref)}><Plus className="h-4 w-4" />Create system proposal</Button> : null}
+        {values.projectType === "Training" ? <Button type="button" variant="outline" disabled={!valid} onClick={() => void openProposal(trainingHref)}><Plus className="h-4 w-4" />Create training proposal</Button> : values.projectType === "Intelligent System" ? <Button type="button" variant="outline" disabled={!valid} onClick={() => void openProposal(systemHref)}><Plus className="h-4 w-4" />Create system proposal</Button> : null}
       </> : null}
       {!linked ? <Button type="button" variant="outline" className="sm:ml-auto" disabled={deleteMutation.isPending} onClick={() => void remove()}><Trash2 className="h-4 w-4" />Delete</Button> : null}
     </section> : null}

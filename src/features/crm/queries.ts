@@ -34,7 +34,11 @@ export function useSaveClientMutation() {
       }),
     onSuccess(payload) {
       queryClient.setQueryData(clientKeys.detail(payload.client.id), payload.client);
-      queryClient.setQueryData<Client[]>(clientKeys.list(), (clients) => clients ? [...clients.filter((client) => client.id !== payload.client.id), payload.client] : undefined);
+      queryClient.setQueryData<Client[]>(clientKeys.list(), (clients) => clients
+        ? clients.some((client) => client.id === payload.client.id)
+          ? clients.map((client) => client.id === payload.client.id ? payload.client : client)
+          : [...clients, payload.client]
+        : undefined);
       void queryClient.invalidateQueries({ queryKey: clientKeys.list() });
       void queryClient.invalidateQueries({ queryKey: projectKeys.all });
     },

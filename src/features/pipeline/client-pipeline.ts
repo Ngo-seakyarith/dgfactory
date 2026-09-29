@@ -16,7 +16,7 @@ export function groupClientPipeline(clients: readonly Client[], projects: readon
   }
   const result: ClientPipelineGroup[] = [...groups.values()];
   if (unassigned.projects.length) result.push(unassigned);
-  for (const group of result) group.projects.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+  for (const group of result) group.projects.sort((a, b) => b.createdAt.localeCompare(a.createdAt) || a.id.localeCompare(b.id));
   return result.sort((a, b) => {
     return (a.client?.name ?? "Client not selected").trim().localeCompare(
       (b.client?.name ?? "Client not selected").trim(), "en", { sensitivity: "base", numeric: true },

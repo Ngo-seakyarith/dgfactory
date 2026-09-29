@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ArrowUpRight, ChevronRight, FileText, MonitorCog, Pencil, Plus, Search, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,7 @@ function WorkRow({ project, clientId, visible, selected, onSelect }: { project: 
   useEffect(() => { if (selected) { setEditing(true); setVisited(true); } }, [selected]);
   const href = project.trainingPackageId ? `/packages/${project.trainingPackageId}` : project.systemProposalId ? `/solution-proposals/${project.systemProposalId}` : null;
   function edit() { setEditing(true); setVisited(true); onSelect(project.id); }
-  return <div hidden={!visible} className="border-t border-border py-4">
+  return <div id={`project-${project.id}`} hidden={!visible} className="border-t border-border py-4">
     <div className="flex flex-wrap items-start gap-3">
       <div className="min-w-0 flex-1 basis-64">
         <button type="button" className="max-w-full break-words text-left font-medium hover:text-primary" onClick={edit}>{project.title}</button>
@@ -59,13 +59,10 @@ function ClientGroup({ group, visible, visibleProjects, selectedClient, selected
   const [editingClient, setEditingClient] = useState(false);
   const [newType, setNewType] = useState<ClientProjectInput["projectType"] | null>(newProject ? "Training" : null);
   const [error, setError] = useState("");
-  const sectionRef = useRef<HTMLElement>(null);
   const deleteMutation = useDeleteClientMutation();
   useEffect(() => {
     if (!selectedClient) return;
     setOpen(true); setVisited(true);
-    const frame = requestAnimationFrame(() => sectionRef.current?.scrollIntoView({ block: "nearest" }));
-    return () => cancelAnimationFrame(frame);
   }, [selectedClient]);
   useEffect(() => { if (newProject) setNewType("Training"); }, [newProject]);
   const client = group.client;
@@ -86,7 +83,7 @@ function ClientGroup({ group, visible, visibleProjects, selectedClient, selected
     setOpen(!open); setVisited(true);
     if (!open) onSelect(group.id);
   }
-  return <section ref={sectionRef} hidden={!visible} className="border-b border-border">
+  return <section id={`client-group-${group.id}`} hidden={!visible} className="border-b border-border">
     <button type="button" aria-expanded={open} aria-controls={`client-${group.id}`} onClick={toggle} className="grid w-full grid-cols-[1fr_auto] items-center gap-3 px-1 py-4 text-left transition-colors hover:bg-muted/50 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)_auto]">
       <div className="min-w-0"><h2 className="break-words font-semibold">{name}</h2><p className="mt-1 text-sm text-muted-foreground">{workSummary}</p><p className="mt-1 text-xs text-muted-foreground lg:hidden">{client?.accountOwner || "Unassigned"}{client?.contactPerson ? ` · ${client.contactPerson}` : ""}</p></div>
       <span className="hidden text-sm text-muted-foreground lg:block">{client?.accountOwner || "Unassigned"}</span>
@@ -96,7 +93,7 @@ function ClientGroup({ group, visible, visibleProjects, selectedClient, selected
     {visited ? <div id={`client-${group.id}`} hidden={!open} className="pb-5 pl-1 sm:pl-5">
       {error ? <p role="alert" className="mb-4 text-sm text-destructive">{error}</p> : null}
       {client ? <>
-        {editingClient ? <div className="mb-5 border-t border-border pt-4"><ClientForm key={client.updatedAt} existingClient={client} onSaved={() => setEditingClient(false)} onCancel={() => setEditingClient(false)} /></div> : <>
+        {editingClient ? <div className="mb-5 border-t border-border pt-4"><ClientForm key={client.id} existingClient={client} onSaved={() => setEditingClient(false)} onCancel={() => setEditingClient(false)} /></div> : <>
           <div className="mb-4 flex flex-wrap items-start justify-between gap-4 border-t border-border pt-4">
             <dl className="grid min-w-0 flex-1 gap-x-8 gap-y-3 text-sm sm:grid-cols-2 xl:grid-cols-3">
               {[["Contact", [client.contactPerson, client.contactPosition].filter(Boolean).join(", ")], ["Email", client.email], ["Phone", client.phone], ["Sector", client.sector], ["Client type", client.clientType], ["Next action", client.nextAction]].filter(([, value]) => value).map(([label, value]) => <div key={label} className="min-w-0"><dt className="text-xs text-muted-foreground">{label}</dt><dd className="mt-1 whitespace-pre-wrap break-words">{value}</dd></div>)}
@@ -118,7 +115,7 @@ export function ClientPipelineWorkspace() {
   const clientsQuery = useClientsQuery();
   const projectsQuery = useClientProjectsQuery();
   const searchParams = useSearchParams();
-  const router = useRouter();
+  const initialTarget = useRef(searchParams.get("projectId") ? `project-${searchParams.get("projectId")}` : searchParams.get("clientId") ? `client-group-${searchParams.get("clientId")}` : null);
   const [search, setSearch] = useState("");
   const [owner, setOwner] = useState("All");
   const [stage, setStage] = useState<ProjectStage | "All">("All");
@@ -132,14 +129,25 @@ export function ClientPipelineWorkspace() {
   const loading = clientsQuery.isPending || projectsQuery.isPending;
   const failed = clientsQuery.isError || projectsQuery.isError;
   const ready = clientsQuery.data !== undefined && projectsQuery.data !== undefined;
+  useEffect(() => {
+    if (!ready || !initialTarget.current) return;
+    // Reveal an incoming bookmark once, never as a side effect of local editing.
+    const frame = requestAnimationFrame(() => {
+      if (initialTarget.current) document.getElementById(initialTarget.current)?.scrollIntoView({ block: "start" });
+      initialTarget.current = null;
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [ready]);
   const visibleClientCount = visible.filter((group) => group.visible && group.group.client).length;
   const visibleWorkCount = visible.reduce((total, group) => total + group.projects.length, 0);
   function select(clientId?: string, projectId?: string, reveal = false) {
+    initialTarget.current = null;
     if (reveal) { setSearch(""); setOwner("All"); setStage("All"); }
     const params = new URLSearchParams();
     if (clientId) params.set("clientId", clientId);
     if (projectId) params.set("projectId", projectId);
-    router.replace(`/pipeline${params.size ? `?${params}` : ""}`, { scroll: false });
+    // Selection belongs to this client workspace, not a server-route transition.
+    window.history.replaceState(null, "", `/pipeline${params.size ? `?${params}` : ""}`);
   }
   return <div className="space-y-5">
     <header className="flex flex-wrap items-end justify-between gap-4"><div className="page-heading"><div className="page-eyebrow">Business development</div><h1 className="page-title">Clients &amp; Pipeline</h1></div><Button type="button" variant="gold" disabled={newClient} onClick={() => setNewClient(true)}><Plus className="h-4 w-4" />New client</Button></header>
