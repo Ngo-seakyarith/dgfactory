@@ -12,7 +12,7 @@ export function TopClients({ rows }: { rows: readonly ClientPerformance[] }) {
   const [limit, setLimit] = useState(5);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const ranked = useMemo(() => rankClients(rows, metric, limit), [rows, metric, limit]);
-  const selected = ranked.find((row) => row.id === selectedId) ?? ranked[0];
+  const selected = ranked.find((row) => row.id === selectedId);
   const settings = clientRankingMetrics[metric];
   const countLabel = metric === "trainings" ? "training" : metric === "delivered" ? "delivered training" : "system proposal";
 
@@ -26,8 +26,7 @@ export function TopClients({ rows }: { rows: readonly ClientPerformance[] }) {
     </div>
     {ranked.length ? <>
       <div className="min-w-0 border-y border-border bg-white py-3"><TopClientsChart rows={ranked} metric={metric} onSelect={(row) => setSelectedId(row.id)} /></div>
-      <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 text-sm" aria-live="polite"><Link href={`/pipeline?clientId=${selected.id}`} className="inline-flex min-w-0 items-center gap-2 font-medium hover:text-primary"><span className="break-words">{selected.client.name}</span><ArrowRight className="h-4 w-4 shrink-0" /></Link><span className="shrink-0 tabular-nums text-muted-foreground">{metric === "revenue" ? formatFees(selected.value) : `${selected.value} ${countLabel}${selected.value === 1 ? "" : "s"}`}</span></div>
-      <details className="text-sm"><summary className="cursor-pointer text-muted-foreground hover:text-foreground">Ranked clients ({ranked.length})</summary><ol className="mt-3 divide-y divide-border">{ranked.map((row) => <li key={row.id}><Link href={`/pipeline?clientId=${row.id}`} className="flex items-start justify-between gap-4 py-3 hover:text-primary"><span className="min-w-0 break-words">{row.rank}. {row.client.name}</span><span className="shrink-0 tabular-nums">{metric === "revenue" ? formatFees(row.value) : row.value}</span></Link></li>)}</ol></details>
+      {selected ? <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 text-sm" aria-live="polite"><Link href={`/pipeline?clientId=${selected.id}`} className="inline-flex min-w-0 items-center gap-2 font-medium hover:text-primary"><span className="break-words">{selected.client.name}</span><ArrowRight className="h-4 w-4 shrink-0" /></Link><span className="shrink-0 tabular-nums text-muted-foreground">{metric === "revenue" ? formatFees(selected.value) : `${selected.value} ${countLabel}${selected.value === 1 ? "" : "s"}`}</span></div> : null}
     </> : <p className="flex min-h-48 items-center justify-center border-y border-border px-4 text-center text-sm text-muted-foreground">{metric === "revenue" ? "No Contracted or Delivered training fees for these clients." : `No ${settings.label.toLowerCase()} for these clients.`}</p>}
   </div>;
 }
