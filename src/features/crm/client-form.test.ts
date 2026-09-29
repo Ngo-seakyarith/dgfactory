@@ -1,9 +1,18 @@
 import { describe, expect, test } from "bun:test";
 import { FieldApi, FormApi } from "@tanstack/react-form";
 import { clientFormSchema } from "./client-form";
-import { createEmptyClient } from "./domain";
+import { createEmptyClient, normalizeClient } from "./domain";
 
 describe("client editor validation", () => {
+  test("normalizes client relationship details before saving", () => {
+    expect(normalizeClient({
+      name: " Example Client ", accountOwner: " DG Academy ", clientType: " Prospect ",
+      relationshipHistory: " Previous training ", nextAction: " Arrange a call ",
+    })).toMatchObject({
+      name: "Example Client", accountOwner: "DG Academy", clientType: "Prospect",
+      relationshipHistory: "Previous training", nextAction: "Arrange a call",
+    });
+  });
   test("requires a name and validates optional email", () => {
     const client = { ...createEmptyClient(), name: "Zuellig Pharma" };
     expect(clientFormSchema.safeParse(client).success).toBe(true);

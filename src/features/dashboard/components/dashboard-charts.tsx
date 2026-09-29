@@ -38,17 +38,15 @@ export function createMonthlyFeesChart(rows: readonly MonthlyTrainingFees[]) {
   });
 }
 
-export function MonthlyFeesChart({ rows, onFocus, onMonthSelect }: {
+export function MonthlyFeesChart({ rows, onFocus }: {
   rows: readonly MonthlyTrainingFees[];
   onFocus: (row: MonthlyTrainingFees | null) => void;
-  onMonthSelect: (monthIndex: number) => void;
 }) {
   const definition = useMemo(() => createMonthlyFeesChart(rows), [rows]);
   return <Chart definition={definition} height={320} initialWidth={720}
     ariaLabel={`Monthly training fees by payment received date in ${rows[0]?.year ?? "the selected year"}, comparing Delivered and Contracted training in US dollars`}
     ariaDescription="Months without recorded payment dates have zero fees. Amounts use Actual, or the proposal fee when Actual is not recorded."
-    onFocusChange={(point) => onFocus(point?.datum ?? null)}
-    onSelect={(point) => { if (point) onMonthSelect(point.datum.monthIndex); }} />;
+    onFocusChange={(point) => onFocus(point?.datum ?? null)} />;
 }
 
 type StageRow = ReturnType<typeof projectStageCounts>[number];
