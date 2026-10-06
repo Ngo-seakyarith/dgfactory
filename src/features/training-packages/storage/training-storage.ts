@@ -142,7 +142,7 @@ function fromRow(row: PackageRow): TrainingPackage {
 
   return {
     id: row.id,
-    salesStatus: isProposalStage(row.sales_status) ? row.sales_status : "Prospects",
+    salesStatus: isProposalStage(row.sales_status) ? row.sales_status : "Lead",
     status: proposalContent.generationStatus,
     title: row.course_title,
     audience: row.target_learners,
@@ -231,7 +231,7 @@ export async function saveTrainingPackage(pkg: TrainingPackage, projectId?: stri
 
   await trackClientProposal("training_package", pkg.id, projectId);
   const savedPackage = await getTrainingPackage(pkg.id);
-  if (savedPackage.status === "Generated" && savedPackage.salesStatus === "Contracted") {
+  if (savedPackage.status === "Generated" && savedPackage.salesStatus === "Confirmed") {
     await ensureDeliveryProjectForPackage(savedPackage);
   }
 

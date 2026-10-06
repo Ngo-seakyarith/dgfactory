@@ -3,7 +3,7 @@ import { proposalStages } from "@/features/pipeline/domain";
 import { projectTypes, type ClientProject } from "@/features/pipeline/project-domain";
 import type { TrainingPackage } from "@/features/training-packages/domain/training-package";
 
-export const feeStatuses = ["Delivered", "Contracted"] as const;
+export const feeStatuses = ["Delivered", "Confirmed"] as const;
 export type FeeStatus = (typeof feeStatuses)[number];
 
 export type TrainingFee = {
@@ -70,7 +70,7 @@ export function collectTrainingFees(packages: readonly TrainingPackage[], projec
   const linkedPackages = new Set(projects.flatMap((project) => project.trainingPackageId ? [project.trainingPackageId] : []));
   const fees: TrainingFee[] = [];
   for (const project of projects) {
-    if (project.projectType !== "Training" || (project.stage !== "Delivered" && project.stage !== "Contracted")) continue;
+    if (project.projectType !== "Training" || (project.stage !== "Delivered" && project.stage !== "Confirmed")) continue;
     const pkg = project.trainingPackageId ? packageById.get(project.trainingPackageId) ?? null : null;
     const actual = validAmount(project.actualValue);
     const fee = actual ?? (pkg?.status === "Generated" ? validAmount(pkg.pricingInputs.professionalFee) : null);
@@ -84,7 +84,7 @@ export function collectTrainingFees(packages: readonly TrainingPackage[], projec
   }
   // Unlinked proposals remain visible, but a linked training is counted only through its Pipeline row.
   for (const pkg of packages) {
-    if (linkedPackages.has(pkg.id) || pkg.status !== "Generated" || (pkg.salesStatus !== "Delivered" && pkg.salesStatus !== "Contracted")) continue;
+    if (linkedPackages.has(pkg.id) || pkg.status !== "Generated" || (pkg.salesStatus !== "Delivered" && pkg.salesStatus !== "Confirmed")) continue;
     const fee = validAmount(pkg.pricingInputs.professionalFee);
     if (fee === null) continue;
     fees.push({
@@ -103,7 +103,7 @@ export type TrainingPaymentReminder = {
   status: FeeStatus;
   href: string;
   amount: number | null;
-  amountLabel: "Proposal fee" | "Actual" | "Target" | null;
+  amountLabel: "Proposal fee" | "Actual" | "Value" | null;
 };
 
 export function collectTrainingPaymentReminders(trainings: readonly TrainingFee[], projects: readonly ClientProject[]): TrainingPaymentReminder[] {
@@ -111,7 +111,7 @@ export function collectTrainingPaymentReminders(trainings: readonly TrainingFee[
   const reminders: TrainingPaymentReminder[] = [];
 
   for (const project of projects) {
-    if (project.projectType !== "Training" || (project.stage !== "Contracted" && project.stage !== "Delivered")) continue;
+    if (project.projectType !== "Training" || (project.stage !== "Confirmed" && project.stage !== "Delivered")) continue;
     if (normalizePaymentReceivedDate(project.paymentReceivedDate ?? "")) continue;
     const training = feeByProject.get(project.id);
     const actual = validAmount(project.actualValue);
@@ -120,7 +120,7 @@ export function collectTrainingPaymentReminders(trainings: readonly TrainingFee[
       id: project.id, title: project.title, client: project.clientName, status: project.stage,
       href: `/pipeline?projectId=${project.id}`,
       amount: training?.fee ?? actual ?? target,
-      amountLabel: training?.amountLabel ?? (actual !== null ? "Actual" : target !== null ? "Target" : null),
+      amountLabel: training?.amountLabel ?? (actual !== null ? "Actual" : target !== null ? "Value" : null),
     });
   }
 
@@ -165,7 +165,7 @@ export function feeTotal(trainings: readonly TrainingFee[], status?: FeeStatus) 
 }
 
 export const clientRankingMetrics = {
-  revenue: { label: "Revenue", description: "Contracted + Delivered training fees - all time", color: "#17776b" },
+  revenue: { label: "Revenue", description: "Confirmed + Delivered training fees - all time", color: "#17776b" },
   trainings: { label: "Number of trainings", description: "Training records across all stages - all time", color: "#326ca6" },
   delivered: { label: "Delivered trainings", description: "Delivered training records - all time", color: "#b77912" },
   systems: { label: "System proposals", description: "Intelligent system records across all stages - all time", color: "#9c6490" },

@@ -14,6 +14,6 @@ describe("delivery progress", () => {
 
   test("preserves valid progress and rejects pipeline stages", () => {
     expect(normalizeDeliveryProject({ deliveryStatus: "Prepared" }).deliveryStatus).toBe("Prepared");
-    expect(normalizeDeliveryProject({ deliveryStatus: "Contracted" as never }).deliveryStatus).toBe("Not Started");
+    expect(normalizeDeliveryProject({ deliveryStatus: "Confirmed" as never }).deliveryStatus).toBe("Not Started");
   });
 });

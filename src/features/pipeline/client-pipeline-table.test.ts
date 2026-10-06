@@ -33,11 +33,11 @@ describe("Clients & Pipeline table", () => {
 
   test("combines search, owner, and stage on the same work record", () => {
     const table = createTable([client("a", { accountOwner: "Somaly Phin" }), client("empty")], [
-      project("Leadership", "a", { stage: "Hot" }), project("Sales", "a", { stage: "Prospects" }),
+      project("Leadership", "a", { stage: "Negotiation" }), project("Sales", "a", { stage: "Lead" }),
     ]);
-    table.setGlobalFilter({ ...initialPipelineFilters, owner: "Somaly Phin", stage: "Hot", search: "sales" });
+    table.setGlobalFilter({ ...initialPipelineFilters, owner: "Somaly Phin", stage: "Negotiation", search: "sales" });
     expect(table.getRowModel().rows).toHaveLength(0);
-    table.setGlobalFilter({ ...initialPipelineFilters, owner: "Somaly Phin", stage: "Hot", search: "leadership" });
+    table.setGlobalFilter({ ...initialPipelineFilters, owner: "Somaly Phin", stage: "Negotiation", search: "leadership" });
     expect(table.getRowModel().rows.map((row) => row.id)).toEqual(["a"]);
     table.setGlobalFilter(initialPipelineFilters);
     expect(table.getRowModel().rows).toHaveLength(2);

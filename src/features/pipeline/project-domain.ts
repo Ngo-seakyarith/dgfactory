@@ -5,6 +5,8 @@ import { proposalStages } from "./domain";
 
 export const projectStages = proposalStages;
 export const projectTypes = ["Training", "Intelligent System", "Other"] as const;
+export const projectTiers = ["", "A", "B", "C"] as const;
+export const projectSources = ["", "Founder", "BDM"] as const;
 export type ProjectStage = (typeof projectStages)[number];
 
 const money = z.number().finite().nonnegative().max(999999999999.99).nullable();
@@ -15,6 +17,11 @@ export const projectInputSchema = z.object({
   title: z.string().trim().min(1, "Project title is required.").max(300),
   projectType: z.enum(projectTypes),
   stage: z.enum(projectStages),
+  tier: z.enum(projectTiers),
+  source: z.enum(projectSources),
+  nextStepDate: z.string().trim().max(100),
+  aiEurekaAttached: z.boolean(),
+  isSignal: z.boolean(),
   expectedOutcomes: text,
   targetValue: money,
   actualValue: money,
@@ -56,7 +63,8 @@ export type ClientProjectDeletion = {
 
 export function emptyClientProject(clientId = ""): ClientProjectInput {
   return {
-    clientId, title: "", projectType: "Training", stage: "Prospects",
+    clientId, title: "", projectType: "Training", stage: "Lead",
+    tier: "", source: "", nextStepDate: "", aiEurekaAttached: false, isSignal: false,
     expectedOutcomes: "", targetValue: null, actualValue: null, paymentReceivedDate: null,
     startPeriod: "", endPeriod: "", statusNote: "",
     nextOpportunities: "", nextAction: "", notes: "",
@@ -68,6 +76,8 @@ export function clientProjectInput(project: ClientProject): ClientProjectInput {
   return {
     clientId: project.clientId ?? "", title: project.title,
     projectType: project.projectType, stage: project.stage,
+    tier: project.tier, source: project.source, nextStepDate: project.nextStepDate,
+    aiEurekaAttached: project.aiEurekaAttached, isSignal: project.isSignal,
     expectedOutcomes: project.expectedOutcomes, targetValue: project.targetValue, actualValue: project.actualValue,
     paymentReceivedDate: project.paymentReceivedDate ?? null,
     startPeriod: project.startPeriod, endPeriod: project.endPeriod, statusNote: project.statusNote,

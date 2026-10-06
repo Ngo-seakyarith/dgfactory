@@ -8,6 +8,7 @@ import { scaleLinear } from "@tanstack/charts/scales/linear";
 import { scaleOrdinal } from "@tanstack/charts/scales/ordinal";
 import { tooltip } from "@tanstack/charts/tooltip";
 import { projectTypes } from "@/features/pipeline/project-domain";
+import { proposalStages } from "@/features/pipeline/domain";
 import { clientRankingMetrics, feeStatuses, formatFees, type ClientRankingMetric, type RankedClient, type MonthlyTrainingFees, type projectStageCounts } from "../domain";
 
 const theme = { foreground: "#1d2521", muted: "#65726b", grid: "#d8ded8", background: "transparent" };
@@ -44,7 +45,7 @@ export function MonthlyFeesChart({ rows, onFocus }: {
 }) {
   const definition = useMemo(() => createMonthlyFeesChart(rows), [rows]);
   return <Chart definition={definition} height={320} initialWidth={720}
-    ariaLabel={`Monthly training fees by payment received date in ${rows[0]?.year ?? "the selected year"}, comparing Delivered and Contracted training in US dollars`}
+    ariaLabel={`Monthly training fees by payment received date in ${rows[0]?.year ?? "the selected year"}, comparing Delivered and Confirmed training in US dollars`}
     ariaDescription="Months without recorded payment dates have zero fees. Amounts use Actual, or the proposal fee when Actual is not recorded."
     onFocusChange={(point) => onFocus(point?.datum ?? null)} />;
 }
@@ -70,7 +71,7 @@ export function createProjectStagesChart(rows: readonly StageRow[]) {
 
 export function ProjectStagesChart({ rows }: { rows: readonly StageRow[] }) {
   const definition = useMemo(() => createProjectStagesChart(rows), [rows]);
-  return <Chart definition={definition} height={280} ariaLabel="Pipeline counts by sales stage: Prospects, Warm, Hot, Contracted, and Delivered, separated by training, intelligent systems, and other work" />;
+  return <Chart definition={definition} height={440} ariaLabel={`Pipeline counts by sales stage: ${proposalStages.join(", ")}, separated by training, intelligent systems, and other work`} />;
 }
 
 export function createTopClientsChart(rows: readonly RankedClient[], metric: ClientRankingMetric) {
@@ -96,7 +97,7 @@ export function createTopClientsChart(rows: readonly RankedClient[], metric: Cli
       content: (points: readonly ChartPoint<RankedClient>[]) => ({
         title: points[0]?.datum.client.name ?? "Top clients",
         rows: points[0] ? [
-          { label: "Revenue (Contracted + Delivered)", value: formatFees(points[0].datum.revenue) },
+          { label: "Revenue (Confirmed + Delivered)", value: formatFees(points[0].datum.revenue) },
           { label: "Trainings", value: String(points[0].datum.trainings) },
           { label: "Delivered trainings", value: String(points[0].datum.delivered) },
           { label: "System proposals", value: String(points[0].datum.systems) },

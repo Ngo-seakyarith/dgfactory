@@ -18,21 +18,21 @@ export async function setProposalStage(id: string, kind: "training_package" | "s
   const pkg = await getTrainingPackage(id);
   if (!pkg) throw new ProjectRequestError("Package not found.", 404);
   const delivery = await findDeliveryProjectByPackageId(id);
-  if (delivery && status !== "Contracted" && status !== "Delivered") {
-    throw new ProjectRequestError("Delete the linked delivery before moving this project out of Contracted or Delivered.", 409);
+  if (delivery && status !== "Confirmed" && status !== "Delivered") {
+    throw new ProjectRequestError("Delete the linked delivery before moving this project out of Confirmed or Delivered.", 409);
   }
   if (status === "Delivered") {
-    if (!delivery) throw new ProjectRequestError("Mark the project Contracted to create Delivery before marking it Delivered.", 409);
+    if (!delivery) throw new ProjectRequestError("Mark the project Confirmed to create Delivery before marking it Delivered.", 409);
     const { error } = await supabase.from("delivery_projects").update({ delivery_status: "Delivered", updated_at: new Date().toISOString() }).eq("id", delivery.id);
     if (error) throw new Error(error.message);
-  } else if (status === "Contracted" && delivery?.deliveryStatus === "Delivered") {
+  } else if (status === "Confirmed" && delivery?.deliveryStatus === "Delivered") {
     const { error } = await supabase.from("delivery_projects").update({ delivery_status: "Prepared", updated_at: new Date().toISOString() }).eq("id", delivery.id);
     if (error) throw new Error(error.message);
   } else {
     const { error } = await supabase.from("training_packages").update({ sales_status: status, updated_at: new Date().toISOString() }).eq("id", id);
     if (error) throw new Error(error.message);
     try {
-      if (status === "Contracted" && pkg.status === "Generated") await ensureDeliveryProjectForPackage({ ...pkg, salesStatus: status });
+      if (status === "Confirmed" && pkg.status === "Generated") await ensureDeliveryProjectForPackage({ ...pkg, salesStatus: status });
     } catch (error) {
       if (!delivery) await supabase.from("training_packages").update({ sales_status: pkg.salesStatus }).eq("id", id);
       throw error;

@@ -28,9 +28,9 @@ describe("pipeline editor form", () => {
     const form = new FormApi({ defaultValues: original });
     const unmount = form.mount();
     try {
-      form.reset({ ...original, stage: "Contracted" }, { keepDefaultValues: true });
+      form.reset({ ...original, stage: "Confirmed" }, { keepDefaultValues: true });
       form.update({ defaultValues: original });
-      expect(form.state.values.stage).toBe("Contracted");
+      expect(form.state.values.stage).toBe("Confirmed");
       form.setFieldValue("notes", "Unsaved note");
       form.update({ defaultValues: original });
       expect(form.state.values.notes).toBe("Unsaved note");

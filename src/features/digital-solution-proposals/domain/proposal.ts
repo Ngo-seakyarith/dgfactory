@@ -292,7 +292,7 @@ export function createSolutionProposal(
     solutionType: values.solutionType ?? "Web Application",
     brief: { ...emptySolutionProposalBrief, ...values.brief },
     status: "Draft",
-    salesStatus: "Prospects",
+    salesStatus: "Lead",
     files: [],
     evidenceAnalysis: null,
     solutionReview: null,

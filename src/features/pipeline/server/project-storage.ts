@@ -6,6 +6,8 @@ import { ProjectRequestError } from "./errors";
 export type ClientProjectRow = {
   id: string; client_id: string | null; title: string;
   project_type: ClientProjectInput["projectType"]; stage: ClientProjectInput["stage"];
+  tier: ClientProjectInput["tier"]; source: ClientProjectInput["source"];
+  next_step_date: string; ai_eureka_attached: boolean; is_signal: boolean;
   expected_outcomes: string; target_value: number | null; actual_value: number | null;
   payment_received_date: string | null;
   start_period: string; end_period: string; status_note: string;
@@ -20,6 +22,8 @@ export function projectFromRow(row: ClientProjectRow): ClientProject {
     id: row.id, clientId: row.client_id, clientName: row.clients?.name ?? "",
     clientOwner: row.clients?.account_owner ?? "",
     title: row.title, projectType: row.project_type, stage: row.stage,
+    tier: row.tier, source: row.source, nextStepDate: row.next_step_date,
+    aiEurekaAttached: row.ai_eureka_attached, isSignal: row.is_signal,
     expectedOutcomes: row.expected_outcomes,
     targetValue: row.target_value === null ? null : Number(row.target_value),
     actualValue: row.actual_value === null ? null : Number(row.actual_value),
@@ -34,6 +38,8 @@ export function projectFromRow(row: ClientProjectRow): ClientProject {
 export function projectToRow(input: ClientProjectInput) {
   return {
     client_id: input.clientId, title: input.title, project_type: input.projectType,
+    tier: input.tier, source: input.source, next_step_date: input.nextStepDate,
+    ai_eureka_attached: input.aiEurekaAttached, is_signal: input.isSignal,
     stage: input.stage, expected_outcomes: input.expectedOutcomes, target_value: input.targetValue,
     actual_value: input.actualValue, start_period: input.startPeriod, end_period: input.endPeriod,
     ...(input.paymentReceivedDate === undefined ? {} : { payment_received_date: input.paymentReceivedDate }),

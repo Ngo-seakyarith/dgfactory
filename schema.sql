@@ -64,7 +64,7 @@ alter table public.clients enable row level security;
 
 create table if not exists public.training_packages (
   id uuid primary key default gen_random_uuid(),
-  sales_status text not null default 'Prospects' check (sales_status in ('Prospects', 'Warm', 'Hot', 'Contracted', 'Delivered')),
+  sales_status text not null default 'Lead' check (sales_status in ('Lead', 'Qualified', 'Proposal Sent', 'Negotiation', 'Verbal Commit', 'Confirmed', 'Delivered', 'Lost', 'On Hold')),
   course_title text not null,
   target_learners text not null,
   duration text not null,
@@ -114,7 +114,7 @@ create index if not exists idx_training_packages_client_id
 
 create table if not exists public.intelligent_system_proposals (
   id uuid primary key default gen_random_uuid(),
-  sales_status text not null default 'Prospects' check (sales_status in ('Prospects', 'Warm', 'Hot', 'Contracted', 'Delivered')),
+  sales_status text not null default 'Lead' check (sales_status in ('Lead', 'Qualified', 'Proposal Sent', 'Negotiation', 'Verbal Commit', 'Confirmed', 'Delivered', 'Lost', 'On Hold')),
   client_id uuid references public.clients(id) on delete set null,
   client_name text not null,
   title text not null,
@@ -166,7 +166,12 @@ create table if not exists public.client_projects (
   client_id uuid references public.clients(id) on delete set null,
   title text not null check (length(btrim(title)) between 1 and 300),
   project_type text not null default 'Training' check (project_type in ('Training', 'Intelligent System', 'Other')),
-  stage text not null default 'Prospects' check (stage in ('Prospects', 'Warm', 'Hot', 'Contracted', 'Delivered')),
+  stage text not null default 'Lead' check (stage in ('Lead', 'Qualified', 'Proposal Sent', 'Negotiation', 'Verbal Commit', 'Confirmed', 'Delivered', 'Lost', 'On Hold')),
+  tier text not null default '' check (tier in ('', 'A', 'B', 'C')),
+  source text not null default '' check (source in ('', 'Founder', 'BDM')),
+  next_step_date text not null default '' check (length(next_step_date) <= 100),
+  ai_eureka_attached boolean not null default false,
+  is_signal boolean not null default false,
   expected_outcomes text not null default '',
   target_value numeric(14,2) check (target_value >= 0),
   actual_value numeric(14,2) check (actual_value >= 0),
@@ -481,55 +486,55 @@ alter table public.delivery_projects enable row level security;
 create unique index if not exists idx_delivery_projects_package_unique
   on public.delivery_projects(package_id);
 
-create or replace function public.require_contracted_delivery_package()
+create or replace function public.require_confirmed_delivery_package()
 returns trigger language plpgsql set search_path = '' as $$
 begin
   if not exists (
     select 1 from public.training_packages
-    where id = new.package_id and sales_status in ('Contracted', 'Delivered')
+    where id = new.package_id and sales_status in ('Confirmed', 'Delivered')
   ) then
-    raise exception 'Delivery requires a Contracted training package.' using errcode = '23514';
+    raise exception 'Delivery requires a Confirmed training package.' using errcode = '23514';
   end if;
   return new;
 end;
 $$;
 
-create trigger require_contracted_delivery_package
+create trigger require_confirmed_delivery_package
 before insert or update of package_id on public.delivery_projects
-for each row execute function public.require_contracted_delivery_package();
+for each row execute function public.require_confirmed_delivery_package();
 
-create or replace function public.keep_contracted_package_with_delivery()
+create or replace function public.keep_confirmed_package_with_delivery()
 returns trigger language plpgsql set search_path = '' as $$
 begin
-  if new.sales_status not in ('Contracted', 'Delivered') and exists (
+  if new.sales_status not in ('Confirmed', 'Delivered') and exists (
     select 1 from public.delivery_projects where package_id = old.id
   ) then
-    raise exception 'Delete the linked delivery before moving this proposal out of Contracted or Delivered.' using errcode = '23514';
+    raise exception 'Delete the linked delivery before moving this proposal out of Confirmed or Delivered.' using errcode = '23514';
   end if;
   if new.sales_status = 'Delivered' and not exists (
     select 1 from public.delivery_projects where package_id = old.id and delivery_status = 'Delivered'
   ) then
     raise exception 'Complete the linked delivery before marking this proposal Delivered.' using errcode = '23514';
   end if;
-  if new.sales_status = 'Contracted' and exists (
+  if new.sales_status = 'Confirmed' and exists (
     select 1 from public.delivery_projects where package_id = old.id and delivery_status = 'Delivered'
   ) then
-    raise exception 'Reopen the linked delivery before moving this proposal back to Contracted.' using errcode = '23514';
+    raise exception 'Reopen the linked delivery before moving this proposal back to Confirmed.' using errcode = '23514';
   end if;
   return new;
 end;
 $$;
 
-create trigger keep_contracted_package_with_delivery
+create trigger keep_confirmed_package_with_delivery
 before update of sales_status on public.training_packages
-for each row execute function public.keep_contracted_package_with_delivery();
+for each row execute function public.keep_confirmed_package_with_delivery();
 
 create or replace function public.sync_package_from_delivery()
 returns trigger language plpgsql set search_path = '' as $$
 begin
   if tg_op = 'DELETE' then
     if old.delivery_status = 'Delivered' then
-      update public.training_packages set sales_status = 'Contracted', updated_at = now() where id = old.package_id;
+      update public.training_packages set sales_status = 'Confirmed', updated_at = now() where id = old.package_id;
     end if;
     return old;
   end if;
@@ -542,7 +547,7 @@ begin
   if new.delivery_status = 'Delivered' then
     update public.training_packages set sales_status = 'Delivered', updated_at = now() where id = new.package_id;
   elsif old.delivery_status = 'Delivered' then
-    update public.training_packages set sales_status = 'Contracted', updated_at = now() where id = new.package_id;
+    update public.training_packages set sales_status = 'Confirmed', updated_at = now() where id = new.package_id;
   end if;
   return new;
 end;

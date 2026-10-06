@@ -86,7 +86,7 @@ export async function saveDeliveryProjectHandler(request: Request) {
 
     if (!body.id) {
       return NextResponse.json(
-        { error: "Delivery is created when a training proposal is Contracted." },
+        { error: "Delivery is created when a training proposal is Confirmed." },
         { status: 400 },
       );
     }
@@ -96,8 +96,8 @@ export async function saveDeliveryProjectHandler(request: Request) {
       return NextResponse.json({ error: "Delivery must be linked to a training package." }, { status: 409 });
     }
     const pkg = await getTrainingPackage(existing.packageId);
-    if (pkg.salesStatus !== "Contracted" && pkg.salesStatus !== "Delivered") {
-      return NextResponse.json({ error: "Mark the training proposal Contracted before editing delivery." }, { status: 409 });
+    if (pkg.salesStatus !== "Confirmed" && pkg.salesStatus !== "Delivered") {
+      return NextResponse.json({ error: "Mark the training proposal Confirmed before editing delivery." }, { status: 409 });
     }
     if (body.deliveryStatus && !isDeliveryStatus(body.deliveryStatus)) {
       return NextResponse.json({ error: "Invalid delivery status." }, { status: 400 });

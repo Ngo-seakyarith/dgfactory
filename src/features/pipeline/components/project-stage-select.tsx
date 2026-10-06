@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Select } from "@/components/ui/select";
 import { projectStages, type ClientProject, type ProjectStage } from "../project-domain";
 import { useSaveClientProjectMutation } from "../project-queries";
+import { stageRules } from "../domain";
 
 export function ProjectStageSelect({ project }: { project: ClientProject }) {
   const mutation = useSaveClientProjectMutation();
@@ -18,6 +19,7 @@ export function ProjectStageSelect({ project }: { project: ClientProject }) {
     <Select aria-label={`Status of ${project.title}`} value={project.stage} disabled={mutation.isPending} onChange={(event) => void change(event.target.value as ProjectStage)} className="h-9 text-sm">
       {projectStages.map((stage) => <option key={stage} value={stage}>{stage}</option>)}
     </Select>
+    <p className="text-xs text-muted-foreground">{stageRules[project.stage].probability}% · {stageRules[project.stage].group}</p>
     {error ? <p role="alert" className="max-w-72 text-xs text-destructive">{error}</p> : null}
   </div>;
 }

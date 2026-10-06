@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, mock, spyOn, test } from "bun:test";
 import * as supabase from "@/lib/supabase/server";
-import { emptyClientProject } from "../project-domain";
+import { clientProjectInput, emptyClientProject } from "../project-domain";
 import { deleteClientProject, projectFromRow, projectToRow, type ClientProjectRow } from "./project-storage";
 import { ProjectRequestError } from "./errors";
 
@@ -18,14 +18,18 @@ describe("payment received date storage", () => {
   });
   test("read responses preserve a received date, amount, and sales stage independently", () => {
     const row: ClientProjectRow = {
-      id: "project", client_id: "client", title: "Course", project_type: "Training", stage: "Warm",
+      id: "project", client_id: "client", title: "Course", project_type: "Training", stage: "Qualified",
+      tier: "A", source: "BDM", next_step_date: "Q4", ai_eureka_attached: true, is_signal: true,
       expected_outcomes: "", target_value: 2500, actual_value: 500, payment_received_date: "2026-09-28",
       start_period: "Q4", end_period: "Q4", status_note: "", next_opportunities: "", next_action: "", notes: "",
       training_package_id: null, system_proposal_id: null, created_at: "", updated_at: "",
       clients: { name: "Client", account_owner: "MD" },
     };
-    expect(projectFromRow(row)).toMatchObject({ paymentReceivedDate: "2026-09-28", actualValue: 500, stage: "Warm", clientOwner: "MD" });
+    expect(projectFromRow(row)).toMatchObject({ paymentReceivedDate: "2026-09-28", actualValue: 500, stage: "Qualified", clientOwner: "MD" });
     expect(projectFromRow({ ...row, payment_received_date: null }).paymentReceivedDate).toBeNull();
+    const project = projectFromRow(row);
+    expect(project).toMatchObject({ tier: "A", source: "BDM", nextStepDate: "Q4", aiEurekaAttached: true, isSignal: true });
+    expect(projectToRow(clientProjectInput(project))).toMatchObject({ tier: "A", source: "BDM", next_step_date: "Q4", ai_eureka_attached: true, is_signal: true });
   });
 });
 

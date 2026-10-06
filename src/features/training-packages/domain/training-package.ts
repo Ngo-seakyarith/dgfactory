@@ -362,7 +362,7 @@ export function buildPackageFromParts({
 
   return {
     status: normalizedOutputs.proposalContent?.generationStatus ?? "Generated",
-    salesStatus: "Prospects",
+    salesStatus: "Lead",
     clientId,
     title: input.courseTitle,
     audience: input.audience,

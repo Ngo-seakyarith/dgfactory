@@ -12,8 +12,9 @@ import { useAutosave } from "@/hooks/use-autosave";
 import { useClientsQuery } from "@/features/crm/queries";
 import type { Client } from "@/features/crm/domain";
 import { formatDateTime } from "@/lib/date-time";
-import { clientProjectInput, emptyClientProject, projectInputSchema, projectStages, projectTypes, type ClientProject, type ClientProjectInput } from "../project-domain";
+import { clientProjectInput, emptyClientProject, projectInputSchema, projectSources, projectStages, projectTiers, projectTypes, type ClientProject, type ClientProjectInput } from "../project-domain";
 import { useDeleteClientProjectMutation, useSaveClientProjectMutation } from "../project-queries";
+import { stageRules } from "../domain";
 
 const projectFormOptions = formOptions({
   defaultValues: emptyClientProject(),
@@ -26,23 +27,33 @@ const ProjectFields = memo(withForm({
   render: function ProjectFields({ form, clientId, linked, linkedClient, clients, pendingClients, pendingSave }) {
     return <>
       <section className="grid gap-4 md:grid-cols-2">
-        {!clientId ? <form.AppField name="clientId">{(field) => <field.SelectField label="Client" required disabled={linkedClient || pendingClients}><option value="">Select client</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</field.SelectField>}</form.AppField> : null}
-        <form.AppField name="title">{(field) => <field.TextField label="Title" required maxLength={300} />}</form.AppField>
+        {!clientId ? <form.AppField name="clientId">{(field) => <field.SelectField label="Account" required disabled={linkedClient || pendingClients}><option value="">Select account</option>{clients.map((client) => <option key={client.id} value={client.id}>{client.name}</option>)}</field.SelectField>}</form.AppField> : null}
+        <form.AppField name="title">{(field) => <field.TextField label="Project" required maxLength={300} />}</form.AppField>
         <form.AppField name="projectType">{(field) => <field.SelectField label="Type" disabled={linked}>{projectTypes.map((type) => <option key={type}>{type}</option>)}</field.SelectField>}</form.AppField>
-        <form.AppField name="stage">{(field) => <field.SelectField label="Stage" disabled={pendingSave}>{projectStages.map((stage) => <option key={stage}>{stage}</option>)}</field.SelectField>}</form.AppField>
+        <div className="space-y-2">
+          <form.AppField name="stage">{(field) => <field.SelectField label="Stage" disabled={pendingSave}>{projectStages.map((stage) => <option key={stage}>{stage}</option>)}</field.SelectField>}</form.AppField>
+          <form.Subscribe selector={(state) => state.values.stage}>{(stage) => <p className="text-xs text-muted-foreground" aria-live="polite">Win probability {stageRules[stage].probability}% · {stageRules[stage].group}</p>}</form.Subscribe>
+        </div>
         <form.AppField name="statusNote">{(field) => <field.TextField label="Status notes" />}</form.AppField>
+        <form.AppField name="tier">{(field) => <field.SelectField label="Tier">{projectTiers.map((tier) => <option key={tier} value={tier}>{tier || "Not set"}</option>)}</field.SelectField>}</form.AppField>
+        <form.AppField name="source">{(field) => <field.SelectField label="Source">{projectSources.map((source) => <option key={source} value={source}>{source || "Not set"}</option>)}</field.SelectField>}</form.AppField>
       </section>
       <section className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <form.AppField name="targetValue">{(field) => <field.NumberField label="Target (USD)" min={0} step="0.01" />}</form.AppField>
+        <form.AppField name="targetValue">{(field) => <field.NumberField label="Value (USD)" min={0} step="0.01" />}</form.AppField>
         <form.AppField name="actualValue">{(field) => <field.NumberField label="Actual (USD)" min={0} step="0.01" />}</form.AppField>
         <form.AppField name="paymentReceivedDate">{(field) => <field.DateField label="Payment received date" />}</form.AppField>
+      </section>
+      <section className="grid gap-4 md:grid-cols-2">
+        <form.AppField name="nextAction">{(field) => <field.TextareaField label="Next step" rows={2} />}</form.AppField>
+        <form.AppField name="nextStepDate">{(field) => <field.TextField label="Next step date" placeholder="24-Jul, November, or Q4" maxLength={100} />}</form.AppField>
+        <form.Field name="aiEurekaAttached">{(field) => <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className="h-4 w-4 accent-primary" checked={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.checked)} />AI Eureka attached</label>}</form.Field>
+        <form.Field name="isSignal">{(field) => <label className="flex items-center gap-2 text-sm font-medium"><input type="checkbox" className="h-4 w-4 accent-primary" checked={field.state.value} onBlur={field.handleBlur} onChange={(event) => field.handleChange(event.target.checked)} />IS signal</label>}</form.Field>
       </section>
       <details className="border-t border-border pt-4"><summary className="cursor-pointer text-sm font-medium">Timing and additional details</summary><section className="mt-4 grid gap-4 md:grid-cols-2">
         <form.AppField name="startPeriod">{(field) => <field.TextField label="Start" placeholder="Q4, October, or a date" />}</form.AppField>
         <form.AppField name="endPeriod">{(field) => <field.TextField label="End" placeholder="Q4, October, or a date" />}</form.AppField>
         <div className="md:col-span-2"><form.AppField name="expectedOutcomes">{(field) => <field.TextareaField label="Expected revenue and additional work" rows={2} />}</form.AppField></div>
-        <form.AppField name="nextAction">{(field) => <field.TextareaField label="Next action" rows={3} />}</form.AppField>
-        <form.AppField name="nextOpportunities">{(field) => <field.TextareaField label="Next opportunities" rows={3} />}</form.AppField>
+        <div className="md:col-span-2"><form.AppField name="nextOpportunities">{(field) => <field.TextareaField label="Next opportunity" rows={3} />}</form.AppField></div>
         <div className="md:col-span-2"><form.AppField name="notes">{(field) => <field.TextareaField label="Notes" rows={3} />}</form.AppField></div>
       </section></details>
     </>;

@@ -20,8 +20,8 @@ describe("combined clients and pipeline", () => {
     expect(groups.find((group) => group.id === "unassigned")?.projects.map((project) => project.id)).toEqual(["three", "two"]);
   });
   test("stages stay independent for work under the same client", () => {
-    const [group] = groupClientPipeline([client("a")], [project("one", "a", { stage: "Hot", paymentReceivedDate: "2026-09-27", actualValue: 900 }), project("two", "a", { stage: "Prospects" })]);
-    const result = filterClientPipeline(group, { ...filters, stage: "Hot" });
+    const [group] = groupClientPipeline([client("a")], [project("one", "a", { stage: "Negotiation", paymentReceivedDate: "2026-09-27", actualValue: 900 }), project("two", "a", { stage: "Lead" })]);
+    const result = filterClientPipeline(group, { ...filters, stage: "Negotiation" });
     expect(result.projects.map((project) => project.id)).toEqual(["one"]);
     expect(group.projects).toHaveLength(2);
     expect(group.projects.find((project) => project.id === "two")?.paymentReceivedDate).toBeNull();

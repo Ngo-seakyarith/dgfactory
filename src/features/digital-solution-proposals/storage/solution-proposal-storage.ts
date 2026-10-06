@@ -134,7 +134,7 @@ function proposalFromRow(
 ): DigitalSolutionProposal {
   return {
     id: row.id,
-    salesStatus: isProposalStage(row.sales_status) ? row.sales_status : "Prospects",
+    salesStatus: isProposalStage(row.sales_status) ? row.sales_status : "Lead",
     clientId: row.client_id,
     clientName: row.client_name,
     title: row.title,

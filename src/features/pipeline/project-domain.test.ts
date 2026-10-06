@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test";
 import { clientProjectInput, emptyClientProject, projectInputSchema, projectStages } from "./project-domain";
-import { proposalStages } from "./domain";
+import { proposalStages, stageRules } from "./domain";
 
 const clientId = "a59d9d34-b3fa-4f4d-a582-9c6b66375ccf";
 const sourceId = "a1ac7ba1-b3fa-4f4d-a582-9c6b66375ccf";
@@ -62,7 +62,7 @@ describe("spreadsheet-aligned projects", () => {
     }
   });
   test("detailed status is separate from the pipeline stage", () => {
-    expect(projectInputSchema.parse({ ...base(), statusNote: "In discussion with HR" }).stage).toBe("Prospects");
+    expect(projectInputSchema.parse({ ...base(), statusNote: "In discussion with HR" }).stage).toBe("Lead");
     expect(projectInputSchema.safeParse({ ...base(), stage: "In discussion with HR" }).success).toBe(false);
   });
   test("only one proposal may be linked with the corresponding type", () => {
@@ -70,9 +70,21 @@ describe("spreadsheet-aligned projects", () => {
     expect(projectInputSchema.safeParse({ ...base(), systemProposalId: sourceId }).success).toBe(false);
     expect(projectInputSchema.safeParse({ ...base(), systemProposalId: sourceId, projectType: "Intelligent System" }).success).toBe(true);
   });
-  test("projects and proposals share exactly the five requested stages", () => {
-    expect(projectStages).toEqual(["Prospects", "Warm", "Hot", "Contracted", "Delivered"]);
+  test("projects and proposals share the nine stage rules from the sheet", () => {
+    expect(projectStages).toEqual(["Lead", "Qualified", "Proposal Sent", "Negotiation", "Verbal Commit", "Confirmed", "Delivered", "Lost", "On Hold"]);
     expect(projectStages).toEqual(proposalStages);
-    for (const stage of ["Discovery", "Trial", "Proposal", "Won", "Lost"]) expect(projectInputSchema.safeParse({ ...base(), stage }).success).toBe(false);
+    expect(projectStages.map((stage) => [stageRules[stage].probability, stageRules[stage].group])).toEqual([
+      [10, "Open"], [25, "Open"], [40, "Open"], [60, "Open"], [80, "Open"], [95, "Committed"], [100, "Won"], [0, "Lost"], [10, "Hold"],
+    ]);
+    for (const stage of projectStages) expect(projectInputSchema.parse({ ...base(), stage }).stage).toBe(stage);
+    for (const stage of ["Discovery", "Trial", "Proposal", "Won", "Prospects", "Warm", "Hot", "Contracted"]) expect(projectInputSchema.safeParse({ ...base(), stage }).success).toBe(false);
+    expect(projectInputSchema.parse({ ...base(), probability: 100, group: "Won" })).not.toHaveProperty("probability");
+  });
+  test("classification and follow-up fields preserve the sheet's flexible values", () => {
+    for (const nextStepDate of ["24-Jul", "November", "Q4", "2026-10-13", ""]) {
+      expect(projectInputSchema.parse({ ...base(), tier: "A", source: "BDM", nextStepDate, aiEurekaAttached: true, isSignal: true })).toMatchObject({ tier: "A", source: "BDM", nextStepDate, aiEurekaAttached: true, isSignal: true });
+    }
+    expect(base()).toMatchObject({ tier: "", source: "", nextStepDate: "", aiEurekaAttached: false, isSignal: false });
+    for (const fields of [{ tier: "D" }, { source: "Unknown" }, { nextStepDate: "x".repeat(101) }, { isSignal: "Y" }]) expect(projectInputSchema.safeParse({ ...base(), ...fields }).success).toBe(false);
   });
 });

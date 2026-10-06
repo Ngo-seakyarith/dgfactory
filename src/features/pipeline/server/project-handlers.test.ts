@@ -9,7 +9,7 @@ import { deleteProjectRequest, getProjectRequest, saveProjectRequest } from "./p
 const importedId = "20400ae5-851a-dec2-89fa-c84c77222028";
 const importedClientId = "887625ad-c0b3-b055-3eac-70191dc1b84a";
 const importedProject: ClientProject = {
-  ...emptyClientProject(importedClientId), id: importedId, title: "Imported training", stage: "Prospects",
+  ...emptyClientProject(importedClientId), id: importedId, title: "Imported training", stage: "Lead",
   targetValue: 84150, actualValue: 4500, statusNote: "In Review", clientName: "Example client", clientOwner: "",
   createdAt: "2026-09-29T02:32:38.502Z", updatedAt: "2026-09-29T02:32:38.502Z",
 };
@@ -45,9 +45,9 @@ describe("imported Pipeline record API", () => {
   });
 
   test("the compact stage control preserves all other fields on imported records", async () => {
-    const response = await saveProjectRequest(request({ stage: "Contracted" }), context());
+    const response = await saveProjectRequest(request({ stage: "Confirmed" }), context());
     expect(response.status).toBe(200);
-    expect(storage.saveClientProject).toHaveBeenCalledWith({ ...clientProjectInput(importedProject), stage: "Contracted" }, importedId);
+    expect(storage.saveClientProject).toHaveBeenCalledWith({ ...clientProjectInput(importedProject), stage: "Confirmed" }, importedId);
   });
 
   test("the imported record can use the existing delete endpoint", async () => {

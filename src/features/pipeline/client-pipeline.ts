@@ -30,7 +30,7 @@ export function filterClientPipeline(group: ClientPipelineGroup, filters: Client
     .some((value) => value?.toLowerCase().includes(search));
   const projects = group.projects.filter((project) =>
     (filters.stage === "All" || project.stage === filters.stage) &&
-    (matchesClient || [project.title, project.projectType, project.statusNote, project.nextAction].some((value) => value.toLowerCase().includes(search))),
+    (matchesClient || [project.title, project.projectType, project.tier, project.source, project.statusNote, project.nextAction, project.nextStepDate, project.nextOpportunities, project.notes].some((value) => value.toLowerCase().includes(search))),
   );
   return { visible: projects.length > 0 || (filters.stage === "All" && matchesClient), projects };
 }

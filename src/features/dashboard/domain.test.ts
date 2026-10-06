@@ -22,9 +22,9 @@ function project(overrides: Partial<ClientProject> = {}): ClientProject {
 
 describe("training fees dashboard", () => {
   test("keeps eligible unlinked generated proposals in the overview", () => {
-    const packages = [training(), training({ salesStatus: "Contracted" }), ...(["Prospects", "Warm", "Hot"] as const).map((salesStatus) => training({ salesStatus })), training({ status: "Draft", salesStatus: "Contracted" })];
+    const packages = [training(), training({ salesStatus: "Confirmed" }), ...(["Lead", "Qualified", "Negotiation"] as const).map((salesStatus) => training({ salesStatus })), training({ status: "Draft", salesStatus: "Confirmed" })];
     const fees = collectTrainingFees(packages, []);
-    expect(fees.map((fee) => fee.status)).toEqual(["Delivered", "Contracted"]);
+    expect(fees.map((fee) => fee.status)).toEqual(["Delivered", "Confirmed"]);
     expect(feeTotal(fees)).toBe(2400);
     expect(feeTotal(fees, "Delivered")).toBe(1200);
   });
@@ -64,8 +64,8 @@ describe("training fees dashboard", () => {
   });
 
   test("groups separate fees into all twelve months and only the selected year", () => {
-    const packages = [training(), training({ salesStatus: "Contracted", pricingInputs: { professionalFee: 900, numberOfParticipants: 10, vatStatus: "Including VAT" } }), training(), training()];
-    const projects = ["2026-01-01", "2026-01-31", "2026-12-31", "2027-01-01"].map((paymentReceivedDate, index) => project({ stage: index === 1 ? "Contracted" : "Delivered", trainingPackageId: packages[index].id, paymentReceivedDate }));
+    const packages = [training(), training({ salesStatus: "Confirmed", pricingInputs: { professionalFee: 900, numberOfParticipants: 10, vatStatus: "Including VAT" } }), training(), training()];
+    const projects = ["2026-01-01", "2026-01-31", "2026-12-31", "2027-01-01"].map((paymentReceivedDate, index) => project({ stage: index === 1 ? "Confirmed" : "Delivered", trainingPackageId: packages[index].id, paymentReceivedDate }));
     const fees = collectTrainingFees(packages, projects);
     const rows = monthlyTrainingFees(fees, 2026);
     expect(rows).toHaveLength(24);
@@ -103,17 +103,17 @@ describe("training fees dashboard", () => {
     expect(collectTrainingFees(packages, []).map((fee) => fee.fee)).toEqual([0]);
   });
 
-  test("counts every project type across the five stages, including unlinked projects", () => {
+  test("counts every project type across the nine stages, including unlinked projects", () => {
     const projects: ClientProject[] = [
-      project({ id: "one", stage: "Warm" }),
+      project({ id: "one", stage: "Qualified" }),
       project({ id: "two", stage: "Delivered", projectType: "Intelligent System" }),
-      project({ id: "three", stage: "Hot", projectType: "Other" }),
+      project({ id: "three", stage: "Negotiation", projectType: "Other" }),
     ];
     const rows = projectStageCounts(projects);
-    expect(rows).toHaveLength(15);
-    expect([...new Set(rows.map((row) => row.stage))]).toEqual(["Prospects", "Warm", "Hot", "Contracted", "Delivered"]);
+    expect(rows).toHaveLength(27);
+    expect([...new Set(rows.map((row) => row.stage))]).toEqual(["Lead", "Qualified", "Proposal Sent", "Negotiation", "Verbal Commit", "Confirmed", "Delivered", "Lost", "On Hold"]);
     expect(rows.reduce((count, row) => count + row.count, 0)).toBe(3);
-    expect(rows.find((row) => row.stage === "Warm" && row.type === "Training")?.projects[0]).toBe(projects[0]);
+    expect(rows.find((row) => row.stage === "Qualified" && row.type === "Training")?.projects[0]).toBe(projects[0]);
   });
 
   test("owner choices are sorted, trimmed, and deduplicated without including blanks", () => {
@@ -166,25 +166,25 @@ describe("training fees dashboard", () => {
 });
 
 describe("missing payment dates", () => {
-  test("includes imported Contracted and Delivered training without generated proposals", () => {
+  test("includes imported Confirmed and Delivered training without generated proposals", () => {
     const projects = [
-      project({ stage: "Contracted", title: "AI Agent and Automation", targetValue: 1000 }),
+      project({ stage: "Confirmed", title: "AI Agent and Automation", targetValue: 1000 }),
       project({ stage: "Delivered", title: "Sales training", targetValue: 1800, actualValue: 1500 }),
-      ...(["Prospects", "Warm", "Hot"] as const).map((stage) => project({ stage })),
-      project({ stage: "Contracted", projectType: "Intelligent System" }),
+      ...(["Lead", "Qualified", "Negotiation"] as const).map((stage) => project({ stage })),
+      project({ stage: "Confirmed", projectType: "Intelligent System" }),
       project({ stage: "Delivered", projectType: "Other" }),
     ];
     const reminders = collectTrainingPaymentReminders([], projects);
     expect(reminders.map((row) => [row.title, row.status, row.amount, row.amountLabel])).toEqual([
-      ["AI Agent and Automation", "Contracted", 1000, "Target"],
+      ["AI Agent and Automation", "Confirmed", 1000, "Value"],
       ["Sales training", "Delivered", 1500, "Actual"],
     ]);
     expect(reminders[0].href).toBe(`/pipeline?projectId=${projects[0].id}`);
   });
 
   test("counts linked training once and uses its Actual value in reminders and totals", () => {
-    const pkg = training({ salesStatus: "Contracted" });
-    const source = project({ stage: "Contracted", trainingPackageId: pkg.id, targetValue: 2000, actualValue: 100 });
+    const pkg = training({ salesStatus: "Confirmed" });
+    const source = project({ stage: "Confirmed", trainingPackageId: pkg.id, targetValue: 2000, actualValue: 100 });
     const fees = collectTrainingFees([pkg], [source]);
     const reminders = collectTrainingPaymentReminders(fees, [source]);
     expect(reminders).toHaveLength(1);
@@ -195,7 +195,7 @@ describe("missing payment dates", () => {
   });
 
   test("removes records once their payment dates are recorded and does not substitute planning dates", () => {
-    const source = project({ stage: "Contracted", startPeriod: "2026-09-01", targetValue: 1000 });
+    const source = project({ stage: "Confirmed", startPeriod: "2026-09-01", targetValue: 1000 });
     expect(collectTrainingPaymentReminders([], [source])).toHaveLength(1);
     expect(collectTrainingPaymentReminders([], [{ ...source, paymentReceivedDate: "2026-09-29" }])).toEqual([]);
     expect(collectTrainingPaymentReminders([], [{ ...source, paymentReceivedDate: "2026-02-30" }])).toHaveLength(1);
@@ -203,7 +203,7 @@ describe("missing payment dates", () => {
 
   test("preserves missing amounts and legitimate zero amounts without inventing fees", () => {
     const projects = [
-      project({ stage: "Contracted" }),
+      project({ stage: "Confirmed" }),
       project({ stage: "Delivered", actualValue: 0, targetValue: 1000 }),
       project({ stage: "Delivered", actualValue: NaN, targetValue: -1 }),
     ];
@@ -216,7 +216,7 @@ describe("missing payment dates", () => {
     const clients = ["Somaly Phin", "Sok Kong"].map((accountOwner) => ({ ...createEmptyClient(), accountOwner }));
     const pkg = training({ clientId: clients[0].id });
     const fees = collectTrainingFees([pkg], []);
-    const projects = clients.map((client) => project({ clientId: client.id, stage: "Contracted" }));
+    const projects = clients.map((client) => project({ clientId: client.id, stage: "Confirmed" }));
     const filtered = filterDashboardByOwner(fees, projects, clients, "owner:somaly phin");
     const reminders = collectTrainingPaymentReminders(filtered.trainings, filtered.projects);
     expect(reminders.map((row) => row.id)).toEqual([projects[0].id, pkg.id]);
@@ -227,13 +227,13 @@ describe("missing payment dates", () => {
 describe("top clients", () => {
   test("groups by client ID, keeps evidence, and counts each training only once", () => {
     const clients = ["Alpha", "Beta"].map((name) => ({ ...createEmptyClient(), name }));
-    const packages = [training({ clientId: clients[0].id }), training({ clientId: clients[0].id, salesStatus: "Contracted" }), training({ clientId: clients[1].id, salesStatus: "Hot" })];
+    const packages = [training({ clientId: clients[0].id }), training({ clientId: clients[0].id, salesStatus: "Confirmed" }), training({ clientId: clients[1].id, salesStatus: "Negotiation" })];
     const projects = [
       project({ clientId: clients[0].id, trainingPackageId: packages[0].id, stage: "Delivered" }),
-      project({ clientId: clients[0].id, trainingPackageId: packages[1].id, stage: "Contracted" }),
+      project({ clientId: clients[0].id, trainingPackageId: packages[1].id, stage: "Confirmed" }),
       project({ clientId: clients[0].id, projectType: "Intelligent System", stage: "Delivered" }),
       project({ clientId: clients[0].id, projectType: "Other", stage: "Delivered" }),
-      project({ clientId: clients[1].id, trainingPackageId: packages[2].id, stage: "Hot" }),
+      project({ clientId: clients[1].id, trainingPackageId: packages[2].id, stage: "Negotiation" }),
     ];
     const fees = collectTrainingFees(packages, projects);
     const rows = clientPerformance(fees, projects, clients);
@@ -318,12 +318,12 @@ function actualProposal(overrides: Partial<TrainingPackage> = {}): TrainingPacka
 }
 
 describe("Actual training revenue", () => {
-  test("manual Contracted and Delivered trainings populate monthly revenue and top clients without a proposal", () => {
+  test("manual Confirmed and Delivered trainings populate monthly revenue and top clients without a proposal", () => {
     const client = { ...createEmptyClient(), id: "client", name: "Example client", accountOwner: "Somaly Phin" };
-    const projects = [actualProject(), actualProject({ stage: "Contracted", actualValue: 1500 })];
+    const projects = [actualProject(), actualProject({ stage: "Confirmed", actualValue: 1500 })];
     const fees = collectTrainingFees([], projects);
     expect(fees.map((fee) => [fee.fee, fee.status, fee.amountLabel, fee.package])).toEqual([
-      [2500, "Delivered", "Actual", null], [1500, "Contracted", "Actual", null],
+      [2500, "Delivered", "Actual", null], [1500, "Confirmed", "Actual", null],
     ]);
     expect(fees[0].project).toBe(projects[0]);
     expect(fees[0]).toMatchObject({ id: projects[0].id, title: projects[0].title, clientId: client.id, client: client.name, href: `/pipeline?projectId=${projects[0].id}` });
@@ -353,7 +353,7 @@ describe("Actual training revenue", () => {
   });
 
   test("an Actual amount does not require a generated proposal, even when a draft is linked", () => {
-    const pkg = actualProposal({ status: "Draft", salesStatus: "Prospects" });
+    const pkg = actualProposal({ status: "Draft", salesStatus: "Lead" });
     const fees = collectTrainingFees([pkg], [actualProject({ trainingPackageId: pkg.id })]);
     expect(fees).toHaveLength(1);
     expect(fees[0]).toMatchObject({ fee: 2500, status: "Delivered", amountLabel: "Actual" });
@@ -362,9 +362,9 @@ describe("Actual training revenue", () => {
 
   test("linked Pipeline stage and client are authoritative rather than stale proposal fields", () => {
     const pkg = actualProposal({ clientId: "stale-client", salesStatus: "Delivered" });
-    const source = actualProject({ trainingPackageId: pkg.id, stage: "Contracted" });
-    expect(collectTrainingFees([pkg], [source])[0]).toMatchObject({ clientId: "client", status: "Contracted" });
-    for (const stage of ["Prospects", "Warm", "Hot"] as const) {
+    const source = actualProject({ trainingPackageId: pkg.id, stage: "Confirmed" });
+    expect(collectTrainingFees([pkg], [source])[0]).toMatchObject({ clientId: "client", status: "Confirmed" });
+    for (const stage of ["Lead", "Qualified", "Negotiation"] as const) {
       expect(collectTrainingFees([pkg], [{ ...source, stage }])).toEqual([]);
     }
   });
@@ -384,7 +384,7 @@ describe("Actual training revenue", () => {
     const projects = [
       ...[null, -1, NaN, Infinity].map((actualValue) => actualProject({ actualValue })),
       actualProject({ projectType: "Intelligent System" }), actualProject({ projectType: "Other" }),
-      ...(["Prospects", "Warm", "Hot"] as const).map((stage) => actualProject({ stage })),
+      ...(["Lead", "Qualified", "Negotiation"] as const).map((stage) => actualProject({ stage })),
       actualProject({ actualValue: 0 }),
     ];
     const fees = collectTrainingFees([], projects);

@@ -78,11 +78,11 @@ describe("dashboard charts", () => {
   test("project stage scene preserves project evidence and readable stage labels", () => {
     const project = { ...emptyClientProject(), id: "one", clientName: "Example", clientOwner: "", createdAt: "", updatedAt: "" };
     const rows = projectStageCounts([project]);
-    const scene = createChartScene(createProjectStagesChart(rows), { width: 350, height: 280 });
-    expect(scene.points).toHaveLength(15);
+    const scene = createChartScene(createProjectStagesChart(rows), { width: 350, height: 440 });
+    expect(scene.points).toHaveLength(27);
     expect(scene.points[0].datum.projects[0]).toBe(project);
     const svg = renderChartSvg(scene, { ariaLabel: "Project stages" });
-    for (const stage of ["Prospects", "Warm", "Hot", "Contracted", "Delivered"]) expect(svg).toContain(stage);
+    for (const stage of ["Lead", "Qualified", "Proposal Sent", "Negotiation", "Verbal Commit", "Confirmed", "Delivered", "Lost", "On Hold"]) expect(svg).toContain(stage);
     expect(svg).not.toMatch(/NaN|Infinity/);
   });
 

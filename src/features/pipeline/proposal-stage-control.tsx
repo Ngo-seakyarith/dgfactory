@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { proposalStages, type ProposalStage } from "./domain";
+import { proposalStages, stageRules, type ProposalStage } from "./domain";
 import { useSetProposalStageMutation } from "./queries";
 
 export function ProposalStageControl({
@@ -39,12 +39,13 @@ export function ProposalStageControl({
           <option
             key={stage}
             value={stage}
-            disabled={kind === "training_package" && stage === "Delivered" && status !== "Contracted" && status !== "Delivered"}
+            disabled={kind === "training_package" && stage === "Delivered" && status !== "Confirmed" && status !== "Delivered"}
           >
             {stage}
           </option>
         ))}
       </select>
+      <span className="text-xs text-muted-foreground">{stageRules[status].probability}% · {stageRules[status].group}</span>
       {mutation.isPending ? <span className="text-xs text-muted-foreground">Saving...</span> : null}
       {error ? <span className="text-sm text-destructive" role="alert">{error}</span> : null}
     </div>

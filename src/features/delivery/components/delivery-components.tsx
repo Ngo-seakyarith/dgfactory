@@ -211,7 +211,7 @@ export function DeliveryProjectsPageClient() {
           <p className="mt-2 text-sm text-muted-foreground">
             {search
               ? "Try a different training or client name."
-              : "Delivery begins when a training proposal is marked Contracted."}
+              : "Delivery begins when a training proposal is marked Confirmed."}
           </p>
         </div>
       )}

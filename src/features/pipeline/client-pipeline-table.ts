@@ -52,7 +52,7 @@ function latestUpdate(group: ClientPipelineGroup) {
 
 export const pipelineTableColumns = helper.columns([
   helper.accessor((group) => group.client?.name ?? "Client not selected", {
-    id: "client", header: "Client", sortFn: textSort, enableHiding: false,
+    id: "client", header: "Account", sortFn: textSort, enableHiding: false,
   }),
   helper.accessor((group) => group.client?.accountOwner.trim() || "Unassigned", {
     id: "owner", header: "Owner", sortFn: textSort,
@@ -62,7 +62,7 @@ export const pipelineTableColumns = helper.columns([
     cell: (cell) => cell.getValue() || "Not recorded",
   }),
   helper.accessor((group) => valueTotal(group, "targetValue"), {
-    id: "target", header: "Target total", sortFn: sortFn_basic, sortUndefined: "last",
+    id: "target", header: "Value total", sortFn: sortFn_basic, sortUndefined: "last",
     cell: (cell) => cell.getValue() === undefined ? "Not recorded" : money.format(cell.getValue()!),
   }),
   helper.accessor((group) => valueTotal(group, "actualValue"), {
