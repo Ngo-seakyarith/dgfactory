@@ -6,7 +6,7 @@ import { proposalStages } from "./domain";
 export const projectStages = proposalStages;
 export const projectTypes = ["Training", "Intelligent System", "Other"] as const;
 export const projectTiers = ["", "A", "B", "C"] as const;
-export const projectSources = ["", "Founder", "BDM"] as const;
+export const projectSources = ["", "Existing", "New", "Source"] as const;
 export type ProjectStage = (typeof projectStages)[number];
 
 const money = z.number().finite().nonnegative().max(999999999999.99).nullable();

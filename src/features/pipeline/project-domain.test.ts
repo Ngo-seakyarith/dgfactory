@@ -1,5 +1,5 @@
 import { describe, expect, test } from "bun:test";
-import { clientProjectInput, emptyClientProject, projectInputSchema, projectStages } from "./project-domain";
+import { clientProjectInput, emptyClientProject, projectInputSchema, projectSources, projectStages } from "./project-domain";
 import { proposalStages, stageRules } from "./domain";
 
 const clientId = "a59d9d34-b3fa-4f4d-a582-9c6b66375ccf";
@@ -82,9 +82,12 @@ describe("spreadsheet-aligned projects", () => {
   });
   test("classification and follow-up fields preserve the sheet's flexible values", () => {
     for (const nextStepDate of ["24-Jul", "November", "Q4", "2026-10-13", ""]) {
-      expect(projectInputSchema.parse({ ...base(), tier: "A", source: "BDM", nextStepDate, aiEurekaAttached: true, isSignal: true })).toMatchObject({ tier: "A", source: "BDM", nextStepDate, aiEurekaAttached: true, isSignal: true });
+      expect(projectInputSchema.parse({ ...base(), tier: "A", source: "Existing", nextStepDate, aiEurekaAttached: true, isSignal: true })).toMatchObject({ tier: "A", source: "Existing", nextStepDate, aiEurekaAttached: true, isSignal: true });
     }
     expect(base()).toMatchObject({ tier: "", source: "", nextStepDate: "", aiEurekaAttached: false, isSignal: false });
+    expect(projectSources).toEqual(["", "Existing", "New", "Source"]);
+    for (const source of projectSources) expect(projectInputSchema.parse({ ...base(), source }).source).toBe(source);
+    for (const source of ["Founder", "BDM"]) expect(projectInputSchema.safeParse({ ...base(), source }).success).toBe(false);
     for (const fields of [{ tier: "D" }, { source: "Unknown" }, { nextStepDate: "x".repeat(101) }, { isSignal: "Y" }]) expect(projectInputSchema.safeParse({ ...base(), ...fields }).success).toBe(false);
   });
 });

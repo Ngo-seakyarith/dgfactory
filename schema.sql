@@ -168,7 +168,7 @@ create table if not exists public.client_projects (
   project_type text not null default 'Training' check (project_type in ('Training', 'Intelligent System', 'Other')),
   stage text not null default 'Lead' check (stage in ('Lead', 'Qualified', 'Proposal Sent', 'Negotiation', 'Verbal Commit', 'Confirmed', 'Delivered', 'Lost', 'On Hold')),
   tier text not null default '' check (tier in ('', 'A', 'B', 'C')),
-  source text not null default '' check (source in ('', 'Founder', 'BDM')),
+  source text not null default '' check (source in ('', 'Existing', 'New', 'Source')),
   next_step_date text not null default '' check (length(next_step_date) <= 100),
   ai_eureka_attached boolean not null default false,
   is_signal boolean not null default false,
